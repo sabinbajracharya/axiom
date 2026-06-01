@@ -26,6 +26,14 @@ fi
 
 cd "$PROJECT_DIR" || exit 0
 
+# Ensure the Rust toolchain is on PATH even in a non-login / non-interactive shell
+# (Claude Code hooks don't source your interactive profile). rustup installs to
+# ~/.cargo/bin and writes this env file.
+if [ -f "$HOME/.cargo/env" ]; then
+    # shellcheck disable=SC1091
+    . "$HOME/.cargo/env"
+fi
+
 # Nothing to check until there is Rust source in the tree.
 if ! find . -path ./target -prune -o -name '*.rs' -print 2>/dev/null | grep -q .; then
     exit 0

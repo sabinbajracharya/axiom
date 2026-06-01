@@ -57,11 +57,14 @@ A reader can trust that any file outside the codegen crate contains no `unsafe`,
 
 This is harness-level, not model-level: it does not depend on the model *remembering* to run checks. The checks run *at* the model. Whichever model is driving (Opus, Sonnet, …), a lint failure becomes an unavoidable, surfaced problem.
 
-**⚠️ Toolchain requirement (important).** The hook runs `cargo` **on the host**. If `cargo` is not on the host PATH (this machine currently has none — Oxy builds via Docker), `scripts/check.sh` **skips with a warning instead of blocking**, so the hook is effectively a no-op until the toolchain is reachable. To make enforcement actually bite locally, do one of:
-- install `rustup` + `clippy` on the host (simplest), **or**
-- give the script a Docker wrapper — replace the two `cargo …` calls in `scripts/check.sh` with `docker compose run --rm dev bash -c "cargo …"` once Axiom has a `docker-compose.yml` (mirroring Oxy).
+**Toolchain: native, no Docker (decided).** Early Axiom is a pure-Rust project (lexer→parser→typechecker→IR→Cranelift) with **zero system dependencies**, so it builds with a plain `rustup` install — no Docker needed. Docker is deferred until there's a concrete reason (the wasm playground build, or byte-for-byte CI), and even then it would be for CI/packaging while local dev + this hook stay native.
 
-CI will always have `cargo`, so the gate bites there regardless. Decide the local story when Axiom's build environment (host vs Docker) is set up.
+- **Status: installed and verified.** Rust (stable, via `rustup`) with `clippy` + `rustfmt` is installed on the host. The hook has been tested end-to-end: a crate using `unsafe` and `.unwrap()` fails (`-F unsafe-code` + `-D clippy::unwrap-used`) and `scripts/check.sh` exits 2. Enforcement is **live**.
+- `scripts/check.sh` sources `~/.cargo/env` itself, so it finds `cargo` even in the non-interactive shell a hook runs in.
+- If `cargo` is ever absent (e.g. fresh machine before `rustup`), the script **skips with a warning instead of blocking** — install with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y`.
+- **Reproducibility without Docker:** pin the toolchain with a `rust-toolchain.toml` (`channel = "1.96.0"`, `components = ["clippy", "rustfmt"]`) so every machine and CI use the same version. *(Not yet added — create when convenient.)*
+
+CI will always have `cargo`, so the gate bites there regardless.
 
 **Notes / tuning:**
 - The hook runs per `.rs` edit. If that feels slow once the codebase is large, switch the event from `PostToolUse` to `Stop` (runs once when the turn ends) by editing `.claude/settings.json`.
