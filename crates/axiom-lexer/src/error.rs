@@ -17,6 +17,9 @@ pub enum LexError {
     #[error("unterminated byte literal")]
     UnterminatedByte { span: Span },
 
+    #[error("empty byte literal")]
+    EmptyByte { span: Span },
+
     #[error("invalid escape sequence")]
     InvalidEscape { span: Span },
 
@@ -34,6 +37,7 @@ impl LexError {
             LexError::UnterminatedString { span }
             | LexError::UnterminatedBlockComment { span }
             | LexError::UnterminatedByte { span }
+            | LexError::EmptyByte { span }
             | LexError::InvalidEscape { span }
             | LexError::InvalidNumber { span }
             | LexError::UnexpectedChar { span } => *span,

@@ -397,8 +397,15 @@ impl<'a> Lexer<'a> {
         self.bump(); // 'b'
         self.bump(); // opening quote
         let value = match self.peek() {
+            // Empty `b''`: don't consume the closing quote as the value.
+            Some('\'') => {
+                self.error(LexError::EmptyByte {
+                    span: self.span_from(lo),
+                });
+                0
+            }
             Some('\\') => self.scan_byte_escape(lo),
-            Some(c) if c.is_ascii() => {
+            Some(c) if c.is_ascii() && !c.is_ascii_control() => {
                 self.bump();
                 c as u8
             }
@@ -451,6 +458,9 @@ impl<'a> Lexer<'a> {
             '+' => self.either('=', Punct::PlusEq, Punct::Plus),
             '-' => self.scan_minus(),
             '*' => self.either('=', Punct::StarEq, Punct::Star),
+            // A `/` only reaches here when it is NOT `//`/`/*` (that is decided in
+            // `scan_one`), so it is always the division operator or `/=`.
+            '/' => self.either('=', Punct::SlashEq, Punct::Slash),
             '%' => self.either('=', Punct::PercentEq, Punct::Percent),
             '!' => self.either('=', Punct::Ne, Punct::Bang),
             '&' => self.either('&', Punct::AmpAmp, Punct::Amp),
@@ -653,6 +663,36 @@ mod tests {
         assert_eq!(kinds("=>")[0], TokenKind::Punct(Punct::FatArrow));
         assert_eq!(kinds("->")[0], TokenKind::Punct(Punct::Arrow));
         assert_eq!(kinds("::")[0], TokenKind::Punct(Punct::ColonColon));
+    }
+
+    #[test]
+    fn test_division_operators() {
+        // Regression: `/` must lex as the division operator, not Unknown.
+        let result = lex("a / b");
+        assert!(
+            result.errors.is_empty(),
+            "division must lex cleanly: {:?}",
+            result.errors
+        );
+        assert_eq!(kinds("/")[0], TokenKind::Punct(Punct::Slash));
+        assert_eq!(kinds("/=")[0], TokenKind::Punct(Punct::SlashEq));
+        // And `/` next to comments stays a comment.
+        assert_eq!(kinds("//x")[0], TokenKind::LineComment);
+        assert_eq!(kinds("/* x */")[0], TokenKind::BlockComment);
+    }
+
+    #[test]
+    fn test_empty_byte_literal_does_not_eat_quote() {
+        let result = lex("b''");
+        // The closing quote must not be consumed as the value.
+        assert_eq!(result.tokens[0].kind, TokenKind::ByteLit(0));
+        assert_eq!(result.errors.len(), 1);
+    }
+
+    #[test]
+    fn test_byte_literal_rejects_raw_newline() {
+        let result = lex("b'\n'");
+        assert!(!result.errors.is_empty());
     }
 
     #[test]

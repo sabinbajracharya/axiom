@@ -40,6 +40,15 @@ fn golden_token_snapshots() {
     for path in files {
         let source = fs::read_to_string(&path).expect("read .ax fixture");
         let result = lex(&source);
+        // Happy-path fixtures (everything outside errors/) must lex cleanly. This
+        // is the assertion whose absence let a `/`-as-Unknown bug ship green: the
+        // token snapshot alone proves tiling, not correct classification.
+        assert!(
+            result.errors.is_empty(),
+            "fixture {} produced unexpected diagnostics: {:?}",
+            path.display(),
+            result.errors
+        );
         let got = serialize(&result.tokens, &source);
         let golden = path.with_extension("tokens");
 
