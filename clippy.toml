@@ -1,0 +1,17 @@
+# Clippy configuration for the Axiom compiler (LAYER 2 of enforcement).
+# See ENFORCEMENT.md and RUST_CONVENTIONS.md. This file is workspace-wide.
+#
+# Banned types — the readability traps from RUST_CONVENTIONS.md §2/§5.
+# Extend this list whenever a new trap is found in review.
+disallowed-types = [
+    { path = "std::cell::RefCell", reason = "interior mutability hurts readability; own the data, pass it, or use an arena (Vec + indices). RUST_CONVENTIONS.md §2/§5" },
+    { path = "std::cell::Cell", reason = "interior mutability trap; restructure to own the data. RUST_CONVENTIONS.md §2/§5" },
+    { path = "std::sync::Mutex", reason = "the compiler is single-threaded; shared-mutable locks are a readability trap. RUST_CONVENTIONS.md §2" },
+    { path = "std::sync::RwLock", reason = "the compiler is single-threaded; shared-mutable locks are a readability trap. RUST_CONVENTIONS.md §2" },
+]
+
+# Banned methods — add as needed (e.g. force .to_string() over ambiguous .into()).
+disallowed-methods = []
+
+# Banned macros — add as needed.
+disallowed-macros = []

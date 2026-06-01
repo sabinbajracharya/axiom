@@ -17,6 +17,8 @@ The memory model (the heart of the language) is **Mutable Value Semantics** — 
 
 2. **[`RUST_CONVENTIONS.md`](RUST_CONVENTIONS.md)** — how we write Rust in this repo. **The top rule: write Rust a competent programmer who is *not* a Rust expert can read.** When writing or reviewing any Rust code, follow it. The §14 anti-pattern table is the quick cheat sheet.
 
+3. **[`ENFORCEMENT.md`](ENFORCEMENT.md)** — how the conventions are **mechanically enforced** (not just documented). Most rules fail the build via `[workspace.lints]` (`unsafe_code = "forbid"`), `clippy.toml` ban-lists, and `clippy -D warnings`; a Claude Code `PostToolUse` hook (`.claude/settings.json` → `scripts/check.sh`) runs the checks after every `.rs` edit and feeds failures back. **Do not silence a lint to make code pass** — fix the code, or change the rule openly in `RUST_CONVENTIONS.md` + `ENFORCEMENT.md`. The hook needs `cargo` on PATH to bite (see the toolchain note in ENFORCEMENT.md).
+
 ## Load-bearing rules (summary — full detail in the docs above)
 
 ### Language design (from DESIGN_SPEC.md)
