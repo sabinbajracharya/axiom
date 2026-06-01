@@ -41,6 +41,16 @@ unimplemented = "deny"
 # Allowed: for structurally-impossible enum arms, with an explanatory message.
 unreachable = "allow"
 
+# ── Complexity caps — mechanical proxies for "small, single-purpose methods"
+# (RUST_CONVENTIONS.md §8). Thresholds live in clippy.toml. These can't prove a
+# method does exactly one thing, but they catch fat methods, long arg lists, and
+# tangled control flow — the usual symptoms. Tune thresholds, don't silence.
+too_many_lines = "deny"        # fat method (threshold: too-many-lines-threshold)
+too_many_arguments = "deny"    # long param list (threshold: too-many-arguments-threshold)
+# Nursery lint — a proxy for "one task". Set generously to avoid false positives;
+# under `-D warnings` (the hook) a warn here still fails the build.
+cognitive_complexity = "warn"  # tangled control flow (threshold: cognitive-complexity-threshold)
+
 [workspace.dependencies]
 # Centralized dependency versions live here as crates are added, e.g.:
 # thiserror = "2"

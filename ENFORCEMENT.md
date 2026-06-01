@@ -21,6 +21,11 @@
 | No `unsafe` outside codegen | `unsafe_code = "forbid"` in `[workspace.lints.rust]`; codegen crate is the sole opt-out | **Hard** |
 | No `unwrap`/`expect`/`panic!`/`todo!`/`unimplemented!` on real paths | `[workspace.lints.clippy]` denies | **Hard** |
 | No `RefCell`/`Cell`/`Mutex`/`RwLock` (interior-mutability/lock traps) | `clippy.toml` `disallowed-types` | **Hard** |
+| No fat methods (§8) | `clippy::too_many_lines` + `too-many-lines-threshold` | **Hard** |
+| No long parameter lists (§8) | `clippy::too_many_arguments` + `too-many-arguments-threshold` | **Hard** |
+| No tangled control flow (proxy for "one task", §8) | `clippy::cognitive_complexity` (nursery; generous threshold) | **Hard-ish** (proxy) |
+| Single source of truth for symbols (token kinds ↔ display names) | consistency `#[test]` (Oxy `symbol_consistency.rs` pattern) | **Hard** (test) — lands with lexer crate |
+| No raw string literals in the serializer | focused `#[test]` scanning the module's own source | **Hard** (test, narrow) — lands with lexer crate |
 | Warnings = errors | `cargo clippy -- -D warnings` (hook) | **Hard** |
 | Banning more types/methods later | extend `clippy.toml` | **Hard** |
 | Every `unsafe` has `// Safety:` | custom check (layer 4) | ⏳ not yet |
@@ -29,6 +34,9 @@
 | Multiple lifetimes / `'a: 'b` | dylint (layer 4, hard to write) | ⏳ not yet |
 | "Readable by a non-expert" | review only | **Soft** (judgment — irreducible) |
 | "Clone vs borrow in a hot path" | review only | **Soft** (judgment) |
+| No hardcoded strings (project-wide) | review + the serializer-scan test covers the place it matters most | **Mostly Soft** (no clean lint exists) |
+| DRY / no copy-paste logic | review + data-driven architecture removes the need | **Soft** (stable clippy can't detect it) |
+| "One method, one task" (semantic) | the three complexity lints are *proxies*; true single-responsibility is judgment | **Soft at the margin** |
 
 ~75–80% of the conventions are mechanically hard today; the rest is judgment we accept and keep small.
 

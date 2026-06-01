@@ -140,7 +140,7 @@ The balance, in one line: **borrow by default for reading; clone when it removes
 ---
 
 ## 8. Functions
-- **Small and single-purpose.** If a function exceeds ~50 lines or has 3+ levels of nesting, consider splitting. (Match arms with long bodies → extract a helper.)
+- **Small and single-purpose.** If a function exceeds ~50 lines or has 3+ levels of nesting, consider splitting. (Match arms with long bodies → extract a helper.) **Mechanically enforced** (proxies): `clippy::too_many_lines` (≤60), `clippy::too_many_arguments` (≤5), `clippy::cognitive_complexity` — all fail the build via `-D warnings`. These catch fat methods, long arg lists, and tangled flow; they can't *prove* one-task, so semantic single-responsibility stays a review concern. Tune thresholds in `clippy.toml`, never silence per-function.
 - **Name things.** Bind intermediate results to named `let`s instead of nesting calls. `let trimmed = line.trim(); let parsed = parse(trimmed)?;` over `parse(line.trim())?` when it aids reading.
 - **No function overloading** (Rust doesn't have it anyway) and **no default-argument emulation** via `Option` soup — make a second named function or a small config struct.
 - Free functions for stateless logic; methods (`impl`) for behavior tied to a type.
