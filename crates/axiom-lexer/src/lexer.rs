@@ -44,6 +44,9 @@ impl<'a> Lexer<'a> {
         self.src.get(self.pos..).unwrap_or("")
     }
 
+    /// Look ahead `n` chars without consuming. All call sites use `n <= 2`
+    /// (maximal-munch and prefix detection), so this is O(1) in practice; the
+    /// `rest()` slice is O(1) and at most three chars are decoded.
     fn nth(&self, n: usize) -> Option<char> {
         self.rest().chars().nth(n)
     }
@@ -343,31 +346,36 @@ impl<'a> Lexer<'a> {
             Some('"') => out.push('"'),
             Some('0') => out.push('\0'),
             Some('u') => self.scan_unicode_escape(out, esc_lo),
-            _ => self.error(LexError::InvalidEscape {
-                span: self.span_from(esc_lo),
-            }),
+            _ => self.invalid_escape(esc_lo, out),
         }
     }
 
     /// `\u{XXXX}` — hex code point in braces.
     fn scan_unicode_escape(&mut self, out: &mut String, esc_lo: usize) {
         if !self.eat('{') {
-            self.error(LexError::InvalidEscape {
-                span: self.span_from(esc_lo),
-            });
+            self.invalid_escape(esc_lo, out);
             return;
         }
-        let start = self.pos;
         self.eat_while(|c| c.is_ascii_hexdigit());
-        let hex = self.slice(start).to_string();
+        let hex_start = esc_lo + "\\u{".len();
+        let hex = self.src.get(hex_start..self.pos).unwrap_or("").to_string();
         let closed = self.eat('}');
         let decoded = u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32);
         match (closed, decoded) {
             (true, Some(ch)) => out.push(ch),
-            _ => self.error(LexError::InvalidEscape {
-                span: self.span_from(esc_lo),
-            }),
+            _ => self.invalid_escape(esc_lo, out),
         }
+    }
+
+    /// Record an invalid escape and keep the decode lossless: push the raw
+    /// consumed source text (`\` + whatever followed) into the value, so the
+    /// decoded string still reconstructs the source intent rather than silently
+    /// dropping bytes. Callers must have advanced `pos` past the bad escape.
+    fn invalid_escape(&mut self, esc_lo: usize, out: &mut String) {
+        self.error(LexError::InvalidEscape {
+            span: self.span_from(esc_lo),
+        });
+        out.push_str(self.slice(esc_lo));
     }
 
     fn scan_raw_string(&mut self, lo: usize) -> TokenKind {
@@ -583,7 +591,10 @@ fn simple_delim(c: char) -> Option<crate::token::Punct> {
 }
 
 fn is_h_space(c: char) -> bool {
-    c == ' ' || c == '\t' || c == '\r'
+    // '\r' is whitespace (LF-only line terminator, §2.1); U+FEFF (BOM / ZWNBSP)
+    // is treated as whitespace so a BOM-prefixed file lexes cleanly rather than
+    // producing an Unknown token.
+    c == ' ' || c == '\t' || c == '\r' || c == '\u{feff}'
 }
 
 fn is_ident_start(c: char) -> bool {
@@ -707,6 +718,29 @@ mod tests {
             kinds("r\"a\\nb\"")[0],
             TokenKind::StrLit("a\\nb".to_string())
         );
+    }
+
+    #[test]
+    fn test_invalid_escape_preserves_source_text() {
+        // The decoded value keeps the raw "\q" rather than silently dropping it.
+        let result = lex("\"a\\qb\"");
+        assert_eq!(
+            result.tokens[0].kind,
+            TokenKind::StrLit("a\\qb".to_string())
+        );
+        assert_eq!(result.errors.len(), 1);
+    }
+
+    #[test]
+    fn test_leading_bom_is_whitespace_not_error() {
+        let result = lex("\u{feff}val");
+        assert!(
+            result.errors.is_empty(),
+            "BOM must not error: {:?}",
+            result.errors
+        );
+        assert_eq!(result.tokens[0].kind, TokenKind::Whitespace);
+        assert_eq!(result.tokens[1].kind, TokenKind::Keyword(Keyword::Val));
     }
 
     #[test]

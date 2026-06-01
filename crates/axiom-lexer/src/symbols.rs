@@ -223,4 +223,45 @@ mod tests {
         assert_eq!(keyword_from_str("Lett"), None);
         assert_eq!(keyword_from_str(""), None);
     }
+
+    #[test]
+    fn test_every_token_kind_has_a_unique_nonempty_label() {
+        // §5.2: every TokenKind names exactly once, no orphans, no collisions.
+        // The non-keyword/non-punct kinds (exhaustive — adding a variant here is
+        // a compile reminder to register its label).
+        let simple = [
+            TokenKind::Whitespace,
+            TokenKind::Newline,
+            TokenKind::LineComment,
+            TokenKind::DocComment,
+            TokenKind::BlockComment,
+            TokenKind::IntLit(0),
+            TokenKind::FloatLit(0.0),
+            TokenKind::ByteLit(0),
+            TokenKind::StrLit(String::new()),
+            TokenKind::Ident,
+            TokenKind::Unknown,
+            TokenKind::Eof,
+        ];
+        let mut seen = HashSet::new();
+        for kind in &simple {
+            let label = display_name(kind);
+            assert!(!label.is_empty(), "empty label for {kind:?}");
+            assert!(seen.insert(label), "duplicate label {label:?}");
+        }
+        for kw in Keyword::ALL {
+            let label = display_name(&TokenKind::Keyword(*kw));
+            assert!(
+                seen.insert(label),
+                "keyword label {label:?} collides with another kind"
+            );
+        }
+        for p in Punct::ALL {
+            let label = display_name(&TokenKind::Punct(*p));
+            assert!(
+                seen.insert(label),
+                "punct label {label:?} collides with another kind"
+            );
+        }
+    }
 }

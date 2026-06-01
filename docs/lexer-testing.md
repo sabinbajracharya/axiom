@@ -182,6 +182,7 @@ Consistent with the hand-rolled / minimal-deps stance: `fuzz.rs` uses a tiny **s
 | Every byte consumed once | `tiles` over every fixture + every fuzz input | **Hard** |
 | Source reconstructs exactly | `reconstruct == source` (lossless) | **Hard** |
 | No silent token-stream regression | golden snapshots | **Hard** |
+| No byte silently mis-lexed as `Unknown` on valid input | golden test asserts **zero diagnostics** on happy-path fixtures | **Hard** |
 | Symbol table complete | consistency `#[test]` | **Hard** |
 | No raw strings in serializer | source-scan `#[test]` | **Hard** (narrow) |
 | Small, single-purpose functions | complexity lints (proxies) | **Hard-ish** |

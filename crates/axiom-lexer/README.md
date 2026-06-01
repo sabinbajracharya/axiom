@@ -42,6 +42,12 @@ Two properties define it:
   invariants, classifiers) is pure. Don't add state outside `lexer.rs`.
 - **Maximal munch** subtlety: a `.` continues a float only if a digit follows,
   so `1..5` lexes as `Int DotDot Int`, not `1.` `.5`. See `test_range_is_not_a_float`.
+- **LF-only line terminator** (§2.1): `\r` is whitespace, a lone `\r` is not a
+  line break. A leading **BOM** (U+FEFF) is treated as whitespace, not an error.
+- **Happy-path fixtures must lex clean.** `tests/golden.rs` asserts zero
+  diagnostics for every `fixtures/*.ax`; only `fixtures/errors/*.ax` may produce
+  errors. (The tiling invariant proves coverage, not correct classification — so
+  this assertion is what catches a token silently mis-lexed as `Unknown`.)
 
 ## Commands
 

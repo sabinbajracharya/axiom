@@ -240,6 +240,12 @@ pub struct Token {
 
 /// Maps byte offsets to 1-based `(line, col)`. Built once per source; `col` is
 /// counted in characters (Unicode scalars) from the start of the line.
+///
+/// **Line terminator: LF only** (DESIGN_SPEC §2.1 — LF is canonical, enforced by
+/// the formatter). A `\r` is ordinary horizontal whitespace and does *not* start
+/// a new line, so `\r\n` advances one line (via its `\n`) and a lone `\r`
+/// (old-Mac style) advances none. This is a deliberate decision, not an
+/// oversight: Axiom source is LF.
 pub struct LineMap {
     /// Byte offset of the start of each line. Always begins with `0`.
     line_starts: Vec<usize>,
@@ -305,5 +311,20 @@ mod tests {
         let src = "é=1"; // 'é' is two bytes; col is char-based
         let map = LineMap::new(src);
         assert_eq!(map.locate(src, 2), (1, 2)); // '=' is the 2nd char
+    }
+
+    #[test]
+    fn test_linemap_lone_cr_is_not_a_line_break() {
+        // LF-only (§2.1): a bare '\r' does not start a new line.
+        let src = "a\rb";
+        let map = LineMap::new(src);
+        assert_eq!(map.locate(src, 2), (1, 3)); // 'b' is still line 1, col 3
+    }
+
+    #[test]
+    fn test_linemap_crlf_advances_one_line() {
+        let src = "a\r\nb";
+        let map = LineMap::new(src);
+        assert_eq!(map.locate(src, 3), (2, 1)); // 'b' after CRLF is line 2
     }
 }
