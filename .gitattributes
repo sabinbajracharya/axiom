@@ -1,0 +1,6 @@
+# Golden snapshot files are pinned to LF so a CRLF checkout (core.autocrlf) can't
+# rewrite them and fail every snapshot test with a phantom mismatch.
+# (Same lesson as Oxy's IR snapshots; see docs/lexer-testing.md §2.1.)
+*.tokens text eol=lf
+*.stderr text eol=lf
+*.ax text eol=lf

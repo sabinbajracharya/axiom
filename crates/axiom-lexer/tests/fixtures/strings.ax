@@ -1,0 +1,5 @@
+val plain = "hello"
+val escaped = "tab\tnew\nquote\""
+val unicode = "\u{41}\u{1F600}"
+val raw = r"no\escapes\here"
+val byte = b'A'

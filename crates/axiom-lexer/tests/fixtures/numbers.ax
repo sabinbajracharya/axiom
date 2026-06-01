@@ -1,0 +1,6 @@
+val a = 2.5
+val b = 1e-9
+val c = 6.022e23
+val r = 1..=9
+val s = 0b1010
+val o = 0o17

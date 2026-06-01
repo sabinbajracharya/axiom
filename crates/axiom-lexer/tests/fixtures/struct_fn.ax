@@ -1,0 +1,9 @@
+struct Point { x: Int, y: Int }
+
+fn dist(let self, let other: Point) -> Float {
+    val dx = self.x - other.x
+    match dx {
+        0 => 0.0,
+        n => n as Float,
+    }
+}

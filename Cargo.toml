@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = []
+members = ["crates/axiom-lexer"]
 # Add crates here as they are created, e.g. members = ["crates/axiom-core"].
 #
 # EVERY crate MUST opt into the lint policy below by adding to its Cargo.toml:
@@ -52,5 +52,5 @@ too_many_arguments = "deny"    # long param list (threshold: too-many-arguments-
 cognitive_complexity = "warn"  # tangled control flow (threshold: cognitive-complexity-threshold)
 
 [workspace.dependencies]
-# Centralized dependency versions live here as crates are added, e.g.:
-# thiserror = "2"
+# Centralized dependency versions live here as crates are added.
+thiserror = "2"

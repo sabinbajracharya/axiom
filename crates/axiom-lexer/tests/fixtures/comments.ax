@@ -1,0 +1,3 @@
+// a line comment
+/// a doc comment
+/* a /* nested */ block */ val x = 1
