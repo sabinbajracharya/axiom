@@ -293,7 +293,11 @@ xs[1] += 10        // desugars to: take inout projection of element 1, mutate in
 ```
 A subscript **suspends**, lends a projection to the caller (`let` or `inout`), and **resumes** when the caller is done — writing nothing back through a pointer because there was never a pointer, only a temporary borrow. This gives O(1) in-place element mutation with **no aliasing and no exposed pointer**.
 
-> **Spike target (§4.10):** subscripts + the exclusivity rule + closures are the three features whose *interaction* is the real risk. The spike must exercise all three together.
+**Two rules the spike (§4.10) settled [Decided]:**
+1. **Projection borrow duration:** a projection borrow lasts for **one operation with eagerly-evaluated operands**. This is what makes `xs[i] = xs[j]` and `xs[i] = f(xs[i])` legal — the RHS read completes and releases before the LHS `inout` projection opens.
+2. **Two indexing regimes:** **builtin** collection indexing is treated as **disjoint storage** (`xs[0]` and `xs[1]` don't conflict — distinct elements may be mutated simultaneously); a **user-defined** `subscript` borrows the **whole receiver**, so any two simultaneous index projections of it conflict, even with constant indices (use a `split`/`swap` primitive — the `split_at_mut` analogue). Variable indices conflict in both regimes (can't prove `i != j`).
+
+> **Spike status:** subscripts + exclusivity + closures + loops were exercised together in Spike 0/0b — see [`docs/spike-0-findings.md`](docs/spike-0-findings.md). Result: 23/23 scenarios matched intent, friction confined to known cases with standard workarounds. The `match`-ergonomics × exclusivity interaction (§7.2) remains to confirm in the real implementation.
 
 ### 4.5 Heap allocation & Perceus reference counting [Decided]
 Value semantics + scope ownership handles the stack-shaped common case: a value is freed deterministically when its owning binding leaves scope (like a C++ destructor / Rust drop). But recursive/shared/escaping data (trees, graphs, closures that outlive a call) needs heap allocation with shared lifetime. For that, Axiom uses **Perceus** (Koka): *precise compile-time reference counting with elision and reuse.*
@@ -644,7 +648,7 @@ Honest list. Each is tagged with whether it may remain open (isolated behind a b
 | # | Question | Status |
 |---|----------|--------|
 | 1 | **Closure capture of borrowed values** (§8.2) — sound & ergonomic? | **✅ Resolved (Spike 0)** — escaping/non-escaping model works; catches iterator-invalidation + borrow-escape, allows safe cases, no programmer annotations needed. See [`docs/spike-0-findings.md`](docs/spike-0-findings.md). |
-| 2 | Subscript × exclusivity × match-ergonomics interaction (§4.4/§7.2) | **⚠️ Partially (Spike 0)** — exclusivity over static places is fine; the subscript *yield/lend/resume* mechanism was NOT prototyped. **Re-spike subscripts + loops before v1 memory model lands.** |
+| 2 | Subscript × exclusivity × loops interaction (§4.4/§7.1) | **✅ Resolved (Spike 0b)** — in-place index update in loops works (`loop i in 0..n { xs[i]=… }`); iterate-while-mutate caught; subscript projection borrow lasts one operation with eager operands. Two regimes: builtin indexing = disjoint storage; user subscripts borrow whole receiver (need `split`/`swap`). See findings. *(match-ergonomics ×exclusivity still to confirm in real impl.)* |
 | 3 | How painful does the exclusivity rule feel on real code? | **✅ Preliminary GREEN (Spike 0)** — friction collapses to 2 narrow cases (aliased var-index mutation; field-read-during-whole-mutation), both with standard workarounds. **Path A confirmed; Path B dormant.** |
 | 4 | Cross-task **shared-mutable** data (`Mutex<T>`) (§9.4) | **May stay open** — behind v2 boundary, nothing earlier depends on it |
 | 5 | Cycle collection (§4.7) | **May stay open** — `Weak`/arena escape hatch exists; add collector only if leaks prove real |
