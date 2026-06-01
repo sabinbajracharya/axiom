@@ -643,9 +643,9 @@ Honest list. Each is tagged with whether it may remain open (isolated behind a b
 
 | # | Question | Status |
 |---|----------|--------|
-| 1 | **Closure capture of borrowed values** (§8.2) — sound & ergonomic? | **MUST resolve in Spike 0** — near-foundational, not allowed to stay open |
-| 2 | Subscript × exclusivity × match-ergonomics interaction (§4.4/§7.2) | **MUST resolve in Spike 0** |
-| 3 | How painful does the exclusivity rule feel on real code? | **Spike 0 exit gate** (Path A vs B) |
+| 1 | **Closure capture of borrowed values** (§8.2) — sound & ergonomic? | **✅ Resolved (Spike 0)** — escaping/non-escaping model works; catches iterator-invalidation + borrow-escape, allows safe cases, no programmer annotations needed. See [`docs/spike-0-findings.md`](docs/spike-0-findings.md). |
+| 2 | Subscript × exclusivity × match-ergonomics interaction (§4.4/§7.2) | **⚠️ Partially (Spike 0)** — exclusivity over static places is fine; the subscript *yield/lend/resume* mechanism was NOT prototyped. **Re-spike subscripts + loops before v1 memory model lands.** |
+| 3 | How painful does the exclusivity rule feel on real code? | **✅ Preliminary GREEN (Spike 0)** — friction collapses to 2 narrow cases (aliased var-index mutation; field-read-during-whole-mutation), both with standard workarounds. **Path A confirmed; Path B dormant.** |
 | 4 | Cross-task **shared-mutable** data (`Mutex<T>`) (§9.4) | **May stay open** — behind v2 boundary, nothing earlier depends on it |
 | 5 | Cycle collection (§4.7) | **May stay open** — `Weak`/arena escape hatch exists; add collector only if leaks prove real |
 | 6 | `Int` overflow: checked / wrapping / `Result` (§2.6) | May stay open — leaning checked-debug + explicit wrapping methods; isolated |
