@@ -17,6 +17,75 @@ Three properties define it:
   absolute offsets, and (forthcoming) typed AST views — hand-rolled, no `rowan`,
   zero `unsafe`.
 
+## How it works (end-to-end flow)
+
+`parse` is a pipeline. The grammar **never builds the tree** — it walks a
+trivia-filtered token cursor (`Parser`) and emits a flat `Event` stream (the IR).
+`build_tree` then materializes the immutable green tree from those events,
+re-inserting trivia by source position, and `new_root` wraps it as the lazy red
+tree. Diagnostics ride alongside in `ParseResult.errors`; the tree is always
+present.
+
+```mermaid
+flowchart TD
+    A["<b>parse(source)</b> &middot; lib.rs entry"] --> L["axiom_lexer::lex(source)<br/>→ LexResult { tokens }"]
+    L --> N["<b>Parser::new(&amp;tokens)</b> &middot; filters trivia<br/>struct Parser { tokens, pos, events, errors, depth, open_* }"]
+    N --> G["<b>grammar::source_file(&amp;mut p)</b><br/>walks tokens, <i>emits an Event stream</i><br/>(see the two insets below)"]
+    G --> F["p.finish() → (events, errors)"]
+    F --> EV["<b>Event stream</b> — the IR<br/>Start{kind, forward_parent} &middot; Token{kind, len} &middot; Finish &middot; Tombstone"]
+    EV --> BT["<b>event::build_tree(events, &amp;tokens)</b><br/>GreenNodeBuilder + TokenCursor<br/>re-inserts trivia by source position"]
+    BT --> GT["<b>Rc&lt;GreenNode&gt;</b> — immutable green tree<br/>(kind + text_len + children, shared via Rc)"]
+    GT --> RR["<b>SyntaxNode::new_root(green)</b><br/>red tree: lazy absolute offsets + parent pointers"]
+    RR --> PR["<b>return ParseResult { tree, errors }</b>"]
+```
+
+**Inset A — the grammar dispatch (how `source_file` drives the loop).** Every
+`parse_*` opens a node with `p.start()`, parses its parts, and closes it with
+`marker.complete(kind)`; a token that can't begin an item/statement is resynced
+into a single `Error` node (see *Recovery* below).
+
+```mermaid
+flowchart TD
+    SF["<b>source_file(p)</b> &middot; m = p.start()"] --> SFL{"at_end() ?"}
+    SFL -- "yes" --> DONE["m.complete(SourceFile)"]
+    SFL -- "no" --> Q{"at_item_start(p) ?"}
+    Q -- "no &middot; garbage" --> RES["resync: absorb run<br/>→ one Error node"]
+    RES --> SFL
+    Q -- "yes" --> IT["<b>item(p)</b><br/>opt_visibility → dispatch on keyword"]
+    IT --> D["fn_def &middot; struct_def &middot; enum_def<br/>trait_def &middot; impl_block &middot; mod_def<br/>use_decl &middot; error_set_def &middot; const_def"]
+    D -- "each: p.start → parse parts → m.complete" --> SFL
+    D -. "fn body" .-> BLK["<b>block(p)</b> &middot; stmt* loop<br/>let_stmt / errdefer_stmt / expr_stmt"]
+    BLK -. "calls" .-> EX["<b>expr(p)</b> → see Inset B"]
+```
+
+**Inset B — the expression engine (Pratt precedence climbing).** This is the
+recursive cycle and where the "return back" happens: `lhs` parses a prefix/primary
+with postfix trailers, then the climb loop repeatedly `precede()`s the current
+`lhs` into an operator node and recurses for the right side, returning a
+`CompletedMarker` up the chain. `enter_recursion()` (`MAX_DEPTH = 64`) guards it.
+
+```mermaid
+flowchart TD
+    EXPR["<b>expr(p)</b>"] --> EBP["<b>expr_bp(p, min_bp)</b>"]
+    EBP --> LHS["lhs(p) &middot; enter_recursion() guard"]
+    LHS --> LHI{"lhs_inner(p)"}
+    LHI -- "- / ! / try" --> PRE["prefix(p)<br/>→ expr_bp(p, PREFIX_BP) ⟲"]
+    LHI -- "else" --> PRIM["primary(p)<br/>literal / path / struct-lit / paren / list /<br/>block / if / match / loop / closure / return …"]
+    PRE --> POST
+    PRIM --> POST["postfix(p, lhs) loop ⟲<br/>call() &middot; field_or_method() &middot; index() &middot; cast() &middot; question()"]
+    POST --> CLIMB{"infix_bp(current)?<br/>l_bp &ge; min_bp"}
+    CLIMB -- "yes" --> WRAP["lhs.precede(p) wraps lhs (forward_parent)<br/>bump operator<br/>expr_bp(p, r_bp) ⟲ recurse for rhs"]
+    WRAP --> CLIMB
+    CLIMB -- "no" --> RET["return CompletedMarker ↑"]
+```
+
+> **Marker → Event mechanics:** `p.start()` pushes a `Tombstone` and returns a
+> `Marker`; `p.bump()` pushes `Token{kind,len}`; `Marker::complete(kind)` rewrites
+> the `Tombstone` into `Start{kind}` and pushes `Finish`; `CompletedMarker::precede()`
+> sets the earlier `Start`'s `forward_parent` so `build_tree` opens the wrapping
+> node first — that is how left-associativity (`a + b + c`) is encoded without
+> backtracking.
+
 ## Files
 
 | File | Responsibility | Key items |

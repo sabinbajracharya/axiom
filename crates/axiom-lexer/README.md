@@ -12,6 +12,53 @@ Two properties define it:
   reported in `LexResult::errors`, never by failing. This is what lets the
   fuzzer assert the coverage invariants on *every* input.
 
+## How it works (end-to-end flow)
+
+`lex` builds a `Lexer` and runs one loop: each turn captures the start offset,
+calls `scan_one` to classify the next token by its first char, then `push`es a
+`Token` carrying its exact source slice. Trivia (whitespace/comments) is scanned
+into real tokens, not skipped. Errors are pushed to `self.errors` but a token is
+**always** produced, so the loop never stalls. At EOF it appends an `Eof` token
+and returns `LexResult`.
+
+```mermaid
+flowchart TD
+    A["<b>lex(source)</b> &middot; entry point"] --> B["<b>Lexer::new(source)</b><br/>struct Lexer { src, pos, tokens, errors }"]
+    B --> C["<b>Lexer::run()</b> &middot; the one loop"]
+    C --> D{"at_end() ?"}
+    D -- "yes" --> Z["push Eof token<br/><b>return LexResult { tokens, errors }</b>"]
+    D -- "no &middot; next token" --> E["lo = pos<br/><b>scan_one(lo)</b>"]
+    E --> DISP{"dispatch on first char<br/>via peek() / nth(1)"}
+
+    subgraph helpers["scan_one → each branch returns a TokenKind"]
+      direction LR
+      DISP -- "newline / space" --> T1["(inline) Newline / Whitespace"]
+      DISP -- "// or /*" --> T2["scan_comment<br/>→ scan_line_comment / scan_block_comment"]
+      DISP -- "digit" --> T3["scan_number<br/>→ try_radix / scan_decimal → finish_number"]
+      DISP -- "double-quote" --> T4["scan_string → scan_escape / scan_unicode_escape"]
+      DISP -- "r-string" --> T5["scan_raw_string"]
+      DISP -- "byte b'..'" --> T6["scan_byte → scan_byte_escape"]
+      DISP -- "label quote" --> T7["scan_label"]
+      DISP -- "ident / kw" --> T8["scan_ident → keyword_from_str"]
+      DISP -- "operator" --> T9["scan_punct<br/>→ simple_delim / either / scan_dot / scan_angle …"]
+    end
+
+    T1 --> K
+    T2 --> K
+    T3 --> K
+    T4 --> K
+    T5 --> K
+    T6 --> K
+    T7 --> K
+    T8 --> K
+    T9 --> K["kind : TokenKind"]
+    K --> P["<b>push(kind, lo)</b><br/>Token { kind, span: lo..pos, text: src[lo..pos] }<br/>→ self.tokens"]
+    P -- "loop back" --> D
+
+    K -. "malformed input" .-> ERR["error(LexError)<br/>→ self.errors<br/>(token still produced)"]
+    ERR -. " " .-> P
+```
+
 ## Files
 
 | File | Responsibility | Key items |
