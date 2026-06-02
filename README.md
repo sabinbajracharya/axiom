@@ -1,5 +1,15 @@
 # Axiom
 
+```
+       █████╗ ██╗  ██╗██╗ ██████╗ ███╗   ███╗
+      ██╔══██╗╚██╗██╔╝██║██╔═══██╗████╗ ████║
+      ███████║ ╚███╔╝ ██║██║   ██║██╔████╔██║
+      ██╔══██║ ██╔██╗ ██║██║   ██║██║╚██╔╝██║
+      ██║  ██║██╔╝ ██╗██║╚██████╔╝██║ ╚═╝ ██║
+      ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝ ╚═════╝ ╚═╝     ╚═╝
+   deterministic memory safety · no GC · no lifetimes
+```
+
 > **Working names (revisited at 1.0):** language **Axiom** · file extension **`.ax`** · build tool / package manager **`forge`**.
 
 Axiom is a statically typed, compiled, general-purpose language aiming for
