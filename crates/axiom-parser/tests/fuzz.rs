@@ -105,20 +105,53 @@ fn adversarial_inputs_are_total() {
 }
 
 #[test]
-fn deeply_nested_input_terminates() {
-    // A hang would fail this test by never returning. Depth is kept modest: a
-    // recursive-descent parser needs an explicit recursion guard before it can
-    // take unbounded nesting safely (tracked as future work); this proves
-    // termination and round-trip at a realistic depth.
+fn deeply_nested_input_terminates_and_round_trips() {
+    // Round-trip on moderately deep input. The recursion guard keeps genuine
+    // nesting shallow (it recovers past the limit), and the wide chain stays
+    // within the recursive consumers' safe depth (see the guard test below for
+    // the pathological cases). A hang would fail this by never returning.
     let deep = "fn f() ".to_string() + &"{ if x ".repeat(300) + &"{}".repeat(300);
     assert_total(&deep);
 
-    // Wide left-associative chains build a left-leaning tree whose depth equals
-    // the operator count. The Pratt loop builds it iteratively, but the tree
-    // *consumers* (invariant checks, serializer, `Rc` drop) are still recursive,
-    // so very long chains are a known limitation (iterative traversal + custom
-    // drop — what rowan does — is future work). This size stays within safe
-    // recursion depth while still exercising the precedence path heavily.
+    // Wide left-associative chains build a left-leaning tree (depth = operator
+    // count) via the iterative Pratt loop. `check_all` walks it recursively, so
+    // this stays modest; `Rc` drop is iterative (`green::GreenNode`) so dropping
+    // it never overflows regardless of depth.
     let wide = "fn f() { ".to_string() + &"a + ".repeat(1_000) + "b }";
     assert_total(&wide);
+}
+
+#[test]
+fn pathological_nesting_recovers_via_depth_guard() {
+    // The recursion-depth guard must cover EVERY recursive grammar path —
+    // expressions, blocks, types, error-union types, patterns/calls, and
+    // use-trees — or deeply nested input overflows the parser's stack (a
+    // totality violation). Each input nests far past `MAX_DEPTH`; we assert
+    // parsing RETURNS and emitted a "too deep" diagnostic (the guard fired).
+    //
+    // We deliberately do NOT run the recursive invariant checks here: the
+    // recovery tree can be deep, and `check_all`/the serializer walk it
+    // recursively (a separate, documented consumer-side limitation). Parsing
+    // itself is total — the grammar recursion is guarded and `build_tree` plus
+    // green-tree `Drop` are iterative — so `parse` returning without a crash is
+    // exactly the property under test.
+    let cases = [
+        format!("fn f(x: {}T{}) {{}}", "A<".repeat(5_000), ">".repeat(5_000)), // types
+        format!("fn f(x: {}A) {{}}", "A!".repeat(5_000)),                      // error-union types
+        format!(
+            "fn f() {{ match x {{ {}y{} => 1 }} }}",
+            "S(".repeat(5_000),
+            ")".repeat(5_000)
+        ), // patterns + nested calls
+        format!("use {}x{};", "a::{".repeat(5_000), "}".repeat(5_000)),        // use-trees
+        format!("fn f() {}{}", "{ if x ".repeat(5_000), "{}".repeat(5_000)),   // blocks + expr
+    ];
+    for src in cases {
+        let result = parse(&src);
+        assert!(
+            result.errors.iter().any(|e| e.message.contains("too deep")),
+            "deeply nested input should trip the recursion guard, got {} errors",
+            result.errors.len()
+        );
+    }
 }

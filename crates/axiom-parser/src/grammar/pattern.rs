@@ -27,7 +27,21 @@ const LITERAL_ATOMS: &[K] = &[
 ];
 
 /// A full pattern, including top-level `|` alternatives.
+///
+/// Patterns recurse (tuple-struct / struct destructure), so this shares the
+/// parser's recursion-depth guard: past the limit it recovers instead of
+/// overflowing the stack (totality, `docs/parser-testing.md` §5).
 pub(super) fn pattern(p: &mut Parser) {
+    if !p.enter_recursion() {
+        p.err_and_bump("pattern nesting too deep");
+        p.leave_recursion();
+        return;
+    }
+    pattern_inner(p);
+    p.leave_recursion();
+}
+
+fn pattern_inner(p: &mut Parser) {
     let lhs = pattern_single(p);
     if p.at(K::Pipe) {
         let m = lhs.precede(p);

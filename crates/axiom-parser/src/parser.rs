@@ -214,9 +214,9 @@ impl Parser {
         if let Some(tok) = self.tokens.get_mut(self.pos) {
             tok.kind = remaining_kind;
             tok.span.lo += 1;
-            if !tok.text.is_empty() {
-                tok.text = tok.text[1..].to_string();
-            }
+            // The split is only ever applied to ASCII `>>`/`>=`, so byte 1 is a
+            // valid boundary; `.get` keeps it non-panicking regardless.
+            tok.text = tok.text.get(1..).unwrap_or("").to_string();
         }
     }
 

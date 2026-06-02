@@ -36,6 +36,25 @@ impl GreenNode {
     }
 }
 
+/// Dismantle a green node **iteratively** so dropping a pathologically deep tree
+/// (a long operator chain, a deeply nested literal, a deep recovery subtree)
+/// cannot overflow the stack. The naive recursive drop would recurse once per
+/// level; instead we hoist uniquely-owned descendants onto a work stack and let
+/// each node drop with already-emptied children (no further recursion). Shared
+/// subtrees (refcount > 1) are left alone — only their count is decremented.
+impl Drop for GreenNode {
+    fn drop(&mut self) {
+        let mut stack: Vec<GreenChild> = std::mem::take(&mut self.children);
+        while let Some(child) = stack.pop() {
+            if let GreenChild::Node(rc) = child {
+                if let Ok(mut node) = Rc::try_unwrap(rc) {
+                    stack.extend(std::mem::take(&mut node.children));
+                }
+            }
+        }
+    }
+}
+
 /// A child slot in a green node: either a subtree or a leaf.
 #[derive(Debug, Clone, PartialEq)]
 pub enum GreenChild {
@@ -164,5 +183,23 @@ mod tests {
         let root = GreenNodeBuilder::new().finish();
         assert_eq!(root.kind, SyntaxKind::SourceFile);
         assert_eq!(root.text_len(), 0);
+    }
+
+    #[test]
+    fn test_deep_tree_drops_without_stack_overflow() {
+        // A degenerate, very deep tree. Building is iterative; the iterative
+        // `Drop` must dismantle it without recursing per level — a naive
+        // recursive drop would overflow the test thread's stack here.
+        let depth = 200_000;
+        let mut b = GreenNodeBuilder::new();
+        for _ in 0..depth {
+            b.start_node(SyntaxKind::BlockExpr);
+        }
+        b.token(SyntaxKind::Ident, "x".to_string());
+        for _ in 0..depth {
+            b.finish_node();
+        }
+        let root = b.finish();
+        drop(root); // must return without overflowing
     }
 }

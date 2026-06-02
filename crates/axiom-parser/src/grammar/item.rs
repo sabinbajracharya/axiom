@@ -297,8 +297,20 @@ fn use_decl(p: &mut Parser, m: Marker) {
 }
 
 /// A path of segments, optionally ending in a `{group}` or `*` glob, with an
-/// optional `as rename`.
+/// optional `as rename`. Mutually recursive with `use_group`, so it shares the
+/// recursion-depth guard: deeply nested groups recover instead of overflowing
+/// the stack (totality, `docs/parser-testing.md` §5).
 fn use_tree(p: &mut Parser) {
+    if !p.enter_recursion() {
+        p.err_and_bump("use nesting too deep");
+        p.leave_recursion();
+        return;
+    }
+    use_tree_inner(p);
+    p.leave_recursion();
+}
+
+fn use_tree_inner(p: &mut Parser) {
     let m = p.start();
     loop {
         if p.at(K::LBrace) {

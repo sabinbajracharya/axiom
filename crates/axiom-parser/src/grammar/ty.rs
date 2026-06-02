@@ -12,7 +12,26 @@ use crate::syntax_kind::SyntaxKind as K;
 
 /// Parse a type, returning the completed node. Always produces a node (an
 /// `Error` node on unexpected input) so callers never juggle `Option`.
+///
+/// Types recurse (generic args, error-union `!`), so this shares the parser's
+/// recursion-depth guard: past the limit it recovers instead of overflowing the
+/// stack (totality, `docs/parser-testing.md` §5).
 pub(super) fn ty(p: &mut Parser) -> CompletedMarker {
+    if !p.enter_recursion() {
+        let m = p.start();
+        p.error("type nesting too deep");
+        if !p.at_end() {
+            p.bump();
+        }
+        p.leave_recursion();
+        return m.complete(p, K::Error);
+    }
+    let result = ty_inner(p);
+    p.leave_recursion();
+    result
+}
+
+fn ty_inner(p: &mut Parser) -> CompletedMarker {
     let lhs = type_primary(p);
     // Error-union sugar: `ErrorSet ! SuccessType`.
     if p.at(K::Bang) {

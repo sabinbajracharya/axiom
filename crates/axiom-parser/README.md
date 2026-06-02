@@ -59,9 +59,13 @@ Three properties define it:
 - **Byte offset is the single positional truth** (same as the lexer). Green nodes
   carry length; red nodes derive absolute offsets by accumulation.
 - **Termination** is structural: every grammar loop bumps or breaks, and
-  `err_and_bump` always consumes a token. A recursion-depth guard
-  (`MAX_DEPTH`) turns pathologically nested input into recovery instead of a
-  stack overflow.
+  `err_and_bump` always consumes a token. A recursion-depth guard (`MAX_DEPTH`)
+  turns pathologically nested input into recovery instead of a stack overflow —
+  it covers **every** recursive grammar path: expressions (`lhs`), blocks
+  (`block`), types (`ty`), patterns (`pattern`), and use-trees (`use_tree`).
+- **Dropping the tree is iterative** (`green::GreenNode`'s `Drop`), so a
+  degenerate deep tree (long operator chain, deep recovery subtree) never
+  overflows the stack when freed.
 - **Happy-path fixtures must parse clean.** `tests/golden.rs` asserts zero
   diagnostics for every `fixtures/*.ax`; only `fixtures/errors/*.ax` may produce
   errors. The coverage invariants still hold on the error fixtures (recovery
@@ -71,12 +75,20 @@ Three properties define it:
 
 These are documented gaps, not bugs — each is a small, isolated follow-up.
 (Resolved since the first cut: the `?` Option-postfix token, `>>` nested-generic
-closing via parser-side token splitting, and `'label` loop labels.)
+closing via parser-side token splitting, `'label` loop labels, the recursion
+guard now covering types/patterns/use-trees, and iterative green-tree `Drop`.)
 
-- **Deep trees are traversed recursively.** Very long operator chains / nesting
-  beyond `MAX_DEPTH` build a deep tree whose consumers (invariant checks,
-  serializer, `Rc` drop) are recursive. Iterative traversal + a custom green-tree
-  `Drop` (what `rowan` does) is future work.
+- **The red-tree consumers are still recursive.** `invariants::check_all` and the
+  snapshot serializer walk the tree recursively, so on a pathologically deep tree
+  (a long iteratively-built operator chain, or a deep recovery subtree) they need
+  stack proportional to depth. The *parser* is total — grammar recursion is
+  guarded and `build_tree`/`Drop` are iterative — but these debug/test consumers
+  going iterative (explicit work-stack traversal) is future work.
+- **`every_token_present` compares significant text, not per-token kinds.** Token
+  splitting makes tree leaves 1-to-many vs lexer tokens, so the invariant checks
+  byte-coverage of the significant stream rather than kind-by-kind. A split-kind
+  bug would pass it (caught only if a golden covers the split); a split-aware
+  kind check is a possible hardening.
 - **Recovery is consume-on-error**, not recovery-set–based, so a stray closing
   delimiter can be absorbed as an error token. Always total and tiling, but the
   *quality* of recovery is a later refinement.
