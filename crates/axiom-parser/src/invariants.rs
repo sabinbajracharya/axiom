@@ -32,14 +32,12 @@ pub enum SpanError {
 /// A coverage defect found by `every_token_present`.
 #[derive(Debug, PartialEq)]
 pub enum CoverageError {
-    /// The tree has more or fewer significant leaves than the lexer produced.
-    CountMismatch { tree: usize, lexer: usize },
-    /// A leaf at `index` did not match the lexer token there.
-    Mismatch {
-        index: usize,
-        tree: (SyntaxKind, String),
-        lexer: (SyntaxKind, String),
-    },
+    /// The significant (non-trivia) text in the tree did not match the lexer's.
+    /// Compared as concatenated text rather than per-token because the parser may
+    /// legitimately split one source token into several leaves (`>>` → `>` `>`)
+    /// or join none — what must hold is that every significant byte is present,
+    /// in order, and not misclassified as trivia.
+    SignificantTextMismatch { tree: String, lexer: String },
 }
 
 /// Concatenate every leaf token's text, left to right. **Invariant:**
@@ -97,36 +95,27 @@ fn check_node(node: &SyntaxNode) -> Result<(), SpanError> {
     Ok(())
 }
 
-/// Assert the tree's significant (non-trivia) leaves equal the lexer's
-/// significant tokens, in order. Proves no significant token was dropped or
-/// duplicated during parsing/recovery. `Eof` and trivia are excluded on both
-/// sides.
+/// Assert the tree's significant (non-trivia) text equals the lexer's
+/// significant text, concatenated in order. Proves no significant byte was
+/// dropped, duplicated, reordered, or misclassified as trivia during
+/// parsing/recovery. Compared as concatenated text (not per-token) because the
+/// parser may split one source token into several leaves (`>>` → `>` `>`); what
+/// must hold is byte-level coverage of the significant stream. `Eof` and trivia
+/// are excluded on both sides.
 pub fn every_token_present(root: &SyntaxNode, lexer_tokens: &[Token]) -> Result<(), CoverageError> {
-    let tree: Vec<(SyntaxKind, String)> = root
+    let tree: String = root
         .tokens()
         .iter()
         .filter(|t| !t.kind().is_trivia())
-        .map(|t| (t.kind(), t.text().to_string()))
+        .map(|t| t.text())
         .collect();
-    let lexer: Vec<(SyntaxKind, String)> = lexer_tokens
+    let lexer: String = lexer_tokens
         .iter()
         .filter(|t| !t.kind.is_trivia() && t.kind != axiom_lexer::TokenKind::Eof)
-        .map(|t| (SyntaxKind::from_lexer(&t.kind), t.text.clone()))
+        .map(|t| t.text.as_str())
         .collect();
-    if tree.len() != lexer.len() {
-        return Err(CoverageError::CountMismatch {
-            tree: tree.len(),
-            lexer: lexer.len(),
-        });
-    }
-    for (index, (t, l)) in tree.iter().zip(lexer.iter()).enumerate() {
-        if t != l {
-            return Err(CoverageError::Mismatch {
-                index,
-                tree: t.clone(),
-                lexer: l.clone(),
-            });
-        }
+    if tree != lexer {
+        return Err(CoverageError::SignificantTextMismatch { tree, lexer });
     }
     Ok(())
 }

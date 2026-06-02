@@ -23,8 +23,11 @@ pub enum Event {
     },
     /// Close the most recently opened node.
     Finish,
-    /// Consume the next significant token from the source stream.
-    Token,
+    /// Consume `len` bytes of the current source token as a leaf of kind `kind`.
+    /// For an ordinary bump, `len` is the whole token. A token can be consumed in
+    /// pieces by several `Token` events — the mechanism behind splitting `>>`
+    /// into two `>` to close nested generics (`parser::Parser::split_one_gt`).
+    Token { kind: SyntaxKind, len: usize },
     /// An abandoned `Start` (or a `Start` consumed as a forward parent). Skipped.
     Tombstone,
 }
@@ -34,7 +37,7 @@ pub enum Event {
 /// positions; significant tokens are consumed in lock-step with `Token` events.
 pub fn build_tree(mut events: Vec<Event>, tokens: &[Token]) -> Rc<GreenNode> {
     let mut builder = GreenNodeBuilder::new();
-    let mut cursor = 0usize; // index into `tokens`
+    let mut cursor = TokenCursor::new(tokens);
     let mut open = 0usize; // currently-open node count
 
     for i in 0..events.len() {
@@ -55,19 +58,73 @@ pub fn build_tree(mut events: Vec<Event>, tokens: &[Token]) -> Rc<GreenNode> {
                 // Trailing trivia (after the last significant token) attaches to
                 // the root, flushed just before the root closes.
                 if open == 1 {
-                    flush_trivia(&mut builder, tokens, &mut cursor);
+                    cursor.flush_trivia(&mut builder);
                 }
                 builder.finish_node();
                 open = open.saturating_sub(1);
             }
-            Event::Token => {
-                flush_trivia(&mut builder, tokens, &mut cursor);
-                emit_significant(&mut builder, tokens, &mut cursor);
+            Event::Token { kind, len } => {
+                cursor.flush_trivia(&mut builder);
+                cursor.emit(&mut builder, kind, len);
             }
             Event::Tombstone => {}
         }
     }
     builder.finish()
+}
+
+/// A cursor over the full lexer token list with an intra-token byte offset, so a
+/// single source token can be emitted as several leaves (token splitting).
+struct TokenCursor<'a> {
+    tokens: &'a [Token],
+    index: usize,
+    intra: usize,
+}
+
+impl<'a> TokenCursor<'a> {
+    fn new(tokens: &'a [Token]) -> TokenCursor<'a> {
+        TokenCursor {
+            tokens,
+            index: 0,
+            intra: 0,
+        }
+    }
+
+    /// Emit pending trivia leaves until the next significant token (or `Eof`).
+    /// Only meaningful at a token boundary (`intra == 0`); trivia never appears
+    /// mid-token.
+    fn flush_trivia(&mut self, builder: &mut GreenNodeBuilder) {
+        if self.intra != 0 {
+            return;
+        }
+        while let Some(tok) = self.tokens.get(self.index) {
+            if tok.kind == TokenKind::Eof || !tok.kind.is_trivia() {
+                break;
+            }
+            builder.token(SyntaxKind::from_lexer(&tok.kind), tok.text.clone());
+            self.index += 1;
+        }
+    }
+
+    /// Emit `len` bytes of the current token as a leaf of kind `kind`, advancing
+    /// the intra-token offset and moving to the next token when this one is
+    /// exhausted. `Eof` is never placed in the tree.
+    fn emit(&mut self, builder: &mut GreenNodeBuilder, kind: SyntaxKind, len: usize) {
+        let Some(tok) = self.tokens.get(self.index) else {
+            return;
+        };
+        if tok.kind == TokenKind::Eof {
+            return;
+        }
+        let start = self.intra;
+        let end = (start + len).min(tok.text.len());
+        builder.token(kind, tok.text.get(start..end).unwrap_or("").to_string());
+        self.intra = end;
+        if self.intra >= tok.text.len() {
+            self.index += 1;
+            self.intra = 0;
+        }
+    }
 }
 
 /// Follow the `forward_parent` chain from a `Start`, marking each consumed
@@ -94,36 +151,6 @@ fn gather_forward_parents(
     kinds
 }
 
-/// Emit pending trivia leaves until the next significant token (or `Eof`).
-fn flush_trivia(builder: &mut GreenNodeBuilder, tokens: &[Token], cursor: &mut usize) {
-    while let Some(tok) = tokens.get(*cursor) {
-        if tok.kind == TokenKind::Eof || !tok.kind.is_trivia() {
-            break;
-        }
-        builder.token(SyntaxKind::from_lexer(&tok.kind), tok.text.clone());
-        *cursor += 1;
-    }
-}
-
-/// Emit the next significant token leaf (trivia already flushed). `Eof` is never
-/// placed in the tree.
-fn emit_significant(builder: &mut GreenNodeBuilder, tokens: &[Token], cursor: &mut usize) {
-    while let Some(tok) = tokens.get(*cursor) {
-        if tok.kind == TokenKind::Eof {
-            return;
-        }
-        if tok.kind.is_trivia() {
-            // Defensive: should have been flushed already.
-            builder.token(SyntaxKind::from_lexer(&tok.kind), tok.text.clone());
-            *cursor += 1;
-            continue;
-        }
-        builder.token(SyntaxKind::from_lexer(&tok.kind), tok.text.clone());
-        *cursor += 1;
-        return;
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,19 +173,28 @@ mod tests {
                 kind: SyntaxKind::LiteralExpr,
                 forward_parent: Some(4),
             },
-            Event::Token,  // 2: a
+            Event::Token {
+                kind: SyntaxKind::Ident,
+                len: 1,
+            }, // 2: a
             Event::Finish, // 3
             // 4: the wrapping BinExpr
             Event::Start {
                 kind: SyntaxKind::BinExpr,
                 forward_parent: None,
             },
-            Event::Token, // 5: +
+            Event::Token {
+                kind: SyntaxKind::Plus,
+                len: 1,
+            }, // 5: +
             Event::Start {
                 kind: SyntaxKind::LiteralExpr,
                 forward_parent: None,
             }, // 6
-            Event::Token, // 7: b
+            Event::Token {
+                kind: SyntaxKind::Ident,
+                len: 1,
+            }, // 7: b
             Event::Finish, // 8: close rhs LiteralExpr
             Event::Finish, // 9: close BinExpr
             Event::Finish, // 10: close SourceFile

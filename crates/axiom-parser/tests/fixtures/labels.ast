@@ -1,0 +1,55 @@
+SourceFile @ 0..115
+  FnDef @ 0..114
+    KwFn @ 0..2 "fn"
+    Name @ 2..9
+      Whitespace @ 2..3 " "
+      Ident @ 3..9 "search"
+    ParamList @ 9..11
+      LParen @ 9..10 "("
+      RParen @ 10..11 ")"
+    BlockExpr @ 11..114
+      Whitespace @ 11..12 " "
+      LBrace @ 12..13 "{"
+      ExprStmt @ 13..112
+        LoopExpr @ 13..112
+          LoopLabel @ 13..25
+            Newline @ 13..14 "\n"
+            Whitespace @ 14..18 "    "
+            Label @ 18..24 "'outer"
+            Colon @ 24..25 ":"
+          Whitespace @ 25..26 " "
+          KwLoop @ 26..30 "loop"
+          BlockExpr @ 30..112
+            Whitespace @ 30..31 " "
+            LBrace @ 31..32 "{"
+            ExprStmt @ 32..82
+              LoopExpr @ 32..82
+                Newline @ 32..33 "\n"
+                Whitespace @ 33..41 "        "
+                KwLoop @ 41..45 "loop"
+                BlockExpr @ 45..82
+                  Whitespace @ 45..46 " "
+                  LBrace @ 46..47 "{"
+                  ExprStmt @ 47..72
+                    BreakStmt @ 47..72
+                      Newline @ 47..48 "\n"
+                      Whitespace @ 48..60 "            "
+                      KwBreak @ 60..65 "break"
+                      Whitespace @ 65..66 " "
+                      Label @ 66..72 "'outer"
+                  Newline @ 72..73 "\n"
+                  Whitespace @ 73..81 "        "
+                  RBrace @ 81..82 "}"
+            ExprStmt @ 82..106
+              ContinueStmt @ 82..106
+                Newline @ 82..83 "\n"
+                Whitespace @ 83..91 "        "
+                KwContinue @ 91..99 "continue"
+                Whitespace @ 99..100 " "
+                Label @ 100..106 "'outer"
+            Newline @ 106..107 "\n"
+            Whitespace @ 107..111 "    "
+            RBrace @ 111..112 "}"
+      Newline @ 112..113 "\n"
+      RBrace @ 113..114 "}"
+  Newline @ 114..115 "\n"

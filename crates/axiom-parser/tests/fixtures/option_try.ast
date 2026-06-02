@@ -1,0 +1,81 @@
+SourceFile @ 0..84
+  FnDef @ 0..83
+    KwFn @ 0..2 "fn"
+    Name @ 2..8
+      Whitespace @ 2..3 " "
+      Ident @ 3..8 "first"
+    ParamList @ 8..27
+      LParen @ 8..9 "("
+      Param @ 9..26
+        KwLet @ 9..12 "let"
+        Whitespace @ 12..13 " "
+        Ident @ 13..15 "xs"
+        Colon @ 15..16 ":"
+        PathType @ 16..26
+          Path @ 16..21
+            PathSegment @ 16..21
+              Whitespace @ 16..17 " "
+              Ident @ 17..21 "List"
+          GenericArgList @ 21..26
+            Lt @ 21..22 "<"
+            PathType @ 22..25
+              Path @ 22..25
+                PathSegment @ 22..25
+                  Ident @ 22..25 "Int"
+            Gt @ 25..26 ">"
+      RParen @ 26..27 ")"
+    Whitespace @ 27..28 " "
+    Arrow @ 28..30 "->"
+    RetType @ 30..42
+      PathType @ 30..42
+        Path @ 30..37
+          PathSegment @ 30..37
+            Whitespace @ 30..31 " "
+            Ident @ 31..37 "Option"
+        GenericArgList @ 37..42
+          Lt @ 37..38 "<"
+          PathType @ 38..41
+            Path @ 38..41
+              PathSegment @ 38..41
+                Ident @ 38..41 "Int"
+          Gt @ 41..42 ">"
+    BlockExpr @ 42..83
+      Whitespace @ 42..43 " "
+      LBrace @ 43..44 "{"
+      LetStmt @ 44..71
+        Newline @ 44..45 "\n"
+        Whitespace @ 45..49 "    "
+        KwVal @ 49..52 "val"
+        IdentPat @ 52..57
+          Path @ 52..57
+            PathSegment @ 52..57
+              Whitespace @ 52..53 " "
+              Ident @ 53..57 "head"
+        Whitespace @ 57..58 " "
+        Eq @ 58..59 "="
+        TryExpr @ 59..71
+          MethodCallExpr @ 59..70
+            PathExpr @ 59..62
+              Path @ 59..62
+                PathSegment @ 59..62
+                  Whitespace @ 59..60 " "
+                  Ident @ 60..62 "xs"
+            Dot @ 62..63 "."
+            NameRef @ 63..68
+              Ident @ 63..68 "first"
+            ArgList @ 68..70
+              LParen @ 68..69 "("
+              RParen @ 69..70 ")"
+          Question @ 70..71 "?"
+      ExprStmt @ 71..81
+        TryExpr @ 71..81
+          PathExpr @ 71..80
+            Path @ 71..80
+              PathSegment @ 71..80
+                Newline @ 71..72 "\n"
+                Whitespace @ 72..76 "    "
+                Ident @ 76..80 "head"
+          Question @ 80..81 "?"
+      Newline @ 81..82 "\n"
+      RBrace @ 82..83 "}"
+  Newline @ 83..84 "\n"

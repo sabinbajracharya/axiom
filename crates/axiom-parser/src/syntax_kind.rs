@@ -99,6 +99,8 @@ syntax_kinds! {
         StrLit,
         // names
         Ident,
+        // a loop label, e.g. `'outer` (§7.1)
+        Label,
         // punctuation (one per lexer `Punct`)
         LParen,
         RParen,
@@ -140,6 +142,7 @@ syntax_kinds! {
         StarEq,
         SlashEq,
         PercentEq,
+        Question,
         // an unexpected source character (paired with a diagnostic)
         Unknown,
         // end of input — never placed in the tree, but a valid kind to peek
@@ -256,7 +259,7 @@ syntax_kinds! {
         // loop forms
         LoopCondition,
         LoopIter,
-        Label,
+        LoopLabel,
         // match
         MatchArmList,
         MatchArm,
@@ -310,6 +313,7 @@ impl SyntaxKind {
             TokenKind::ByteLit(_) => SyntaxKind::ByteLit,
             TokenKind::StrLit(_) => SyntaxKind::StrLit,
             TokenKind::Ident => SyntaxKind::Ident,
+            TokenKind::Label => SyntaxKind::Label,
             TokenKind::Keyword(kw) => keyword_kind(*kw),
             TokenKind::Punct(p) => punct_kind(*p),
             TokenKind::Unknown => SyntaxKind::Unknown,
@@ -402,6 +406,7 @@ fn punct_kind(p: Punct) -> SyntaxKind {
         Punct::StarEq => SyntaxKind::StarEq,
         Punct::SlashEq => SyntaxKind::SlashEq,
         Punct::PercentEq => SyntaxKind::PercentEq,
+        Punct::Question => SyntaxKind::Question,
     }
 }
 

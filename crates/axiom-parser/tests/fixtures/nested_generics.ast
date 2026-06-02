@@ -1,0 +1,124 @@
+SourceFile @ 0..131
+  FnDef @ 0..74
+    KwFn @ 0..2 "fn"
+    Name @ 2..9
+      Whitespace @ 2..3 " "
+      Ident @ 3..9 "lookup"
+    ParamList @ 9..40
+      LParen @ 9..10 "("
+      Param @ 10..39
+        KwLet @ 10..13 "let"
+        Whitespace @ 13..14 " "
+        Ident @ 14..15 "m"
+        Colon @ 15..16 ":"
+        PathType @ 16..39
+          Path @ 16..20
+            PathSegment @ 16..20
+              Whitespace @ 16..17 " "
+              Ident @ 17..20 "Map"
+          GenericArgList @ 20..39
+            Lt @ 20..21 "<"
+            PathType @ 21..27
+              Path @ 21..27
+                PathSegment @ 21..27
+                  Ident @ 21..27 "String"
+            Comma @ 27..28 ","
+            PathType @ 28..38
+              Path @ 28..33
+                PathSegment @ 28..33
+                  Whitespace @ 28..29 " "
+                  Ident @ 29..33 "List"
+              GenericArgList @ 33..38
+                Lt @ 33..34 "<"
+                PathType @ 34..37
+                  Path @ 34..37
+                    PathSegment @ 34..37
+                      Ident @ 34..37 "Int"
+                Gt @ 37..38 ">"
+            Gt @ 38..39 ">"
+      RParen @ 39..40 ")"
+    Whitespace @ 40..41 " "
+    Arrow @ 41..43 "->"
+    RetType @ 43..55
+      PathType @ 43..55
+        Path @ 43..50
+          PathSegment @ 43..50
+            Whitespace @ 43..44 " "
+            Ident @ 44..50 "Option"
+        GenericArgList @ 50..55
+          Lt @ 50..51 "<"
+          PathType @ 51..54
+            Path @ 51..54
+              PathSegment @ 51..54
+                Ident @ 51..54 "Int"
+          Gt @ 54..55 ">"
+    BlockExpr @ 55..74
+      Whitespace @ 55..56 " "
+      LBrace @ 56..57 "{"
+      ExprStmt @ 57..72
+        MethodCallExpr @ 57..72
+          PathExpr @ 57..63
+            Path @ 57..63
+              PathSegment @ 57..63
+                Newline @ 57..58 "\n"
+                Whitespace @ 58..62 "    "
+                Ident @ 62..63 "m"
+          Dot @ 63..64 "."
+          NameRef @ 64..67
+            Ident @ 64..67 "get"
+          ArgList @ 67..72
+            LParen @ 67..68 "("
+            LiteralExpr @ 68..71
+              StrLit @ 68..71 "\"k\""
+            RParen @ 71..72 ")"
+      Newline @ 72..73 "\n"
+      RBrace @ 73..74 "}"
+  StructDef @ 74..130
+    Newline @ 74..75 "\n"
+    Newline @ 75..76 "\n"
+    KwStruct @ 76..82 "struct"
+    Name @ 82..90
+      Whitespace @ 82..83 " "
+      Ident @ 83..90 "Wrapper"
+    GenericParamList @ 90..93
+      Lt @ 90..91 "<"
+      GenericParam @ 91..92
+        Ident @ 91..92 "T"
+      Gt @ 92..93 ">"
+    FieldList @ 93..130
+      Whitespace @ 93..94 " "
+      LBrace @ 94..95 "{"
+      Field @ 95..127
+        Newline @ 95..96 "\n"
+        Whitespace @ 96..100 "    "
+        Ident @ 100..105 "items"
+        Colon @ 105..106 ":"
+        PathType @ 106..127
+          Path @ 106..111
+            PathSegment @ 106..111
+              Whitespace @ 106..107 " "
+              Ident @ 107..111 "List"
+          GenericArgList @ 111..127
+            Lt @ 111..112 "<"
+            PathType @ 112..126
+              Path @ 112..115
+                PathSegment @ 112..115
+                  Ident @ 112..115 "Map"
+              GenericArgList @ 115..126
+                Lt @ 115..116 "<"
+                PathType @ 116..122
+                  Path @ 116..122
+                    PathSegment @ 116..122
+                      Ident @ 116..122 "String"
+                Comma @ 122..123 ","
+                PathType @ 123..125
+                  Path @ 123..125
+                    PathSegment @ 123..125
+                      Whitespace @ 123..124 " "
+                      Ident @ 124..125 "T"
+                Gt @ 125..126 ">"
+            Gt @ 126..127 ">"
+      Comma @ 127..128 ","
+      Newline @ 128..129 "\n"
+      RBrace @ 129..130 "}"
+  Newline @ 130..131 "\n"

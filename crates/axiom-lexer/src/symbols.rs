@@ -67,6 +67,7 @@ pub fn display_name(kind: &TokenKind) -> &'static str {
         TokenKind::ByteLit(_) => "ByteLit",
         TokenKind::StrLit(_) => "StrLit",
         TokenKind::Ident => "Ident",
+        TokenKind::Label => "Label",
         TokenKind::Keyword(kw) => keyword_label(*kw),
         TokenKind::Punct(p) => punct_label(*p),
         TokenKind::Unknown => "Unknown",
@@ -159,6 +160,7 @@ pub fn punct_label(p: Punct) -> &'static str {
         Punct::StarEq => "StarEq",
         Punct::SlashEq => "SlashEq",
         Punct::PercentEq => "PercentEq",
+        Punct::Question => "Question",
     }
 }
 
@@ -240,6 +242,7 @@ mod tests {
             TokenKind::ByteLit(0),
             TokenKind::StrLit(String::new()),
             TokenKind::Ident,
+            TokenKind::Label,
             TokenKind::Unknown,
             TokenKind::Eof,
         ];

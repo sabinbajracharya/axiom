@@ -154,13 +154,70 @@ impl Parser {
 
     // ── consumption ──────────────────────────────────────────────────────
 
-    /// Consume the current token into the tree, advancing the cursor.
+    /// Consume the current token into the tree, advancing the cursor. Emits the
+    /// token's kind and byte length so the tree builder can slice the source.
     pub fn bump(&mut self) {
-        if self.at_end() {
+        let Some(tok) = self.tokens.get(self.pos) else {
             return;
-        }
-        self.events.push(Event::Token);
+        };
+        let len = tok.span.hi - tok.span.lo;
+        self.events.push(Event::Token {
+            kind: tok.kind,
+            len,
+        });
         self.pos += 1;
+    }
+
+    /// True if the current token can close a generic argument list: a bare `>`,
+    /// or a compound beginning with `>` that we split (`>>`, `>=`).
+    pub fn at_generic_close(&self) -> bool {
+        matches!(
+            self.current(),
+            SyntaxKind::Gt | SyntaxKind::Shr | SyntaxKind::Ge
+        )
+    }
+
+    /// Consume a single `>` to close one generic list, splitting a compound token
+    /// (`>>` → `>` + `>`, `>=` → `>` + `=`) and leaving the remainder for the
+    /// enclosing list. This is what lets nested generics like `Map<K, List<V>>`
+    /// close even though `>>` lexes as one `Shr`. Returns whether `>` was eaten.
+    pub fn eat_generic_close(&mut self) -> bool {
+        match self.current() {
+            SyntaxKind::Gt => {
+                self.bump();
+                true
+            }
+            SyntaxKind::Shr => {
+                self.split_one_gt(SyntaxKind::Gt);
+                true
+            }
+            SyntaxKind::Ge => {
+                self.split_one_gt(SyntaxKind::Eq);
+                true
+            }
+            _ => {
+                self.expect(SyntaxKind::Gt);
+                false
+            }
+        }
+    }
+
+    /// Emit the leading `>` of the current compound token as a `Gt` leaf, then
+    /// shrink the current token in place to its single-byte remainder (kept for
+    /// the next consumer). The tree builder slices the original source token, so
+    /// the two halves still reconstruct byte-for-byte.
+    fn split_one_gt(&mut self, remaining_kind: SyntaxKind) {
+        self.events.push(Event::Token {
+            kind: SyntaxKind::Gt,
+            len: 1,
+        });
+        if let Some(tok) = self.tokens.get_mut(self.pos) {
+            tok.kind = remaining_kind;
+            tok.span.lo += 1;
+            if !tok.text.is_empty() {
+                tok.text = tok.text[1..].to_string();
+            }
+        }
     }
 
     /// Consume the current token iff it is `kind`; report whether it was.

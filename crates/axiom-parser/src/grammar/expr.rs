@@ -4,13 +4,13 @@
 //! method, index, cast). Binding powers come from `infix_bp` — the table is the
 //! spec.
 //!
-//! Two lexer gaps are noted at the crate level and surface here: there is no `?`
-//! token (Option postfix, spec §6.5) and `>>` is one `Shr` (nested generics).
+//! `?` is parsed as postfix Option-propagation (§6.5); `>>` closing nested
+//! generics is handled by token splitting in `Parser::eat_generic_close`.
 
 use super::stmt::block;
 use super::ty::ty;
 use super::{path, pattern};
-use crate::parser::{CompletedMarker, Parser};
+use crate::parser::{CompletedMarker, Marker, Parser};
 use crate::syntax_kind::SyntaxKind as K;
 
 /// Tokens that can begin an expression (first-set), for optional-expr decisions
@@ -131,7 +131,8 @@ fn prefix(p: &mut Parser, kind: K) -> CompletedMarker {
     m.complete(p, kind)
 }
 
-/// The tightest forms, applied left to right: call, field/method, index, cast.
+/// The tightest forms, applied left to right: call, field/method, index, cast,
+/// and the `?` Option-propagation postfix (§6.5).
 fn postfix(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
     loop {
         lhs = match p.current() {
@@ -139,10 +140,20 @@ fn postfix(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
             K::Dot => field_or_method(p, lhs),
             K::LBracket => index(p, lhs),
             K::KwAs => cast(p, lhs),
+            K::Question => question(p, lhs),
             _ => break,
         };
     }
     lhs
+}
+
+/// `expr?` — postfix `None`-propagation on `Option` (§6.5). Shares the `TryExpr`
+/// node with prefix `try` (both are propagation); the token position
+/// distinguishes them.
+fn question(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
+    let m = lhs.precede(p);
+    p.bump(); // ?
+    m.complete(p, K::TryExpr)
 }
 
 fn primary(p: &mut Parser) -> Option<CompletedMarker> {
@@ -157,6 +168,7 @@ fn primary(p: &mut Parser) -> Option<CompletedMarker> {
         K::KwIf => Some(if_expr(p)),
         K::KwMatch => Some(match_expr(p)),
         K::KwLoop => Some(loop_expr(p)),
+        K::Label => Some(labeled_loop(p)),
         K::KwScope => Some(scope_expr(p)),
         K::Pipe | K::PipePipe => Some(closure_expr(p)),
         K::KwReturn => Some(jump_expr(p, K::ReturnStmt, true)),
@@ -297,7 +309,23 @@ fn match_arm(p: &mut Parser) {
 /// The three `loop` forms (§7.1): infinite, pre-condition, iterator.
 fn loop_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
-    p.bump(); // loop
+    loop_tail(p, m)
+}
+
+/// `'label: loop ...` — a labeled loop (§7.1). The label is the first child of
+/// the `LoopExpr`.
+fn labeled_loop(p: &mut Parser) -> CompletedMarker {
+    let m = p.start();
+    let lm = p.start();
+    p.bump(); // 'label
+    p.expect(K::Colon);
+    lm.complete(p, K::LoopLabel);
+    loop_tail(p, m)
+}
+
+/// Parse `loop`, its form-specific header, and body into the open marker `m`.
+fn loop_tail(p: &mut Parser, m: Marker) -> CompletedMarker {
+    p.expect(K::KwLoop);
     if p.eat(K::KwIf) {
         cond(p);
     } else if !p.at(K::LBrace) {
@@ -361,6 +389,10 @@ fn closure_param(p: &mut Parser) {
 fn jump_expr(p: &mut Parser, kind: K, takes_value: bool) -> CompletedMarker {
     let m = p.start();
     p.bump(); // return / break / continue
+              // `break`/`continue` may target a label (`break 'outer`).
+    if matches!(kind, K::BreakStmt | K::ContinueStmt) {
+        p.eat(K::Label);
+    }
     if takes_value && p.at_any(EXPR_START) {
         expr(p);
     }

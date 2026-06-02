@@ -2,10 +2,9 @@
 //! single-level generic arguments, the unit/paren type, and the error-union
 //! sugar `E!T` plus parenthesized error-set unions `(A || B)`.
 //!
-//! Known gap (shared with the whole parser): `>>` lexes as a single `Shr`, so a
-//! nested generic that closes with `>>` (`Map<K, List<V>>`) does not close
-//! cleanly yet — single-level generics (`List<T>`) parse fine. Tracked for a
-//! later token-splitting pass.
+//! Nested generics that close with `>>` (`Map<K, List<V>>`) parse correctly:
+//! `>>` lexes as one `Shr`, which `Parser::eat_generic_close` splits into two
+//! `>` so the inner and outer lists each claim one.
 
 use super::path;
 use crate::parser::{CompletedMarker, Parser};
@@ -50,17 +49,19 @@ fn path_type(p: &mut Parser) -> CompletedMarker {
     m.complete(p, K::PathType)
 }
 
-/// `< Type (, Type)* >` — single-level (see the module gap note for `>>`).
+/// `< Type (, Type)* >`. Nested generics work: a closing `>>` lexes as one
+/// `Shr`, which `eat_generic_close` splits so the inner and outer lists each
+/// claim one `>` (`Map<K, List<V>>`).
 fn generic_arg_list(p: &mut Parser) {
     let m = p.start();
     p.bump(); // <
-    while !p.at(K::Gt) && !p.at_end() {
+    while !p.at_generic_close() && !p.at_end() {
         ty(p);
         if !p.eat(K::Comma) {
             break;
         }
     }
-    p.expect(K::Gt);
+    p.eat_generic_close();
     m.complete(p, K::GenericArgList);
 }
 

@@ -138,6 +138,7 @@ pub enum Punct {
     StarEq,
     SlashEq,
     PercentEq,
+    Question,
 }
 
 impl Punct {
@@ -183,6 +184,7 @@ impl Punct {
         Punct::StarEq,
         Punct::SlashEq,
         Punct::PercentEq,
+        Punct::Question,
     ];
 }
 
@@ -205,6 +207,9 @@ pub enum TokenKind {
     // Names
     Ident,
     Keyword(Keyword),
+    // A loop label, e.g. `'outer` (§7.1). Axiom has no char literals or
+    // lifetimes, so a leading `'` is unambiguously a label.
+    Label,
     // Operators / punctuation
     Punct(Punct),
     // An unexpected character; paired with a `LexError` so the stream still tiles.

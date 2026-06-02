@@ -115,13 +115,13 @@ fn opt_generic_params(p: &mut Parser) {
 fn generic_params(p: &mut Parser) {
     let m = p.start();
     p.bump(); // <
-    while !p.at(K::Gt) && !p.at_end() {
+    while !p.at_generic_close() && !p.at_end() {
         generic_param(p);
         if !p.eat(K::Comma) {
             break;
         }
     }
-    p.expect(K::Gt);
+    p.eat_generic_close();
     m.complete(p, K::GenericParamList);
 }
 

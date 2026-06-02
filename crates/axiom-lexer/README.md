@@ -44,6 +44,10 @@ Two properties define it:
   so `1..5` lexes as `Int DotDot Int`, not `1.` `.5`. See `test_range_is_not_a_float`.
 - **LF-only line terminator** (§2.1): `\r` is whitespace, a lone `\r` is not a
   line break. A leading **BOM** (U+FEFF) is treated as whitespace, not an error.
+- **A leading `'` is a loop label** (`'outer`, §7.1), never a char literal or
+  lifetime (Axiom has neither). `b'A'` is still a byte literal (the `'` follows
+  `b`); a lone `'` not followed by an identifier is an `Unknown` token. `?` lexes
+  as the `Question` punct (Option-propagation, §6.5).
 - **Happy-path fixtures must lex clean.** `tests/golden.rs` asserts zero
   diagnostics for every `fixtures/*.ax`; only `fixtures/errors/*.ax` may produce
   errors. (The tiling invariant proves coverage, not correct classification — so

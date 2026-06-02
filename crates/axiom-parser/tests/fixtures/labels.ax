@@ -1,0 +1,8 @@
+fn search() {
+    'outer: loop {
+        loop {
+            break 'outer
+        }
+        continue 'outer
+    }
+}

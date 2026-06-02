@@ -157,6 +157,7 @@ mod tests {
             display_name(&TokenKind::ByteLit(0)),
             display_name(&TokenKind::StrLit(String::new())),
             display_name(&TokenKind::Ident),
+            display_name(&TokenKind::Label),
             display_name(&TokenKind::Unknown),
             display_name(&TokenKind::Eof),
         ];

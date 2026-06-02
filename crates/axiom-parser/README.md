@@ -69,15 +69,10 @@ Three properties define it:
 
 ## Known limitations (v1 boundaries, deliberately deferred)
 
-These are documented gaps, not bugs — each is a small, isolated follow-up:
+These are documented gaps, not bugs — each is a small, isolated follow-up.
+(Resolved since the first cut: the `?` Option-postfix token, `>>` nested-generic
+closing via parser-side token splitting, and `'label` loop labels.)
 
-- **No `?` token.** The lexer has no `?` punctuation, so the Option-postfix `?`
-  (spec §6.5) is not yet parsed. `try` (for `Result`) works.
-- **`>>` is one `Shr` token.** A nested generic that closes with `>>`
-  (`Map<K, List<V>>`) does not close cleanly; single-level generics (`List<T>`)
-  parse fine. Needs a token-splitting pass.
-- **No labels.** `'outer: loop` / `break 'outer` — the lexer has no `'` label
-  token yet.
 - **Deep trees are traversed recursively.** Very long operator chains / nesting
   beyond `MAX_DEPTH` build a deep tree whose consumers (invariant checks,
   serializer, `Rc` drop) are recursive. Iterative traversal + a custom green-tree

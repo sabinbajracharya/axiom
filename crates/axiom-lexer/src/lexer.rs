@@ -142,6 +142,12 @@ impl<'a> Lexer<'a> {
         if c == 'b' && self.nth(1) == Some('\'') {
             return self.scan_byte(lo);
         }
+        // A leading `'` is a loop label (`'outer`) — Axiom has no char literals
+        // or lifetimes, so `'` is unambiguous. (Byte literals `b'..'` are handled
+        // above, where the `'` follows `b`.)
+        if c == '\'' {
+            return self.scan_label(lo);
+        }
         if is_ident_start(c) {
             return self.scan_ident();
         }
@@ -206,6 +212,25 @@ impl<'a> Lexer<'a> {
         match keyword_from_str(word) {
             Some(kw) => TokenKind::Keyword(kw),
             None => TokenKind::Ident,
+        }
+    }
+}
+
+// ── Labels (§7.1) ─────────────────────────────────────────────────────────────
+
+impl<'a> Lexer<'a> {
+    /// `'name` — a loop label. A lone `'` not followed by an identifier start is
+    /// an unexpected character (recorded, lexed as `Unknown`, still tiles).
+    fn scan_label(&mut self, lo: usize) -> TokenKind {
+        self.bump(); // opening quote
+        if self.peek().is_some_and(is_ident_start) {
+            self.eat_while(is_ident_continue);
+            TokenKind::Label
+        } else {
+            self.error(LexError::UnexpectedChar {
+                span: self.span_from(lo),
+            });
+            TokenKind::Unknown
         }
     }
 }
@@ -586,6 +611,7 @@ fn simple_delim(c: char) -> Option<crate::token::Punct> {
         ',' => Some(Punct::Comma),
         ';' => Some(Punct::Semicolon),
         '^' => Some(Punct::Caret),
+        '?' => Some(Punct::Question),
         _ => None,
     }
 }
@@ -779,5 +805,46 @@ mod tests {
     #[test]
     fn test_empty_source_is_just_eof() {
         assert_eq!(kinds(""), vec![TokenKind::Eof]);
+    }
+
+    #[test]
+    fn test_question_mark_token() {
+        assert_eq!(kinds("?")[0], TokenKind::Punct(Punct::Question));
+        // Postfix `?` next to an identifier.
+        assert_eq!(
+            kinds("x?"),
+            vec![
+                TokenKind::Ident,
+                TokenKind::Punct(Punct::Question),
+                TokenKind::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_loop_label_token() {
+        assert_eq!(kinds("'outer"), vec![TokenKind::Label, TokenKind::Eof]);
+        // A label followed by a colon (labeled loop) and inside `break`.
+        assert_eq!(
+            kinds("'a:"),
+            vec![
+                TokenKind::Label,
+                TokenKind::Punct(Punct::Colon),
+                TokenKind::Eof,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_lone_quote_is_unknown_but_tiles() {
+        let result = lex("'");
+        assert_eq!(result.tokens[0].kind, TokenKind::Unknown);
+        assert_eq!(result.errors.len(), 1);
+    }
+
+    #[test]
+    fn test_byte_literal_still_lexes_after_label_support() {
+        // Regression: `b'A'` must remain a byte literal, not a label.
+        assert_eq!(kinds("b'A'")[0], TokenKind::ByteLit(65));
     }
 }

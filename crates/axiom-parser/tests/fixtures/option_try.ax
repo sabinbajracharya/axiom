@@ -1,0 +1,4 @@
+fn first(let xs: List<Int>) -> Option<Int> {
+    val head = xs.first()?
+    head?
+}

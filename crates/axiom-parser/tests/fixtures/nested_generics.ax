@@ -1,0 +1,7 @@
+fn lookup(let m: Map<String, List<Int>>) -> Option<Int> {
+    m.get("k")
+}
+
+struct Wrapper<T> {
+    items: List<Map<String, T>>,
+}
