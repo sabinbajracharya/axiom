@@ -30,6 +30,99 @@ register-IR interpreter backend targets WASM (dual-backend).
 
 ---
 
+## A taste of Axiom
+
+> ⚠️ Illustrative — the syntax below follows [`DESIGN_SPEC.md`](DESIGN_SPEC.md),
+> but only the lexer and parser exist today; none of this *runs* yet. Shown to
+> convey the intended feel.
+
+**Structs, traits, and methods** — receivers declare a borrowing convention
+(`let`/`inout`/`sink`), the same machinery as parameters; no `&self`/`&mut self`:
+
+```rust
+struct Point { x: Float, y: Float }
+
+impl Point {
+    fn origin() -> Point { Point { x: 0.0, y: 0.0 } }    // associated fn
+    fn dist(let self, other: Point) -> Float { ... }     // borrows self (read)
+    fn translate(inout self, dx: Float, dy: Float) {     // mutates self
+        self.x += dx
+        self.y += dy
+    }
+}
+```
+
+**Sum types + exhaustive `match`** (the *only* branching tool over ADTs; missing
+a variant is a compile error):
+
+```rust
+enum Shape {
+    Circle(Float),
+    Rect(Float, Float),
+}
+
+fn area(let s: Shape) -> Float {
+    match s {
+        Circle(r)  => 3.14159 * r * r,
+        Rect(w, h) => w * h,
+    }
+}
+```
+
+**Borrowing as a calling convention** — visible at the call site, no lifetimes:
+
+```rust
+fn rename(inout u: User, n: String) { u.name = n }
+fn archive(sink u: User) { db.store(u) }   // consumes u
+
+var u = User { ... }
+rename(inout u, "Sam")   // mutation stated at the call site
+archive(sink u)          // consumption stated at the call site
+// u is now invalid — referencing it is a compile-time error
+```
+
+**Errors are values** — error sets + `try`/`catch`/`errdefer`, no exceptions
+(`FsError!Config` is sugar for `Result<Config, FsError>`):
+
+```rust
+error FsError { NotFound, AccessDenied }
+
+fn read_config(path: String) -> FsError!Config {
+    val file = try open(path)        // propagate on Err
+    errdefer log_failure(path)       // runs only on the error-return path
+    val text = try file.read_all()
+    return parse(text)               // success auto-wrapped in Ok
+}
+
+val cfg = read_config("/etc/app") catch |e| match e {
+    FsError.NotFound     => default_config(),
+    FsError.AccessDenied => panic("permission denied"),
+}
+```
+
+**One unified `loop`, `if`/`match`/blocks are expressions**:
+
+```rust
+loop x in items { print(x) }          // iterator form
+loop if ready() { tick() }            // pre-condition form (replaces while)
+
+val grade = if score >= 90 { "A" } else if score >= 80 { "B" } else { "C" }
+```
+
+**Structured (colorless) concurrency** — green threads in a lexical `scope`
+nursery; no `async`/`await`, no function coloring:
+
+```rust
+fn fetch_all(let urls: List<String>) -> List<Response>!NetError {
+    scope |s| {
+        val handles = urls.map(|u| s.spawn(|| http_get(u)))
+        handles.map(|h| try h.join())
+    }   // scope can't exit until every spawned task finishes or is cancelled
+}
+```
+
+---
+
 ## Status
 
 **Phase: early compiler front-end.** The design is settled and the first two
