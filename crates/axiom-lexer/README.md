@@ -66,7 +66,8 @@ flowchart TD
 | `src/lib.rs` | Crate root; public API re-exports | `lex`, `serialize`, `check_all`, `Token`, `TokenKind` |
 | `src/token.rs` | Plain data — no logic | `Span`, `TokenKind`, `Keyword`, `Punct`, `Token`, `LineMap` |
 | `src/symbols.rs` | **Single source of truth** for keyword spellings + display names | `keyword_from_str`, `display_name`, `keyword_label`, `punct_label` |
-| `src/lexer.rs` | The scanner — the one stateful core (byte cursor + small `scan_*` methods) | `lex`, `LexResult` |
+| `src/lexer/mod.rs` | The scanner — the one stateful core: `Lexer` struct, byte-cursor primitives, the `scan_one` driver, shared helpers; dispatches to the per-concern submodules | `lex`, `LexResult` |
+| `src/lexer/{word,number,string,punct}.rs` | `impl Lexer` blocks by concern: comments/idents/labels, numbers, strings/bytes, operators; `src/lexer/tests.rs` holds the unit tests | `scan_*` methods |
 | `src/snapshot.rs` | Canonical token serializer (pure functions) | `serialize` |
 | `src/invariants.rs` | Coverage guarantees, defined once, reused everywhere | `tiles`, `reconstruct`, `spans_match_text`, `check_all` |
 | `src/error.rs` | Lexer-stage errors (`thiserror`) | `LexError` |
@@ -86,7 +87,7 @@ flowchart TD
 - **Byte offset is the single positional truth.** `Span` is a half-open byte
   range; `line:col` is derived via `LineMap` (columns counted in characters).
 - **The scanner is the one place mutation lives.** Everything else (serializer,
-  invariants, classifiers) is pure. Don't add state outside `lexer.rs`.
+  invariants, classifiers) is pure. Don't add state outside the `lexer/` module.
 - **Maximal munch** subtlety: a `.` continues a float only if a digit follows,
   so `1..5` lexes as `Int DotDot Int`, not `1.` `.5`. See `test_range_is_not_a_float`.
 - **LF-only line terminator** (§2.1): `\r` is whitespace, a lone `\r` is not a

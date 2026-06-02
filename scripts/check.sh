@@ -53,13 +53,11 @@ report=""
 MAX_LINES=600
 
 # Echo a reason if $1 is a sanctioned (tracked) over-cap file; else return 1.
-# Remove an entry the moment its file is split under the cap.
+# The list is currently EMPTY — every file is under the cap. Add an entry only
+# for a genuine, tracked exception, and remove it the moment the file is split:
+#   ./path/to/big.rs) echo "why it's over + the plan (tracked)" ;;
 grandfathered_size() {
     case "$1" in
-    ./crates/axiom-parser/src/ast.rs)
-        echo "94 typed AST views; the no-macros rule (§14) forbids compressing the boilerplate — split into an ast/ folder (tracked)" ;;
-    ./crates/axiom-lexer/src/lexer.rs)
-        echo "pre-existing scanner; split into smaller modules (tracked)" ;;
     *) return 1 ;;
     esac
 }
