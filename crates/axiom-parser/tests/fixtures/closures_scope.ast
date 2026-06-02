@@ -1,0 +1,149 @@
+SourceFile @ 0..151
+  FnDef @ 0..150
+    KwFn @ 0..2 "fn"
+    Name @ 2..8
+      Whitespace @ 2..3 " "
+      Ident @ 3..8 "fetch"
+    ParamList @ 8..10
+      LParen @ 8..9 "("
+      RParen @ 9..10 ")"
+    BlockExpr @ 10..150
+      Whitespace @ 10..11 " "
+      LBrace @ 11..12 "{"
+      LetStmt @ 12..39
+        Newline @ 12..13 "\n"
+        Whitespace @ 13..17 "    "
+        KwVal @ 17..20 "val"
+        IdentPat @ 20..27
+          Path @ 20..27
+            PathSegment @ 20..27
+              Whitespace @ 20..21 " "
+              Ident @ 21..27 "double"
+        Whitespace @ 27..28 " "
+        Eq @ 28..29 "="
+        ClosureExpr @ 29..39
+          ClosureParamList @ 29..33
+            Whitespace @ 29..30 " "
+            Pipe @ 30..31 "|"
+            ClosureParam @ 31..32
+              Ident @ 31..32 "x"
+            Pipe @ 32..33 "|"
+          BinExpr @ 33..39
+            PathExpr @ 33..35
+              Path @ 33..35
+                PathSegment @ 33..35
+                  Whitespace @ 33..34 " "
+                  Ident @ 34..35 "x"
+            Whitespace @ 35..36 " "
+            Star @ 36..37 "*"
+            LiteralExpr @ 37..39
+              Whitespace @ 37..38 " "
+              IntLit @ 38..39 "2"
+      LetStmt @ 39..99
+        Newline @ 39..40 "\n"
+        Whitespace @ 40..44 "    "
+        KwVal @ 44..47 "val"
+        IdentPat @ 47..51
+          Path @ 47..51
+            PathSegment @ 47..51
+              Whitespace @ 47..48 " "
+              Ident @ 48..51 "add"
+        Whitespace @ 51..52 " "
+        Eq @ 52..53 "="
+        ClosureExpr @ 53..99
+          ClosureParamList @ 53..70
+            Whitespace @ 53..54 " "
+            Pipe @ 54..55 "|"
+            ClosureParam @ 55..61
+              Ident @ 55..56 "a"
+              Colon @ 56..57 ":"
+              PathType @ 57..61
+                Path @ 57..61
+                  PathSegment @ 57..61
+                    Whitespace @ 57..58 " "
+                    Ident @ 58..61 "Int"
+            Comma @ 61..62 ","
+            ClosureParam @ 62..69
+              Whitespace @ 62..63 " "
+              Ident @ 63..64 "b"
+              Colon @ 64..65 ":"
+              PathType @ 65..69
+                Path @ 65..69
+                  PathSegment @ 65..69
+                    Whitespace @ 65..66 " "
+                    Ident @ 66..69 "Int"
+            Pipe @ 69..70 "|"
+          Whitespace @ 70..71 " "
+          Arrow @ 71..73 "->"
+          PathType @ 73..77
+            Path @ 73..77
+              PathSegment @ 73..77
+                Whitespace @ 73..74 " "
+                Ident @ 74..77 "Int"
+          BlockExpr @ 77..99
+            Whitespace @ 77..78 " "
+            LBrace @ 78..79 "{"
+            ExprStmt @ 79..93
+              BinExpr @ 79..93
+                PathExpr @ 79..89
+                  Path @ 79..89
+                    PathSegment @ 79..89
+                      Newline @ 79..80 "\n"
+                      Whitespace @ 80..88 "        "
+                      Ident @ 88..89 "a"
+                Whitespace @ 89..90 " "
+                Plus @ 90..91 "+"
+                PathExpr @ 91..93
+                  Path @ 91..93
+                    PathSegment @ 91..93
+                      Whitespace @ 91..92 " "
+                      Ident @ 92..93 "b"
+            Newline @ 93..94 "\n"
+            Whitespace @ 94..98 "    "
+            RBrace @ 98..99 "}"
+      ExprStmt @ 99..148
+        ScopeExpr @ 99..148
+          Newline @ 99..100 "\n"
+          Whitespace @ 100..104 "    "
+          KwScope @ 104..109 "scope"
+          ClosureParamList @ 109..113
+            Whitespace @ 109..110 " "
+            Pipe @ 110..111 "|"
+            ClosureParam @ 111..112
+              Ident @ 111..112 "s"
+            Pipe @ 112..113 "|"
+          BlockExpr @ 113..148
+            Whitespace @ 113..114 " "
+            LBrace @ 114..115 "{"
+            ExprStmt @ 115..142
+              MethodCallExpr @ 115..142
+                PathExpr @ 115..125
+                  Path @ 115..125
+                    PathSegment @ 115..125
+                      Newline @ 115..116 "\n"
+                      Whitespace @ 116..124 "        "
+                      Ident @ 124..125 "s"
+                Dot @ 125..126 "."
+                NameRef @ 126..131
+                  KwSpawn @ 126..131 "spawn"
+                ArgList @ 131..142
+                  LParen @ 131..132 "("
+                  ClosureExpr @ 132..141
+                    ClosureParamList @ 132..134
+                      PipePipe @ 132..134 "||"
+                    CallExpr @ 134..141
+                      PathExpr @ 134..139
+                        Path @ 134..139
+                          PathSegment @ 134..139
+                            Whitespace @ 134..135 " "
+                            Ident @ 135..139 "work"
+                      ArgList @ 139..141
+                        LParen @ 139..140 "("
+                        RParen @ 140..141 ")"
+                  RParen @ 141..142 ")"
+            Newline @ 142..143 "\n"
+            Whitespace @ 143..147 "    "
+            RBrace @ 147..148 "}"
+      Newline @ 148..149 "\n"
+      RBrace @ 149..150 "}"
+  Newline @ 150..151 "\n"

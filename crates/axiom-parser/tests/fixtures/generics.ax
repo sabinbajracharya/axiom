@@ -1,0 +1,12 @@
+fn max<T: Ord>(let a: T, let b: T) -> T {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+
+struct Pair<A, B> {
+    first: A,
+    second: B,
+}

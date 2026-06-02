@@ -1,0 +1,67 @@
+SourceFile @ 0..62
+  FnDef @ 0..61
+    KwFn @ 0..2 "fn"
+    Name @ 2..7
+      Whitespace @ 2..3 " "
+      Ident @ 3..7 "main"
+    ParamList @ 7..9
+      LParen @ 7..8 "("
+      RParen @ 8..9 ")"
+    BlockExpr @ 9..61
+      Whitespace @ 9..10 " "
+      LBrace @ 10..11 "{"
+      LetStmt @ 11..25
+        Newline @ 11..12 "\n"
+        Whitespace @ 12..16 "    "
+        KwVal @ 16..19 "val"
+        IdentPat @ 19..21
+          Path @ 19..21
+            PathSegment @ 19..21
+              Whitespace @ 19..20 " "
+              Ident @ 20..21 "x"
+        Whitespace @ 21..22 " "
+        Eq @ 22..23 "="
+        LiteralExpr @ 23..25
+          Whitespace @ 23..24 " "
+          IntLit @ 24..25 "1"
+      LetStmt @ 25..39
+        Newline @ 25..26 "\n"
+        Whitespace @ 26..30 "    "
+        KwVar @ 30..33 "var"
+        IdentPat @ 33..35
+          Path @ 33..35
+            PathSegment @ 33..35
+              Whitespace @ 33..34 " "
+              Ident @ 34..35 "y"
+        Whitespace @ 35..36 " "
+        Eq @ 36..37 "="
+        LiteralExpr @ 37..39
+          Whitespace @ 37..38 " "
+          IntLit @ 38..39 "2"
+      LetStmt @ 39..59
+        Newline @ 39..40 "\n"
+        Whitespace @ 40..44 "    "
+        KwVal @ 44..47 "val"
+        IdentPat @ 47..51
+          Path @ 47..51
+            PathSegment @ 47..51
+              Whitespace @ 47..48 " "
+              Ident @ 48..51 "sum"
+        Whitespace @ 51..52 " "
+        Eq @ 52..53 "="
+        BinExpr @ 53..59
+          PathExpr @ 53..55
+            Path @ 53..55
+              PathSegment @ 53..55
+                Whitespace @ 53..54 " "
+                Ident @ 54..55 "x"
+          Whitespace @ 55..56 " "
+          Plus @ 56..57 "+"
+          PathExpr @ 57..59
+            Path @ 57..59
+              PathSegment @ 57..59
+                Whitespace @ 57..58 " "
+                Ident @ 58..59 "y"
+      Newline @ 59..60 "\n"
+      RBrace @ 60..61 "}"
+  Newline @ 61..62 "\n"

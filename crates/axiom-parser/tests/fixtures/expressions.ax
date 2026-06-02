@@ -1,0 +1,8 @@
+fn calc(let xs: List<Int>) -> Int {
+    val a = 1 + 2 * 3 - 4 / 2
+    val b = a == 3 && a > 0
+    val c = -a
+    val d = a as Float
+    val e = xs.map(|x| x + 1)
+    a
+}

@@ -1,0 +1,12 @@
+fn run(let items: List<Int>) {
+    loop {
+        break
+    }
+    loop if ready {
+        continue
+    }
+    loop item in items {
+        print(item)
+    }
+    val g = if hot { 1 } else { 2 }
+}

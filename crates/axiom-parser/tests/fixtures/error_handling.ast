@@ -1,0 +1,115 @@
+SourceFile @ 0..179
+  ErrorSetDef @ 0..49
+    KwError @ 0..5 "error"
+    Name @ 5..13
+      Whitespace @ 5..6 " "
+      Ident @ 6..13 "FsError"
+    ErrorVariantList @ 13..49
+      Whitespace @ 13..14 " "
+      LBrace @ 14..15 "{"
+      ErrorVariant @ 15..28
+        Newline @ 15..16 "\n"
+        Whitespace @ 16..20 "    "
+        Ident @ 20..28 "NotFound"
+      Comma @ 28..29 ","
+      ErrorVariant @ 29..46
+        Newline @ 29..30 "\n"
+        Whitespace @ 30..34 "    "
+        Ident @ 34..46 "AccessDenied"
+      Comma @ 46..47 ","
+      Newline @ 47..48 "\n"
+      RBrace @ 48..49 "}"
+  FnDef @ 49..178
+    Newline @ 49..50 "\n"
+    Newline @ 50..51 "\n"
+    KwFn @ 51..53 "fn"
+    Name @ 53..65
+      Whitespace @ 53..54 " "
+      Ident @ 54..65 "read_config"
+    ParamList @ 65..83
+      LParen @ 65..66 "("
+      Param @ 66..82
+        KwLet @ 66..69 "let"
+        Whitespace @ 69..70 " "
+        Ident @ 70..74 "path"
+        Colon @ 74..75 ":"
+        PathType @ 75..82
+          Path @ 75..82
+            PathSegment @ 75..82
+              Whitespace @ 75..76 " "
+              Ident @ 76..82 "String"
+      RParen @ 82..83 ")"
+    Whitespace @ 83..84 " "
+    Arrow @ 84..86 "->"
+    RetType @ 86..101
+      ErrorUnionType @ 86..101
+        PathType @ 86..94
+          Path @ 86..94
+            PathSegment @ 86..94
+              Whitespace @ 86..87 " "
+              Ident @ 87..94 "FsError"
+        Bang @ 94..95 "!"
+        PathType @ 95..101
+          Path @ 95..101
+            PathSegment @ 95..101
+              Ident @ 95..101 "String"
+    BlockExpr @ 101..178
+      Whitespace @ 101..102 " "
+      LBrace @ 102..103 "{"
+      LetStmt @ 103..133
+        Newline @ 103..104 "\n"
+        Whitespace @ 104..108 "    "
+        KwVal @ 108..111 "val"
+        IdentPat @ 111..116
+          Path @ 111..116
+            PathSegment @ 111..116
+              Whitespace @ 111..112 " "
+              Ident @ 112..116 "text"
+        Whitespace @ 116..117 " "
+        Eq @ 117..118 "="
+        TryExpr @ 118..133
+          Whitespace @ 118..119 " "
+          KwTry @ 119..122 "try"
+          CallExpr @ 122..133
+            PathExpr @ 122..127
+              Path @ 122..127
+                PathSegment @ 122..127
+                  Whitespace @ 122..123 " "
+                  Ident @ 123..127 "open"
+            ArgList @ 127..133
+              LParen @ 127..128 "("
+              PathExpr @ 128..132
+                Path @ 128..132
+                  PathSegment @ 128..132
+                    Ident @ 128..132 "path"
+              RParen @ 132..133 ")"
+      ErrdeferStmt @ 133..160
+        Newline @ 133..134 "\n"
+        Whitespace @ 134..138 "    "
+        KwErrdefer @ 138..146 "errdefer"
+        CallExpr @ 146..160
+          PathExpr @ 146..154
+            Path @ 146..154
+              PathSegment @ 146..154
+                Whitespace @ 146..147 " "
+                Ident @ 147..154 "cleanup"
+          ArgList @ 154..160
+            LParen @ 154..155 "("
+            PathExpr @ 155..159
+              Path @ 155..159
+                PathSegment @ 155..159
+                  Ident @ 155..159 "path"
+            RParen @ 159..160 ")"
+      ExprStmt @ 160..176
+        ReturnStmt @ 160..176
+          Newline @ 160..161 "\n"
+          Whitespace @ 161..165 "    "
+          KwReturn @ 165..171 "return"
+          PathExpr @ 171..176
+            Path @ 171..176
+              PathSegment @ 171..176
+                Whitespace @ 171..172 " "
+                Ident @ 172..176 "text"
+      Newline @ 176..177 "\n"
+      RBrace @ 177..178 "}"
+  Newline @ 178..179 "\n"

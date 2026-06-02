@@ -1,0 +1,5 @@
+// a leading comment
+fn main() {
+    /* block */
+    val x = 1 // trailing
+}

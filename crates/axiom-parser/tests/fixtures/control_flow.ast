@@ -1,0 +1,148 @@
+SourceFile @ 0..194
+  FnDef @ 0..193
+    KwFn @ 0..2 "fn"
+    Name @ 2..6
+      Whitespace @ 2..3 " "
+      Ident @ 3..6 "run"
+    ParamList @ 6..28
+      LParen @ 6..7 "("
+      Param @ 7..27
+        KwLet @ 7..10 "let"
+        Whitespace @ 10..11 " "
+        Ident @ 11..16 "items"
+        Colon @ 16..17 ":"
+        PathType @ 17..27
+          Path @ 17..22
+            PathSegment @ 17..22
+              Whitespace @ 17..18 " "
+              Ident @ 18..22 "List"
+          GenericArgList @ 22..27
+            Lt @ 22..23 "<"
+            PathType @ 23..26
+              Path @ 23..26
+                PathSegment @ 23..26
+                  Ident @ 23..26 "Int"
+            Gt @ 26..27 ">"
+      RParen @ 27..28 ")"
+    BlockExpr @ 28..193
+      Whitespace @ 28..29 " "
+      LBrace @ 29..30 "{"
+      ExprStmt @ 30..61
+        LoopExpr @ 30..61
+          Newline @ 30..31 "\n"
+          Whitespace @ 31..35 "    "
+          KwLoop @ 35..39 "loop"
+          BlockExpr @ 39..61
+            Whitespace @ 39..40 " "
+            LBrace @ 40..41 "{"
+            ExprStmt @ 41..55
+              BreakStmt @ 41..55
+                Newline @ 41..42 "\n"
+                Whitespace @ 42..50 "        "
+                KwBreak @ 50..55 "break"
+            Newline @ 55..56 "\n"
+            Whitespace @ 56..60 "    "
+            RBrace @ 60..61 "}"
+      ExprStmt @ 61..104
+        LoopExpr @ 61..104
+          Newline @ 61..62 "\n"
+          Whitespace @ 62..66 "    "
+          KwLoop @ 66..70 "loop"
+          Whitespace @ 70..71 " "
+          KwIf @ 71..73 "if"
+          PathExpr @ 73..79
+            Path @ 73..79
+              PathSegment @ 73..79
+                Whitespace @ 73..74 " "
+                Ident @ 74..79 "ready"
+          BlockExpr @ 79..104
+            Whitespace @ 79..80 " "
+            LBrace @ 80..81 "{"
+            ExprStmt @ 81..98
+              ContinueStmt @ 81..98
+                Newline @ 81..82 "\n"
+                Whitespace @ 82..90 "        "
+                KwContinue @ 90..98 "continue"
+            Newline @ 98..99 "\n"
+            Whitespace @ 99..103 "    "
+            RBrace @ 103..104 "}"
+      ExprStmt @ 104..155
+        LoopExpr @ 104..155
+          Newline @ 104..105 "\n"
+          Whitespace @ 105..109 "    "
+          KwLoop @ 109..113 "loop"
+          IdentPat @ 113..118
+            Path @ 113..118
+              PathSegment @ 113..118
+                Whitespace @ 113..114 " "
+                Ident @ 114..118 "item"
+          Whitespace @ 118..119 " "
+          KwIn @ 119..121 "in"
+          PathExpr @ 121..127
+            Path @ 121..127
+              PathSegment @ 121..127
+                Whitespace @ 121..122 " "
+                Ident @ 122..127 "items"
+          BlockExpr @ 127..155
+            Whitespace @ 127..128 " "
+            LBrace @ 128..129 "{"
+            ExprStmt @ 129..149
+              CallExpr @ 129..149
+                PathExpr @ 129..143
+                  Path @ 129..143
+                    PathSegment @ 129..143
+                      Newline @ 129..130 "\n"
+                      Whitespace @ 130..138 "        "
+                      Ident @ 138..143 "print"
+                ArgList @ 143..149
+                  LParen @ 143..144 "("
+                  PathExpr @ 144..148
+                    Path @ 144..148
+                      PathSegment @ 144..148
+                        Ident @ 144..148 "item"
+                  RParen @ 148..149 ")"
+            Newline @ 149..150 "\n"
+            Whitespace @ 150..154 "    "
+            RBrace @ 154..155 "}"
+      LetStmt @ 155..191
+        Newline @ 155..156 "\n"
+        Whitespace @ 156..160 "    "
+        KwVal @ 160..163 "val"
+        IdentPat @ 163..165
+          Path @ 163..165
+            PathSegment @ 163..165
+              Whitespace @ 163..164 " "
+              Ident @ 164..165 "g"
+        Whitespace @ 165..166 " "
+        Eq @ 166..167 "="
+        IfExpr @ 167..191
+          Whitespace @ 167..168 " "
+          KwIf @ 168..170 "if"
+          PathExpr @ 170..174
+            Path @ 170..174
+              PathSegment @ 170..174
+                Whitespace @ 170..171 " "
+                Ident @ 171..174 "hot"
+          BlockExpr @ 174..180
+            Whitespace @ 174..175 " "
+            LBrace @ 175..176 "{"
+            ExprStmt @ 176..178
+              LiteralExpr @ 176..178
+                Whitespace @ 176..177 " "
+                IntLit @ 177..178 "1"
+            Whitespace @ 178..179 " "
+            RBrace @ 179..180 "}"
+          Whitespace @ 180..181 " "
+          KwElse @ 181..185 "else"
+          BlockExpr @ 185..191
+            Whitespace @ 185..186 " "
+            LBrace @ 186..187 "{"
+            ExprStmt @ 187..189
+              LiteralExpr @ 187..189
+                Whitespace @ 187..188 " "
+                IntLit @ 188..189 "2"
+            Whitespace @ 189..190 " "
+            RBrace @ 190..191 "}"
+      Newline @ 191..192 "\n"
+      RBrace @ 192..193 "}"
+  Newline @ 193..194 "\n"

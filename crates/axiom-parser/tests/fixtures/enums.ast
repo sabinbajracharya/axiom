@@ -1,0 +1,47 @@
+SourceFile @ 0..69
+  EnumDef @ 0..68
+    KwEnum @ 0..4 "enum"
+    Name @ 4..10
+      Whitespace @ 4..5 " "
+      Ident @ 5..10 "Shape"
+    VariantList @ 10..68
+      Whitespace @ 10..11 " "
+      LBrace @ 11..12 "{"
+      Variant @ 12..30
+        Newline @ 12..13 "\n"
+        Whitespace @ 13..17 "    "
+        Ident @ 17..23 "Circle"
+        VariantPayload @ 23..30
+          LParen @ 23..24 "("
+          PathType @ 24..29
+            Path @ 24..29
+              PathSegment @ 24..29
+                Ident @ 24..29 "Float"
+          RParen @ 29..30 ")"
+      Comma @ 30..31 ","
+      Variant @ 31..54
+        Newline @ 31..32 "\n"
+        Whitespace @ 32..36 "    "
+        Ident @ 36..40 "Rect"
+        VariantPayload @ 40..54
+          LParen @ 40..41 "("
+          PathType @ 41..46
+            Path @ 41..46
+              PathSegment @ 41..46
+                Ident @ 41..46 "Float"
+          Comma @ 46..47 ","
+          PathType @ 47..53
+            Path @ 47..53
+              PathSegment @ 47..53
+                Whitespace @ 47..48 " "
+                Ident @ 48..53 "Float"
+          RParen @ 53..54 ")"
+      Comma @ 54..55 ","
+      Variant @ 55..65
+        Newline @ 55..56 "\n"
+        Whitespace @ 56..60 "    "
+        Ident @ 60..65 "Empty"
+      Comma @ 65..66 ","
+      Newline @ 66..67 "\n"
+      RBrace @ 67..68 "}"
+  Newline @ 68..69 "\n"

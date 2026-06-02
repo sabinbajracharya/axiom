@@ -1,0 +1,146 @@
+SourceFile @ 0..150
+  FnDef @ 0..97
+    KwFn @ 0..2 "fn"
+    Name @ 2..6
+      Whitespace @ 2..3 " "
+      Ident @ 3..6 "max"
+    GenericParamList @ 6..14
+      Lt @ 6..7 "<"
+      GenericParam @ 7..13
+        Ident @ 7..8 "T"
+        Colon @ 8..9 ":"
+        TraitBounds @ 9..13
+          PathType @ 9..13
+            Path @ 9..13
+              PathSegment @ 9..13
+                Whitespace @ 9..10 " "
+                Ident @ 10..13 "Ord"
+      Gt @ 13..14 ">"
+    ParamList @ 14..34
+      LParen @ 14..15 "("
+      Param @ 15..23
+        KwLet @ 15..18 "let"
+        Whitespace @ 18..19 " "
+        Ident @ 19..20 "a"
+        Colon @ 20..21 ":"
+        PathType @ 21..23
+          Path @ 21..23
+            PathSegment @ 21..23
+              Whitespace @ 21..22 " "
+              Ident @ 22..23 "T"
+      Comma @ 23..24 ","
+      Param @ 24..33
+        Whitespace @ 24..25 " "
+        KwLet @ 25..28 "let"
+        Whitespace @ 28..29 " "
+        Ident @ 29..30 "b"
+        Colon @ 30..31 ":"
+        PathType @ 31..33
+          Path @ 31..33
+            PathSegment @ 31..33
+              Whitespace @ 31..32 " "
+              Ident @ 32..33 "T"
+      RParen @ 33..34 ")"
+    Whitespace @ 34..35 " "
+    Arrow @ 35..37 "->"
+    RetType @ 37..39
+      PathType @ 37..39
+        Path @ 37..39
+          PathSegment @ 37..39
+            Whitespace @ 37..38 " "
+            Ident @ 38..39 "T"
+    BlockExpr @ 39..97
+      Whitespace @ 39..40 " "
+      LBrace @ 40..41 "{"
+      ExprStmt @ 41..95
+        IfExpr @ 41..95
+          Newline @ 41..42 "\n"
+          Whitespace @ 42..46 "    "
+          KwIf @ 46..48 "if"
+          BinExpr @ 48..54
+            PathExpr @ 48..50
+              Path @ 48..50
+                PathSegment @ 48..50
+                  Whitespace @ 48..49 " "
+                  Ident @ 49..50 "a"
+            Whitespace @ 50..51 " "
+            Gt @ 51..52 ">"
+            PathExpr @ 52..54
+              Path @ 52..54
+                PathSegment @ 52..54
+                  Whitespace @ 52..53 " "
+                  Ident @ 53..54 "b"
+          BlockExpr @ 54..72
+            Whitespace @ 54..55 " "
+            LBrace @ 55..56 "{"
+            ExprStmt @ 56..66
+              PathExpr @ 56..66
+                Path @ 56..66
+                  PathSegment @ 56..66
+                    Newline @ 56..57 "\n"
+                    Whitespace @ 57..65 "        "
+                    Ident @ 65..66 "a"
+            Newline @ 66..67 "\n"
+            Whitespace @ 67..71 "    "
+            RBrace @ 71..72 "}"
+          Whitespace @ 72..73 " "
+          KwElse @ 73..77 "else"
+          BlockExpr @ 77..95
+            Whitespace @ 77..78 " "
+            LBrace @ 78..79 "{"
+            ExprStmt @ 79..89
+              PathExpr @ 79..89
+                Path @ 79..89
+                  PathSegment @ 79..89
+                    Newline @ 79..80 "\n"
+                    Whitespace @ 80..88 "        "
+                    Ident @ 88..89 "b"
+            Newline @ 89..90 "\n"
+            Whitespace @ 90..94 "    "
+            RBrace @ 94..95 "}"
+      Newline @ 95..96 "\n"
+      RBrace @ 96..97 "}"
+  StructDef @ 97..149
+    Newline @ 97..98 "\n"
+    Newline @ 98..99 "\n"
+    KwStruct @ 99..105 "struct"
+    Name @ 105..110
+      Whitespace @ 105..106 " "
+      Ident @ 106..110 "Pair"
+    GenericParamList @ 110..116
+      Lt @ 110..111 "<"
+      GenericParam @ 111..112
+        Ident @ 111..112 "A"
+      Comma @ 112..113 ","
+      GenericParam @ 113..115
+        Whitespace @ 113..114 " "
+        Ident @ 114..115 "B"
+      Gt @ 115..116 ">"
+    FieldList @ 116..149
+      Whitespace @ 116..117 " "
+      LBrace @ 117..118 "{"
+      Field @ 118..131
+        Newline @ 118..119 "\n"
+        Whitespace @ 119..123 "    "
+        Ident @ 123..128 "first"
+        Colon @ 128..129 ":"
+        PathType @ 129..131
+          Path @ 129..131
+            PathSegment @ 129..131
+              Whitespace @ 129..130 " "
+              Ident @ 130..131 "A"
+      Comma @ 131..132 ","
+      Field @ 132..146
+        Newline @ 132..133 "\n"
+        Whitespace @ 133..137 "    "
+        Ident @ 137..143 "second"
+        Colon @ 143..144 ":"
+        PathType @ 144..146
+          Path @ 144..146
+            PathSegment @ 144..146
+              Whitespace @ 144..145 " "
+              Ident @ 145..146 "B"
+      Comma @ 146..147 ","
+      Newline @ 147..148 "\n"
+      RBrace @ 148..149 "}"
+  Newline @ 149..150 "\n"

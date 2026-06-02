@@ -1,0 +1,36 @@
+SourceFile @ 0..77
+  FnDef @ 0..76
+    LineComment @ 0..20 "// a leading comment"
+    Newline @ 20..21 "\n"
+    KwFn @ 21..23 "fn"
+    Name @ 23..28
+      Whitespace @ 23..24 " "
+      Ident @ 24..28 "main"
+    ParamList @ 28..30
+      LParen @ 28..29 "("
+      RParen @ 29..30 ")"
+    BlockExpr @ 30..76
+      Whitespace @ 30..31 " "
+      LBrace @ 31..32 "{"
+      LetStmt @ 32..62
+        Newline @ 32..33 "\n"
+        Whitespace @ 33..37 "    "
+        BlockComment @ 37..48 "/* block */"
+        Newline @ 48..49 "\n"
+        Whitespace @ 49..53 "    "
+        KwVal @ 53..56 "val"
+        IdentPat @ 56..58
+          Path @ 56..58
+            PathSegment @ 56..58
+              Whitespace @ 56..57 " "
+              Ident @ 57..58 "x"
+        Whitespace @ 58..59 " "
+        Eq @ 59..60 "="
+        LiteralExpr @ 60..62
+          Whitespace @ 60..61 " "
+          IntLit @ 61..62 "1"
+      Whitespace @ 62..63 " "
+      LineComment @ 63..74 "// trailing"
+      Newline @ 74..75 "\n"
+      RBrace @ 75..76 "}"
+  Newline @ 76..77 "\n"

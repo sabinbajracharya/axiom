@@ -2,5 +2,6 @@
 # rewrite them and fail every snapshot test with a phantom mismatch.
 # (Same lesson as Oxy's IR snapshots; see docs/lexer-testing.md §2.1.)
 *.tokens text eol=lf
+*.ast text eol=lf
 *.stderr text eol=lf
 *.ax text eol=lf
