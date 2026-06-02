@@ -15,6 +15,7 @@
 //! print!("{}", serialize(&result.tree));
 //! ```
 
+pub mod ast;
 mod error;
 mod event;
 mod grammar;
