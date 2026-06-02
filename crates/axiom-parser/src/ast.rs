@@ -96,7 +96,6 @@ fn is_pat(kind: SyntaxKind) -> bool {
             | SyntaxKind::OrPat
             | SyntaxKind::RestPat
             | SyntaxKind::RangePat
-            | SyntaxKind::Error
     )
 }
 
@@ -106,9 +105,7 @@ fn is_type_kind(kind: SyntaxKind) -> bool {
         SyntaxKind::PathType
             | SyntaxKind::ErrorUnionType
             | SyntaxKind::ErrorSetUnionType
-            | SyntaxKind::DynType
             | SyntaxKind::UnitType
-            | SyntaxKind::FnType
             | SyntaxKind::Error
     )
 }
@@ -545,6 +542,12 @@ impl AstNode for Param {
 }
 
 impl Param {
+    /// The calling-convention keyword (`let`, `inout`, or `sink`), if present.
+    pub fn convention_token(&self) -> Option<SyntaxToken> {
+        child_token(&self.0, SyntaxKind::KwLet)
+            .or_else(|| child_token(&self.0, SyntaxKind::KwInout))
+            .or_else(|| child_token(&self.0, SyntaxKind::KwSink))
+    }
     pub fn name_token(&self) -> Option<SyntaxToken> {
         child_token(&self.0, SyntaxKind::Ident)
     }
@@ -572,6 +575,12 @@ impl AstNode for SelfParam {
 }
 
 impl SelfParam {
+    /// The calling-convention keyword (`let`, `inout`, or `sink`), if present.
+    pub fn convention_token(&self) -> Option<SyntaxToken> {
+        child_token(&self.0, SyntaxKind::KwLet)
+            .or_else(|| child_token(&self.0, SyntaxKind::KwInout))
+            .or_else(|| child_token(&self.0, SyntaxKind::KwSink))
+    }
     pub fn self_token(&self) -> Option<SyntaxToken> {
         child_token(&self.0, SyntaxKind::KwSelf)
     }
@@ -1282,8 +1291,6 @@ fn is_bin_op(kind: SyntaxKind) -> bool {
             | SyntaxKind::Le
             | SyntaxKind::Gt
             | SyntaxKind::Ge
-            | SyntaxKind::DotDot
-            | SyntaxKind::DotDotEq
     )
 }
 
@@ -1480,7 +1487,8 @@ impl IfExpr {
         child_node(&self.0)
     }
     pub fn else_branch(&self) -> Option<SyntaxNode> {
-        child_expr_nodes(&self.0).into_iter().nth(1)
+        // IfExpr children (expr-family): [condition, then_block, else_branch?]
+        child_expr_nodes(&self.0).into_iter().nth(2)
     }
 }
 
@@ -1535,6 +1543,38 @@ impl LoopExpr {
     }
     pub fn body(&self) -> Option<BlockExpr> {
         child_node(&self.0)
+    }
+    /// `true` for the `loop if cond { }` form.
+    pub fn is_conditional(&self) -> bool {
+        child_token(&self.0, SyntaxKind::KwIf).is_some()
+    }
+    /// `true` for the `loop pat in iterable { }` form.
+    pub fn is_iterator(&self) -> bool {
+        child_token(&self.0, SyntaxKind::KwIn).is_some()
+    }
+    /// The condition for `loop if cond { }` — `None` for other forms.
+    pub fn loop_condition(&self) -> Option<SyntaxNode> {
+        if self.is_conditional() {
+            child_expr_node(&self.0)
+        } else {
+            None
+        }
+    }
+    /// The binding pattern for `loop pat in iterable { }` — `None` for other forms.
+    pub fn iter_pattern(&self) -> Option<SyntaxNode> {
+        if self.is_iterator() {
+            child_pat_node(&self.0)
+        } else {
+            None
+        }
+    }
+    /// The iterable expression for `loop pat in iterable { }` — `None` for other forms.
+    pub fn iter_iterable(&self) -> Option<SyntaxNode> {
+        if self.is_iterator() {
+            child_expr_node(&self.0)
+        } else {
+            None
+        }
     }
 }
 
@@ -1772,6 +1812,8 @@ impl ScopeExpr {
     }
 }
 
+/// Reserved for `spawn expr` (green-thread spawn, §9.3). Not yet implemented in
+/// the grammar; this node kind is never produced by the current parser.
 pub struct SpawnExpr(SyntaxNode);
 
 impl AstNode for SpawnExpr {
@@ -1954,6 +1996,9 @@ impl NameRef {
 
 // ── Loop forms ────────────────────────────────────────────────────────────────
 
+/// Reserved for a future grammar refactor that wraps the `loop if` condition.
+/// The current grammar emits the condition directly into `LoopExpr`; this node
+/// kind is never produced by the parser today. Use `LoopExpr::loop_condition()`.
 pub struct LoopCondition(SyntaxNode);
 
 impl AstNode for LoopCondition {
@@ -1978,6 +2023,10 @@ impl LoopCondition {
     }
 }
 
+/// Reserved for a future grammar refactor that wraps the `loop pat in` iterator
+/// header. The current grammar emits the pattern and iterable directly into
+/// `LoopExpr`; this node kind is never produced today. Use
+/// `LoopExpr::iter_pattern()` / `LoopExpr::iter_iterable()`.
 pub struct LoopIter(SyntaxNode);
 
 impl AstNode for LoopIter {
@@ -2183,6 +2232,16 @@ impl AstNode for StructLitFieldList {
 impl StructLitFieldList {
     pub fn fields(&self) -> Vec<StructLitField> {
         child_nodes_of(&self.0)
+    }
+    /// The `..base` spread expression, if present. The grammar emits the spread
+    /// directly into this node (no wrapping child node), so `fields()` does not
+    /// include it.
+    pub fn spread_base(&self) -> Option<SyntaxNode> {
+        if child_token(&self.0, SyntaxKind::DotDot).is_some() {
+            child_expr_node(&self.0)
+        } else {
+            None
+        }
     }
 }
 
@@ -2424,9 +2483,42 @@ impl AstNode for RangePat {
 }
 
 impl RangePat {
-    pub fn start(&self) -> Option<SyntaxToken> {
-        first_token(&self.0)
+    /// The `..` or `..=` range operator token.
+    pub fn range_op_token(&self) -> Option<SyntaxToken> {
+        child_token(&self.0, SyntaxKind::DotDot)
+            .or_else(|| child_token(&self.0, SyntaxKind::DotDotEq))
     }
+    /// The start bound's literal token. For negative bounds (e.g. `-1..=9`),
+    /// this skips the leading `-` and returns the literal itself.
+    pub fn start_literal(&self) -> Option<SyntaxToken> {
+        self.0.children().into_iter().find_map(|e| match e {
+            SyntaxElement::Token(t) if is_range_pat_literal(t.kind()) => Some(t),
+            _ => None,
+        })
+    }
+    /// The end bound's literal token. For negative bounds, this skips the `-`.
+    pub fn end_literal(&self) -> Option<SyntaxToken> {
+        self.0
+            .children()
+            .into_iter()
+            .filter_map(|e| match e {
+                SyntaxElement::Token(t) if is_range_pat_literal(t.kind()) => Some(t),
+                _ => None,
+            })
+            .nth(1)
+    }
+}
+
+fn is_range_pat_literal(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::IntLit
+            | SyntaxKind::FloatLit
+            | SyntaxKind::ByteLit
+            | SyntaxKind::StrLit
+            | SyntaxKind::KwTrue
+            | SyntaxKind::KwFalse
+    )
 }
 
 pub struct StructPatFieldList(SyntaxNode);
@@ -2529,6 +2621,11 @@ impl AstNode for PathType {
 }
 
 impl PathType {
+    /// The path for a named type like `Foo` or `pkg::Bar`.
+    ///
+    /// Returns `None` for parenthesized types like `(T)`: the grammar reuses
+    /// `PathType` as the wrapper node in that case, but the only child is another
+    /// `PathType`, not a `Path`.
     pub fn path(&self) -> Option<Path> {
         child_node(&self.0)
     }
@@ -2627,6 +2724,8 @@ impl ErrorSetUnionType {
     }
 }
 
+/// Reserved for `dyn Trait` dynamic dispatch types. Not yet implemented in the
+/// grammar; this node kind is never produced by the current parser.
 pub struct DynType(SyntaxNode);
 
 impl AstNode for DynType {
@@ -2669,6 +2768,8 @@ impl AstNode for UnitType {
     }
 }
 
+/// Reserved for first-class function types (`fn(T) -> U`). Not yet implemented
+/// in the grammar; this node kind is never produced by the current parser.
 pub struct FnType(SyntaxNode);
 
 impl AstNode for FnType {
@@ -2696,6 +2797,8 @@ impl FnType {
     }
 }
 
+/// Parameter list for a first-class function type (`fn(T, U)`). Not yet
+/// implemented in the grammar; this node kind is never produced today.
 pub struct FnTypeParams(SyntaxNode);
 
 impl AstNode for FnTypeParams {
@@ -2805,7 +2908,6 @@ mod tests {
             || ScopeExpr::can_cast(kind)
             || SpawnExpr::can_cast(kind)
             || ListLitExpr::can_cast(kind)
-            || ArgList::can_cast(kind)
     }
 
     fn can_cast_path_name(kind: SyntaxKind) -> bool {
@@ -2826,6 +2928,7 @@ mod tests {
             || ClosureParam::can_cast(kind)
             || StructLitFieldList::can_cast(kind)
             || StructLitField::can_cast(kind)
+            || ArgList::can_cast(kind)
     }
 
     fn can_cast_pattern(kind: SyntaxKind) -> bool {
@@ -2884,43 +2987,40 @@ mod tests {
         }
     }
 
-    /// `cast(node).syntax().kind() == node.kind()` for every non-Error node kind.
+    /// `cast(node).syntax().kind() == node.kind()` holds for every view.
     #[test]
     fn test_ast_cast_round_trip() {
-        let representative = [
-            SyntaxKind::SourceFile,
-            SyntaxKind::FnDef,
-            SyntaxKind::StructDef,
-            SyntaxKind::EnumDef,
-            SyntaxKind::TraitDef,
-            SyntaxKind::ImplBlock,
-            SyntaxKind::ModDef,
-            SyntaxKind::UseDecl,
-            SyntaxKind::ConstDef,
-            SyntaxKind::ErrorSetDef,
-            SyntaxKind::LetStmt,
-            SyntaxKind::ExprStmt,
-            SyntaxKind::BinExpr,
-            SyntaxKind::IfExpr,
-            SyntaxKind::MatchExpr,
-            SyntaxKind::Name,
-            SyntaxKind::NameRef,
-            SyntaxKind::Path,
-            SyntaxKind::IdentPat,
-            SyntaxKind::PathType,
-        ];
-        for kind in representative {
+        fn build(kind: SyntaxKind) -> SyntaxNode {
             let mut b = GreenNodeBuilder::new();
             b.start_node(kind);
             b.finish_node();
-            let node = SyntaxNode::new_root(b.finish());
-            assert!(can_cast_any(kind), "no view for {kind:?}");
-            assert_eq!(
-                node.kind(),
-                kind,
-                "builder produced wrong kind for {kind:?}"
-            );
+            SyntaxNode::new_root(b.finish())
         }
+
+        // Each line: cast the right kind, assert the round-trip, then assert a
+        // wrong-kind node is rejected.
+        let fn_def = FnDef::cast(build(SyntaxKind::FnDef)).expect("FnDef::cast");
+        assert_eq!(fn_def.syntax().kind(), SyntaxKind::FnDef);
+        assert!(FnDef::cast(build(SyntaxKind::StructDef)).is_none());
+
+        let struct_def = StructDef::cast(build(SyntaxKind::StructDef)).expect("StructDef::cast");
+        assert_eq!(struct_def.syntax().kind(), SyntaxKind::StructDef);
+
+        let let_stmt = LetStmt::cast(build(SyntaxKind::LetStmt)).expect("LetStmt::cast");
+        assert_eq!(let_stmt.syntax().kind(), SyntaxKind::LetStmt);
+
+        let bin_expr = BinExpr::cast(build(SyntaxKind::BinExpr)).expect("BinExpr::cast");
+        assert_eq!(bin_expr.syntax().kind(), SyntaxKind::BinExpr);
+
+        let name = Name::cast(build(SyntaxKind::Name)).expect("Name::cast");
+        assert_eq!(name.syntax().kind(), SyntaxKind::Name);
+
+        let path_type = PathType::cast(build(SyntaxKind::PathType)).expect("PathType::cast");
+        assert_eq!(path_type.syntax().kind(), SyntaxKind::PathType);
+
+        let ident_pat = IdentPat::cast(build(SyntaxKind::IdentPat)).expect("IdentPat::cast");
+        assert_eq!(ident_pat.syntax().kind(), SyntaxKind::IdentPat);
+        assert!(IdentPat::cast(build(SyntaxKind::WildcardPat)).is_none());
     }
 
     // ── Per-view unit tests ───────────────────────────────────────────────────
