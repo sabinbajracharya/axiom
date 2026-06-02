@@ -49,10 +49,10 @@ fn type_primary(p: &mut Parser) -> CompletedMarker {
         K::Ident | K::KwSelfType => path_type(p),
         _ => {
             let m = p.start();
-            p.error("expected a type");
-            if !p.at_end() {
-                p.bump();
-            }
+            // Recovery-set aware: a closer claimed by an enclosing construct is
+            // left in place (empty `Error` node) so its owner can claim it,
+            // rather than absorbed here.
+            p.err_recover("expected a type");
             m.complete(p, K::Error)
         }
     }

@@ -65,7 +65,7 @@ Three properties define it:
   it covers **every** recursive grammar path: expressions (`lhs`), blocks
   (`block`), types (`ty`), patterns (`pattern`), and use-trees (`use_tree`).
 - **Recovery is recovery-set–aware at leaf positions.** `err_recover` (used for
-  a missing expression / pattern / member) reports the error but leaves a
+  a missing expression / pattern / type / member) reports the error but leaves a
   *claimed* closing delimiter — one an enclosing `(`/`[`/`{` is still waiting
   for — in place so its owner can consume it, instead of absorbing it as an
   `Error` token. The open-bracket counts are maintained centrally in
