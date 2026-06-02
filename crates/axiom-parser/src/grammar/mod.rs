@@ -12,11 +12,33 @@ mod ty;
 use crate::parser::Parser;
 use crate::syntax_kind::SyntaxKind as K;
 
-/// Parse a whole source file: a sequence of items until end of input.
+/// Parse a whole source file: a sequence of items until end of input. A token
+/// that can't begin an item is absorbed (with one diagnostic) into a single
+/// `Error` node up to the next item start, so a garbage run resyncs cleanly
+/// rather than emitting one error per token.
+///
+/// This is the parser's **totality backstop**: it must consume *every* token, so
+/// it never honors `at_claimed_close`. (The open-bracket counts are global and
+/// can leak when a malformed item consumes an opener but recovers before its
+/// closer; at file scope there is no enclosing construct to own such a closer, so
+/// it is just more garbage.) Every iteration consumes at least one token — an
+/// item, or at least one token of a garbage run — so the loop reaches EOF.
 pub(crate) fn source_file(p: &mut Parser) {
     let m = p.start();
     while !p.at_end() {
-        item::item(p);
+        if item::at_item_start(p) {
+            item::item(p);
+        } else {
+            // Absorb the garbage run [here, next-item-start) as one Error node.
+            // We checked `!at_item_start` and the loop guards `!at_end`, so this
+            // bumps at least once — guaranteed progress toward EOF.
+            p.error("expected an item");
+            let e = p.start();
+            while !p.at_end() && !item::at_item_start(p) {
+                p.bump();
+            }
+            e.complete(p, K::Error);
+        }
     }
     m.complete(p, K::SourceFile);
 }

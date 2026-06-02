@@ -13,9 +13,14 @@ use super::{path, pattern};
 use crate::parser::{CompletedMarker, Marker, Parser};
 use crate::syntax_kind::SyntaxKind as K;
 
-/// Tokens that can begin an expression (first-set), for optional-expr decisions
-/// (`return`, `break`).
-const EXPR_START: &[K] = &[
+/// Tokens that can begin an expression (the expression first-set). Used for
+/// optional-expr decisions (`return`, `break`) **and** as the basis of the
+/// statement first-set that drives block resynchronization (`stmt::at_stmt_start`).
+///
+/// This MUST mirror the dispatch in `lhs_inner` (prefix operators) and `primary`
+/// (everything else); `stmt::test_expr_start_matches_primary_dispatch` mechanizes
+/// that agreement so the set can't silently drift from the parser.
+pub(super) const EXPR_START: &[K] = &[
     K::IntLit,
     K::FloatLit,
     K::ByteLit,
@@ -31,6 +36,7 @@ const EXPR_START: &[K] = &[
     K::KwIf,
     K::KwMatch,
     K::KwLoop,
+    K::Label,
     K::KwScope,
     K::Pipe,
     K::PipePipe,

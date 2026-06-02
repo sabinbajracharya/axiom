@@ -338,6 +338,36 @@ impl Parser {
         true
     }
 
+    /// Multi-token resynchronizing recovery, for list positions (statements,
+    /// items, members). Reports `message` **once**, then absorbs the whole run of
+    /// unexpected tokens into a **single** `Error` node, stopping *before* the
+    /// first token where `is_sync` holds — the start of the enclosing list's next
+    /// element — or a claimed closing delimiter (`at_claimed_close`) or end of
+    /// input. Collapsing a garbage run into one node with one diagnostic is what
+    /// turns the old per-token cascade into a clean resync to the next
+    /// statement/item.
+    ///
+    /// Returns whether any token was consumed. A `false` means we were already at
+    /// a sync point, a claimed closer, or the end — the caller's cue to break so
+    /// that token is handled by whoever owns it (the loop then re-dispatches on
+    /// the sync token, or the closer bubbles out).
+    pub fn recover_to(
+        &mut self,
+        message: impl Into<String>,
+        is_sync: impl Fn(&Parser) -> bool,
+    ) -> bool {
+        self.error(message);
+        if self.at_end() || self.at_claimed_close() || is_sync(self) {
+            return false;
+        }
+        let m = self.start();
+        while !self.at_end() && !self.at_claimed_close() && !is_sync(self) {
+            self.bump();
+        }
+        m.complete(self, SyntaxKind::Error);
+        true
+    }
+
     // ── markers ──────────────────────────────────────────────────────────
 
     /// Open a node. Must be `complete`d or `abandon`ed.
@@ -377,5 +407,49 @@ impl CompletedMarker {
             *forward_parent = Some(new_marker.pos);
         }
         new_marker
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parser(src: &str) -> Parser {
+        Parser::new(&axiom_lexer::lex(src).tokens)
+    }
+
+    #[test]
+    fn test_recover_to_absorbs_run_and_stops_at_sync() {
+        // `@ @` is garbage; `fn` is a sync token. recover_to consumes the two
+        // `@`, stops *before* `fn`, reports exactly once, and returns true.
+        let mut p = parser("@ @ fn");
+        let consumed = p.recover_to("expected an item", |p| p.at(SyntaxKind::KwFn));
+        assert!(consumed);
+        assert!(p.at(SyntaxKind::KwFn), "must stop before the sync token");
+        assert_eq!(p.errors.len(), 1, "one run → one diagnostic");
+    }
+
+    #[test]
+    fn test_recover_to_declines_when_already_at_sync() {
+        // Already at a sync token: report, consume nothing, return false (the
+        // caller's cue to let the loop re-dispatch on it).
+        let mut p = parser("fn");
+        let consumed = p.recover_to("expected an item", |p| p.at(SyntaxKind::KwFn));
+        assert!(!consumed);
+        assert!(p.at(SyntaxKind::KwFn));
+    }
+
+    #[test]
+    fn test_recover_to_leaves_claimed_closer_for_owner() {
+        // An unclosed `(` marks `)` as claimed; recover_to must stop before it so
+        // the enclosing construct can consume it (recovery-set awareness).
+        let mut p = parser("( @ )");
+        p.bump(); // consume `(` → open_paren = 1
+        let consumed = p.recover_to("garbage", |_| false);
+        assert!(consumed);
+        assert!(
+            p.at(SyntaxKind::RParen),
+            "the claimed `)` must be left in place for its owner"
+        );
     }
 }

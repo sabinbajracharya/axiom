@@ -64,15 +64,25 @@ Three properties define it:
   turns pathologically nested input into recovery instead of a stack overflow —
   it covers **every** recursive grammar path: expressions (`lhs`), blocks
   (`block`), types (`ty`), patterns (`pattern`), and use-trees (`use_tree`).
-- **Recovery is recovery-set–aware at leaf positions.** `err_recover` (used for
-  a missing expression / pattern / type / member) reports the error but leaves a
-  *claimed* closing delimiter — one an enclosing `(`/`[`/`{` is still waiting
-  for — in place so its owner can consume it, instead of absorbing it as an
-  `Error` token. The open-bracket counts are maintained centrally in
-  `Parser::bump`. A genuinely stray closer (no matching opener) is still
-  absorbed. `item()` remains the always-consume backstop guaranteeing global
-  termination, and `err_and_bump` (the unconditional consume) is still used
-  where a token must be dropped.
+- **Recovery is recovery-set–aware and resynchronizing.** Two layers:
+  - *Leaf positions* (a missing expression / pattern / type / member) use
+    `err_recover`: it reports the error but leaves a *claimed* closing delimiter
+    — one an enclosing `(`/`[`/`{` is still waiting for — in place so its owner
+    can consume it, instead of absorbing it as an `Error` token. The open-bracket
+    counts are maintained centrally in `Parser::bump`; a genuinely stray closer
+    (no matching opener) is still absorbed.
+  - *List positions* (statements, items, members) use `recover_to(msg, is_sync)`:
+    it reports **once** and absorbs the whole run of unexpected tokens into a
+    **single** `Error` node, stopping before the next element start (`is_sync` —
+    e.g. `stmt::at_stmt_start`, `item::at_item_start`), a claimed closer, or EOF.
+    This resyncs to the next statement/item instead of emitting one diagnostic per
+    junk token.
+  - *Totality backstop:* `grammar::source_file` is the **outermost** loop and is
+    unconditionally total — it never honors `at_claimed_close` (the global
+    open-bracket counts can leak when a malformed item consumes an opener but
+    recovers before its closer; at file scope no construct owns such a closer), so
+    it always consumes every token to EOF. `err_and_bump` (the unconditional
+    single-token consume) is still used where exactly one token must be dropped.
 - **Dropping the tree is iterative** — both `green::GreenNode`'s `Drop` and the
   red `syntax::SyntaxNode` parent-chain `Drop` — so a degenerate deep tree (long
   operator chain, deep recovery subtree) never overflows the stack when freed.
@@ -91,16 +101,21 @@ Three properties define it:
 These are documented gaps, not bugs — each is a small, isolated follow-up.
 (Resolved since the first cut: the `?` Option-postfix token, `>>` nested-generic
 closing via parser-side token splitting, `'label` loop labels, the recursion
-guard now covering types/patterns/use-trees, iterative green-tree `Drop`, and —
-most recently — iterative red-tree consumers, a kind- and split-aware
-`every_token_present`, and recovery-set–aware leaf recovery.)
+guard now covering types/patterns/use-trees, iterative green-tree `Drop`,
+iterative red-tree consumers, a kind- and split-aware `every_token_present`,
+recovery-set–aware leaf recovery, and — most recently — **rich resynchronizing
+recovery**: statement/item/member lists resync to the next element start, so a
+garbage run collapses into one `Error` node with one diagnostic instead of a
+per-token cascade.)
 
-- **Recovery lacks rich resynchronization.** Recovery is now recovery-set–aware
-  — a claimed closing delimiter is left for its owner rather than absorbed as an
-  `Error` token (see the gotcha above) — but it does not yet *resync* to a safe
-  point (e.g. skipping to the next statement/item keyword after an error). That
-  is the deferred refinement; current recovery is always total, tiling, and now
-  produces fewer spurious cascade diagnostics.
+- **Match-arm recovery is still single-token.** Statement, item, and member lists
+  resync (`recover_to`); match arms still use leaf recovery (`err_recover`),
+  which is adequate because arms are `,`/`=>`-delimited so cascades are naturally
+  bounded. Threading a pattern first-set through a `recover_to` at the arm loop is
+  the small remaining extension.
+- **`MAX_DEPTH = 64` is conservative.** It bounds genuine grammar *recursion*
+  (nested parens/if/match/types), not iterative postfix chains, so real code is
+  unaffected; raising it needs a correspondingly larger stack.
 
 ## Commands
 

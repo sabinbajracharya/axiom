@@ -92,4 +92,35 @@ mod tests {
         assert_eq!(check_all(&result.tree, src, &tokens), Ok(()));
         assert!(!result.errors.is_empty());
     }
+
+    #[test]
+    fn test_top_level_garbage_run_collapses_to_one_error() {
+        // A run of non-item tokens at file scope resyncs to the next item: ONE
+        // diagnostic + ONE Error node for the run, then the `fn` parses cleanly.
+        let src = "@ @ @ fn f() {}\n";
+        let result = parse(src);
+        let item_errs = result
+            .errors
+            .iter()
+            .filter(|e| e.message.contains("expected an item"))
+            .count();
+        assert_eq!(
+            item_errs, 1,
+            "garbage run → one diagnostic: {:?}",
+            result.errors
+        );
+        let dump = serialize(&result.tree);
+        assert_eq!(
+            dump.matches("Error @").count(),
+            1,
+            "garbage run should collapse to one Error node:\n{dump}"
+        );
+        assert!(
+            dump.contains("FnDef @"),
+            "the fn should still parse:\n{dump}"
+        );
+        // Losslessness still holds across the recovery.
+        let tokens = axiom_lexer::lex(src).tokens;
+        assert_eq!(check_all(&result.tree, src, &tokens), Ok(()));
+    }
 }

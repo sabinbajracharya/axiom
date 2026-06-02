@@ -12,6 +12,28 @@ use super::ty::ty;
 use crate::parser::{Marker, Parser};
 use crate::syntax_kind::SyntaxKind as K;
 
+/// Item first-set: the keyword each item form begins with, plus `pub`. (`const`
+/// is a contextual identifier, not a keyword, so it is matched separately in
+/// `at_item_start`.) This is the resync target for item-list recovery — a token
+/// here begins the *next* item, so garbage is skipped up to it.
+const ITEM_START: &[K] = &[
+    K::KwFn,
+    K::KwStruct,
+    K::KwEnum,
+    K::KwTrait,
+    K::KwImpl,
+    K::KwMod,
+    K::KwUse,
+    K::KwError,
+    K::KwPub,
+];
+
+/// Whether the current token can begin an item (so an item loop should try to
+/// parse one rather than treating it as garbage to resync past).
+pub(super) fn at_item_start(p: &Parser) -> bool {
+    p.at_any(ITEM_START) || p.at_contextual("const")
+}
+
 /// Parse one top-level (or nested) item, recovering on anything unexpected.
 pub(super) fn item(p: &mut Parser) {
     let m = p.start();
@@ -247,30 +269,31 @@ fn impl_block(p: &mut Parser, m: Marker) {
     m.complete(p, K::ImplBlock);
 }
 
-/// `{ method* }` shared by traits and impls. Each method may carry `pub`.
+/// `{ method* }` shared by traits and impls. Each method may carry `pub`. A
+/// member begins with `fn` or `pub`; anything else is garbage to resync past.
+fn at_member_start(p: &Parser) -> bool {
+    p.at(K::KwFn) || p.at(K::KwPub)
+}
+
 fn member_list(p: &mut Parser, kind: K) {
     let m = p.start();
     p.expect(K::LBrace);
     while !p.at(K::RBrace) && !p.at_end() {
-        let before = p.pos();
-        if p.at(K::KwFn) || p.at(K::KwPub) {
+        if at_member_start(p) {
             let im = p.start();
             opt_visibility(p);
             if p.at(K::KwFn) {
                 fn_def(p, im);
             } else {
+                // `pub` not followed by `fn`: flag and drop the stray token.
                 p.error("expected a method");
                 im.complete(p, K::Error);
                 if !p.at_end() {
                     p.bump();
                 }
             }
-        } else {
-            p.err_recover("expected a method");
-        }
-        // `err_recover` may decline a closer claimed by an enclosing construct;
-        // break on no progress so it bubbles out to its owner.
-        if p.pos() == before {
+        } else if !p.recover_to("expected a method", at_member_start) {
+            // A claimed closer / end — let the owner have it.
             break;
         }
     }
@@ -286,7 +309,11 @@ fn mod_def(p: &mut Parser, m: Marker) {
     if p.at(K::LBrace) {
         p.bump();
         while !p.at(K::RBrace) && !p.at_end() {
-            item(p);
+            if at_item_start(p) {
+                item(p);
+            } else if !p.recover_to("expected an item", at_item_start) {
+                break; // a claimed closer / end — let the owner have it
+            }
         }
         p.expect(K::RBrace);
     } else {
