@@ -6,7 +6,7 @@
 //! panic or hang) and **lossless** (every token, trivia included, is a tree
 //! leaf, so the tree reconstructs the source byte-for-byte). The tree is
 //! rust-analyzer–shaped: an immutable green tree (`green`), a lazy red tree
-//! (`syntax`), and typed views on top (`ast`, forthcoming).
+//! (`syntax`), and typed views on top (`ast`).
 //!
 //! ```
 //! use axiom_parser::{parse, serialize};
