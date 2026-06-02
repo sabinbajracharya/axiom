@@ -95,18 +95,12 @@ guard now covering types/patterns/use-trees, iterative green-tree `Drop`, and �
 most recently — iterative red-tree consumers, a kind- and split-aware
 `every_token_present`, and recovery-set–aware leaf recovery.)
 
-- **`every_token_present` is now kind- and split-aware**, byte-aligning the
-  significant tree leaves against the significant lexer tokens and checking each
-  is covered by exactly one leaf of the same `from_lexer` kind — or by the exact
-  leaf sequence of a sanctioned split (`>>`→`Gt Gt`, `>=`→`Gt Eq`). A mis-kinded
-  leaf is caught directly (`CoverageError::KindMismatch`) rather than only when a
-  golden happens to cover it.
-- **Recovery is recovery-set–aware**, not blind consume-on-error: a claimed
-  closing delimiter is left for its owner rather than absorbed as an `Error`
-  token (see the gotcha above). The remaining refinement is richer
-  *resynchronization* (e.g. skipping to the next statement/item keyword), which
-  is deferred — current recovery is always total, tiling, and now produces
-  fewer spurious cascade diagnostics.
+- **Recovery lacks rich resynchronization.** Recovery is now recovery-set–aware
+  — a claimed closing delimiter is left for its owner rather than absorbed as an
+  `Error` token (see the gotcha above) — but it does not yet *resync* to a safe
+  point (e.g. skipping to the next statement/item keyword after an error). That
+  is the deferred refinement; current recovery is always total, tiling, and now
+  produces fewer spurious cascade diagnostics.
 
 ## Commands
 
