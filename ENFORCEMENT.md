@@ -10,7 +10,7 @@
 | 2 | **`clippy.toml` disallow-lists** — banned types/methods/macros by name | ✅ scaffolded |
 | 3 | **`-D warnings`** — clippy warnings are errors; panic-prone lints denied | ✅ scaffolded |
 | hook | **Claude Code PostToolUse hook** — runs layers 1–3 after every `.rs` edit and feeds failures back to the model | ✅ scaffolded |
-| 4 | **Custom checks** (dylint / scripts) — Safety comments, no `macro_rules!`, file size, README freshness | ⏳ later |
+| 4 | **Custom checks** (dylint / scripts) — file size ✅ (`scripts/check.sh`); Safety comments, no `macro_rules!`, README freshness | ⏳ partial |
 | CI | **Pre-commit / CI gate** — same checks block merge | ⏳ later |
 
 ## What each rule maps to
@@ -30,7 +30,8 @@
 | Banning more types/methods later | extend `clippy.toml` | **Hard** |
 | Every `unsafe` has `// Safety:` | custom check (layer 4) | ⏳ not yet |
 | No `macro_rules!` | custom check (layer 4) | ⏳ not yet |
-| File size, README freshness | custom check (layer 4) | ⏳ not yet |
+| File size (≤600 lines; §10) | `scripts/check.sh` line-count gate (layer 4) — fails the build; pre-existing files grandfathered with a reason | **Hard** |
+| README freshness | custom check (layer 4) | ⏳ not yet |
 | Multiple lifetimes / `'a: 'b` | dylint (layer 4, hard to write) | ⏳ not yet |
 | "Readable by a non-expert" | review only | **Soft** (judgment — irreducible) |
 | "Clone vs borrow in a hot path" | review only | **Soft** (judgment) |

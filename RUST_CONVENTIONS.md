@@ -157,7 +157,7 @@ The balance, in one line: **borrow by default for reading; clone when it removes
 ---
 
 ## 10. Modules & Files
-- **One responsibility per file.** Target 150–400 lines; split past ~500. (Matches Oxy.)
+- **One responsibility per file.** Target 150–400 lines; split past ~500. (Matches Oxy.) **Mechanically enforced:** `scripts/check.sh` fails the build on any `.rs` over 600 lines (the "~500" + headroom, mirroring §8's ~50→60). Split into a folder + `mod.rs`; a known pre-existing file may be grandfathered in the script *with a reason* and remains a tracked debt — never silence the gate.
 - **Module layout:** use a folder + `mod.rs` when a module has submodules; a single named file otherwise. `lexer/mod.rs` + `lexer/token.rs`; standalone `errors.rs`.
 - **Re-export the public API in `lib.rs`** with explicit `pub use` (no glob re-exports). Everything private by default; `pub` only what's needed across module boundaries.
 - **Naming:** modules `snake_case`, types `PascalCase`, functions/vars `snake_case`, consts `SCREAMING_SNAKE_CASE`. (rustfmt + clippy won't fix names — reviewers must.)
