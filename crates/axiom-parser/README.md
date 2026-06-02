@@ -102,7 +102,8 @@ flowchart TD
 | `src/grammar/item.rs` | Items: fn/struct/enum/trait/impl/mod/use/error/const | `item` |
 | `src/grammar/ty.rs` | Type annotations (paths, generics, error-union `!`) | `ty` |
 | `src/grammar/pattern.rs` | Match-arm + destructure patterns | `pattern` |
-| `src/ast.rs` | Typed AST views over the red tree (`AstNode` trait + one struct per node kind) | `AstNode`, `FnDef`, `StructDef`, `LetStmt`, … |
+| `src/ast/mod.rs` | Typed AST views hub: `AstNode` trait, shared navigation helpers + kind classifiers, and re-exports of every view (one struct per node kind) | `AstNode`, `FnDef`, `StructDef`, `LetStmt`, … |
+| `src/ast/{item,item_part,stmt,expr,expr_flow,expr_part,name,pattern,ty}.rs` | The views themselves, grouped by family; `src/ast/tests.rs` holds the consistency guard + per-view tests | one struct per node kind |
 | `src/snapshot.rs` | Canonical tree serializer (pure) | `serialize` |
 | `src/invariants.rs` | Coverage guarantees, defined once, reused everywhere | `reconstruct`, `spans_well_formed`, `every_token_present`, `check_all` |
 | `src/error.rs` | Parse-stage diagnostics (`thiserror`) | `ParseError` |
@@ -199,8 +200,9 @@ cargo run -p axiom-parser --example parse -- file.ax  # the debug tree dump
 
 - Add a node/token kind: one `SyntaxKind` variant in the right macro group. The
   serializer, invariants, and CLI are data-driven and need no changes. **Also add
-  a view in `src/ast.rs`** and register it in the test-only `can_cast_any` —
-  `test_ast_every_node_kind_covered` will fail until you do.
+  a view in the matching `src/ast/<family>.rs`** and register it in the test-only
+  `can_cast_any` (in `src/ast/tests.rs`) — `test_ast_every_node_kind_covered`
+  will fail until you do.
 - Add a grammar construct: a small `parse_*` function (keep loops bump-or-break),
   plus a `tests/fixtures/*.ax` + regenerated golden. Update this table if you add
   a file.
