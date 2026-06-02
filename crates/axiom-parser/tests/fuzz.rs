@@ -114,9 +114,10 @@ fn deeply_nested_input_terminates_and_round_trips() {
     assert_total(&deep);
 
     // Wide left-associative chains build a left-leaning tree (depth = operator
-    // count) via the iterative Pratt loop. `check_all` walks it recursively, so
-    // this stays modest; `Rc` drop is iterative (`green::GreenNode`) so dropping
-    // it never overflows regardless of depth.
+    // count) via the iterative Pratt loop. `check_all` walks it with an explicit
+    // work-stack (iterative), and `Rc` drop is iterative (both green and red
+    // trees), so neither serializing/checking nor dropping it ever overflows
+    // regardless of depth.
     let wide = "fn f() { ".to_string() + &"a + ".repeat(1_000) + "b }";
     assert_total(&wide);
 }
@@ -129,12 +130,10 @@ fn pathological_nesting_recovers_via_depth_guard() {
     // totality violation). Each input nests far past `MAX_DEPTH`; we assert
     // parsing RETURNS and emitted a "too deep" diagnostic (the guard fired).
     //
-    // We deliberately do NOT run the recursive invariant checks here: the
-    // recovery tree can be deep, and `check_all`/the serializer walk it
-    // recursively (a separate, documented consumer-side limitation). Parsing
-    // itself is total — the grammar recursion is guarded and `build_tree` plus
-    // green-tree `Drop` are iterative — so `parse` returning without a crash is
-    // exactly the property under test.
+    // The red-tree consumers (`check_all`, serializer) are iterative, so we also
+    // run the full invariant check on the deep recovery tree. Parsing itself is
+    // total — the grammar recursion is guarded and `build_tree` plus both green-
+    // and red-tree `Drop` are iterative — so neither parsing nor checking crashes.
     let cases = [
         format!("fn f(x: {}T{}) {{}}", "A<".repeat(5_000), ">".repeat(5_000)), // types
         format!("fn f(x: {}A) {{}}", "A!".repeat(5_000)),                      // error-union types
@@ -153,5 +152,9 @@ fn pathological_nesting_recovers_via_depth_guard() {
             "deeply nested input should trip the recursion guard, got {} errors",
             result.errors.len()
         );
+        let tokens = axiom_lexer::lex(&src).tokens;
+        if let Err(reason) = check_all(&result.tree, &src, &tokens) {
+            panic!("invariant failed on deeply nested input: {reason}");
+        }
     }
 }

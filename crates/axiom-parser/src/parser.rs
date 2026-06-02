@@ -36,6 +36,14 @@ pub struct Parser {
     /// Current expression-recursion depth; the guard against stack overflow on
     /// pathologically nested input (totality includes "no crash", §5).
     depth: usize,
+    /// Counts of open bracket pairs whose opener has been consumed but whose
+    /// closer has not — one per closer kind (`)`, `]`, `}`). Maintained centrally
+    /// in `bump`, this is the **recovery set**: leaf recovery (`err_recover`)
+    /// refuses to absorb a closer that one of these open constructs is waiting
+    /// for, letting that construct claim it instead (§5 recovery quality).
+    open_paren: usize,
+    open_bracket: usize,
+    open_brace: usize,
 }
 
 /// Maximum expression nesting before the parser stops descending and recovers.
@@ -77,6 +85,9 @@ impl Parser {
             errors: Vec::new(),
             no_struct: false,
             depth: 0,
+            open_paren: 0,
+            open_bracket: 0,
+            open_brace: 0,
         }
     }
 
@@ -141,6 +152,28 @@ impl Parser {
         self.pos >= self.tokens.len()
     }
 
+    /// The cursor's current index over significant tokens. Element loops compare
+    /// it before and after a sub-parse to detect "no progress" — the signal to
+    /// break when recovery declined to consume a closer (so it can bubble out to
+    /// the construct that owns it). See `err_recover`.
+    pub fn pos(&self) -> usize {
+        self.pos
+    }
+
+    /// Whether the current token is a closing delimiter that some *open* bracket
+    /// construct is waiting for — i.e. it is "claimed" by an enclosing scope. A
+    /// claimed closer must not be absorbed by leaf recovery; it belongs to its
+    /// opener. A stray closer with no matching opener is *not* claimed (and so is
+    /// still absorbed, the sensible recovery for genuine garbage).
+    pub fn at_claimed_close(&self) -> bool {
+        match self.current() {
+            SyntaxKind::RParen => self.open_paren > 0,
+            SyntaxKind::RBracket => self.open_bracket > 0,
+            SyntaxKind::RBrace => self.open_brace > 0,
+            _ => false,
+        }
+    }
+
     /// The current token's span (or a zero-width span at end of input).
     fn current_span(&self) -> Span {
         match self.tokens.get(self.pos) {
@@ -156,10 +189,24 @@ impl Parser {
 
     /// Consume the current token into the tree, advancing the cursor. Emits the
     /// token's kind and byte length so the tree builder can slice the source.
+    ///
+    /// Every delimiter consumed flows through here, so this is also where the
+    /// open-bracket counts (the recovery set) are kept: an opener bumps its count
+    /// up, its closer bumps it back down. (A stray closer with no opener simply
+    /// saturates at zero.)
     pub fn bump(&mut self) {
         let Some(tok) = self.tokens.get(self.pos) else {
             return;
         };
+        match tok.kind {
+            SyntaxKind::LParen => self.open_paren += 1,
+            SyntaxKind::RParen => self.open_paren = self.open_paren.saturating_sub(1),
+            SyntaxKind::LBracket => self.open_bracket += 1,
+            SyntaxKind::RBracket => self.open_bracket = self.open_bracket.saturating_sub(1),
+            SyntaxKind::LBrace => self.open_brace += 1,
+            SyntaxKind::RBrace => self.open_brace = self.open_brace.saturating_sub(1),
+            _ => {}
+        }
         let len = tok.span.hi - tok.span.lo;
         self.events.push(Event::Token {
             kind: tok.kind,
@@ -271,6 +318,24 @@ impl Parser {
         let m = self.start();
         self.bump();
         m.complete(self, SyntaxKind::Error);
+    }
+
+    /// Recovery-set-aware variant of `err_and_bump`, for leaf positions (a
+    /// missing expression / pattern / member). Reports the error, then absorbs
+    /// the current token into an `Error` node **unless** it is a closing
+    /// delimiter an enclosing construct is waiting for (`at_claimed_close`) or we
+    /// are at end of input — in those cases the token is left in place for its
+    /// owner to consume. Returns whether a token was consumed; a `false` is the
+    /// caller's cue (in a non-comma loop) to break so the closer can bubble out.
+    pub fn err_recover(&mut self, message: impl Into<String>) -> bool {
+        self.error(message);
+        if self.at_end() || self.at_claimed_close() {
+            return false;
+        }
+        let m = self.start();
+        self.bump();
+        m.complete(self, SyntaxKind::Error);
+        true
     }
 
     // ── markers ──────────────────────────────────────────────────────────

@@ -175,7 +175,7 @@ fn primary(p: &mut Parser) -> Option<CompletedMarker> {
         K::KwBreak => Some(jump_expr(p, K::BreakStmt, true)),
         K::KwContinue => Some(jump_expr(p, K::ContinueStmt, false)),
         _ => {
-            p.err_and_bump("expected an expression");
+            p.err_recover("expected an expression");
             None
         }
     }
@@ -285,7 +285,13 @@ fn match_arm_list(p: &mut Parser) {
     let m = p.start();
     p.expect(K::LBrace);
     while !p.at(K::RBrace) && !p.at_end() {
+        let before = p.pos();
         match_arm(p);
+        // An arm whose pattern recovery declined a claimed closer makes no
+        // progress; break so the closer reaches its owner (see `err_recover`).
+        if p.pos() == before {
+            break;
+        }
     }
     p.expect(K::RBrace);
     m.complete(p, K::MatchArmList);

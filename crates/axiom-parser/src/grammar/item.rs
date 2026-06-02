@@ -252,6 +252,7 @@ fn member_list(p: &mut Parser, kind: K) {
     let m = p.start();
     p.expect(K::LBrace);
     while !p.at(K::RBrace) && !p.at_end() {
+        let before = p.pos();
         if p.at(K::KwFn) || p.at(K::KwPub) {
             let im = p.start();
             opt_visibility(p);
@@ -265,7 +266,12 @@ fn member_list(p: &mut Parser, kind: K) {
                 }
             }
         } else {
-            p.err_and_bump("expected a method");
+            p.err_recover("expected a method");
+        }
+        // `err_recover` may decline a closer claimed by an enclosing construct;
+        // break on no progress so it bubbles out to its owner.
+        if p.pos() == before {
+            break;
         }
     }
     p.expect(K::RBrace);

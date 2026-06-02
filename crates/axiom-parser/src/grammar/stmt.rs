@@ -19,7 +19,14 @@ pub(crate) fn block(p: &mut Parser) -> CompletedMarker {
     // deeply nested `{ ... }` recovers instead of overflowing the stack.
     if p.enter_recursion() {
         while !p.at(K::RBrace) && !p.at_end() {
+            let before = p.pos();
             stmt(p);
+            // Recovery may decline to consume a closing delimiter that an
+            // enclosing construct owns (`err_recover`); if a statement made no
+            // progress, break so that closer bubbles out instead of spinning.
+            if p.pos() == before {
+                break;
+            }
         }
     } else {
         p.error("block nesting too deep");

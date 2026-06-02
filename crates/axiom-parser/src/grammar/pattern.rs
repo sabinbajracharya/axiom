@@ -65,10 +65,10 @@ fn pattern_single(p: &mut Parser) -> CompletedMarker {
         K::Ident | K::KwSelfType => path_pattern(p),
         _ => {
             let m = p.start();
-            p.error("expected a pattern");
-            if !p.at_end() {
-                p.bump();
-            }
+            // Recovery-set aware: a closer claimed by an enclosing construct is
+            // left in place (yielding an empty `Error` node) so its owner can
+            // claim it, rather than absorbed here.
+            p.err_recover("expected a pattern");
             m.complete(p, K::Error)
         }
     }

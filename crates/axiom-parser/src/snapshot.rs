@@ -13,14 +13,30 @@ const INDENT: &str = "  ";
 
 /// Serialize a tree to the canonical indented form: one node/token per line, two
 /// spaces per depth level.
+///
+/// Iterative (explicit work-stack of `(element, depth)`) rather than recursive,
+/// so a pathologically deep tree — e.g. a long left-associative operator chain —
+/// cannot overflow the stack while being dumped.
 pub fn serialize(root: &SyntaxNode) -> String {
     let mut out = String::new();
-    serialize_node(root, 0, &mut out);
+    let mut stack: Vec<(SyntaxElement, usize)> = vec![(SyntaxElement::Node(root.clone()), 0)];
+    while let Some((element, depth)) = stack.pop() {
+        match element {
+            SyntaxElement::Node(node) => {
+                emit_node_line(&node, depth, &mut out);
+                // Push children reversed so the leftmost is popped (emitted) first.
+                for child in node.children().into_iter().rev() {
+                    stack.push((child, depth + 1));
+                }
+            }
+            SyntaxElement::Token(token) => emit_token_line(&token, depth, &mut out),
+        }
+    }
     out
 }
 
-/// Emit `node`'s line, then recurse into its children one level deeper.
-fn serialize_node(node: &SyntaxNode, depth: usize, out: &mut String) {
+/// Emit `node`'s line: `KIND @ lo..hi`.
+fn emit_node_line(node: &SyntaxNode, depth: usize, out: &mut String) {
     let span = node.span();
     push_indent(out, depth);
     out.push_str(&format!(
@@ -29,16 +45,10 @@ fn serialize_node(node: &SyntaxNode, depth: usize, out: &mut String) {
         span.lo,
         span.hi
     ));
-    for child in node.children() {
-        match child {
-            SyntaxElement::Node(n) => serialize_node(&n, depth + 1, out),
-            SyntaxElement::Token(t) => serialize_token(&t, depth + 1, out),
-        }
-    }
 }
 
 /// Emit a leaf line: `KIND @ lo..hi "repr"`.
-fn serialize_token(token: &SyntaxToken, depth: usize, out: &mut String) {
+fn emit_token_line(token: &SyntaxToken, depth: usize, out: &mut String) {
     let span = token.span();
     push_indent(out, depth);
     out.push_str(&format!(
@@ -124,5 +134,26 @@ mod tests {
                 "snapshot.rs hardcodes kind label {needle}; use SyntaxKind::label"
             );
         }
+    }
+
+    /// A deep tree must serialize via the iterative work-stack without
+    /// overflowing the stack (Gap 1). Depth is kept moderate because the output
+    /// is inherently O(depth^2) (indentation = depth); the linear consumers are
+    /// proven at far higher depth in `invariants::tests`.
+    #[test]
+    fn test_serialize_deep_tree_does_not_overflow() {
+        let mut b = GreenNodeBuilder::new();
+        let depth = 8_000;
+        b.start_node(SyntaxKind::SourceFile);
+        for _ in 0..depth {
+            b.start_node(SyntaxKind::BinExpr);
+        }
+        b.token(SyntaxKind::IntLit, "1".to_string());
+        for _ in 0..depth {
+            b.finish_node();
+        }
+        b.finish_node();
+        let root = SyntaxNode::new_root(b.finish());
+        assert!(serialize(&root).contains(SyntaxKind::IntLit.label()));
     }
 }

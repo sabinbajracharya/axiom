@@ -20,6 +20,25 @@ pub struct SyntaxNode {
     parent: Option<Rc<SyntaxNode>>,
 }
 
+/// Dismantle a red node's **parent chain iteratively** so dropping a node (or a
+/// token) from deep in a pathologically deep tree cannot overflow the stack. A
+/// red child owns an `Rc` to its parent, which owns its parent, and so on; the
+/// naive recursive drop would recurse once per level. Instead we walk the chain,
+/// unwrapping each uniquely-owned ancestor and emptying its `parent` before it
+/// drops (so its own `Drop` finds nothing to recurse into). Shared ancestors
+/// (refcount > 1) stop the walk — another holder will dismantle the rest.
+impl Drop for SyntaxNode {
+    fn drop(&mut self) {
+        let mut next = self.parent.take();
+        while let Some(rc) = next {
+            match Rc::try_unwrap(rc) {
+                Ok(mut node) => next = node.parent.take(),
+                Err(_) => break,
+            }
+        }
+    }
+}
+
 /// A leaf in the red tree: a shared green token plus its absolute position.
 #[derive(Clone)]
 pub struct SyntaxToken {
@@ -147,12 +166,19 @@ fn red_child(child: &GreenChild, offset: usize, parent: &Rc<SyntaxNode>) -> Synt
     }
 }
 
-/// Depth-first collect of every leaf token under `node`.
+/// Depth-first collect of every leaf token under `node`, left to right.
+///
+/// Iterative (explicit work-stack) rather than recursive: a pathologically deep
+/// tree — e.g. a long left-associative operator chain, built iteratively by the
+/// Pratt loop — would otherwise overflow the stack here. The work-stack holds
+/// pending children; pushing them reversed so the leftmost is popped first keeps
+/// the original source order.
 fn collect_tokens(node: &SyntaxNode, out: &mut Vec<SyntaxToken>) {
-    for child in node.children() {
-        match child {
-            SyntaxElement::Node(n) => collect_tokens(&n, out),
+    let mut stack: Vec<SyntaxElement> = node.children().into_iter().rev().collect();
+    while let Some(element) = stack.pop() {
+        match element {
             SyntaxElement::Token(t) => out.push(t),
+            SyntaxElement::Node(n) => stack.extend(n.children().into_iter().rev()),
         }
     }
 }
