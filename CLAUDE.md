@@ -35,6 +35,7 @@ The memory model (the heart of the language) is **Mutable Value Semantics** — 
 - **Borrow freely for reading** (`&str`, `&[T]` — no annotations needed); clone when it removes a confusing lifetime and you're not in a hot path; `Rc`/arena only where a profiler points.
 - **`unsafe` is quarantined** to codegen/FFI modules only, every block with a `// Safety:` comment, wrapped behind safe APIs. The rest of the compiler is `unsafe`-free.
 - **Per-folder `README.md`** kept current — update it in the same change when you add/rename/move a file.
+- **Test-first (TDD), always.** Every layer is built test-first against its testing spec (`docs/lexer-testing.md`, `docs/parser-testing.md`, …): write the failing tests/invariants first, then implement until green — never weaken a test to make code pass. Mechanize the "can't silently drift" guard for each layer (the lexer's `symbol_consistency`, the parser's coverage invariants are the templates). The pre-commit gate (`fmt && clippy -D warnings && test`) must pass before every commit.
 
 ## Build & Test (once code exists)
 
