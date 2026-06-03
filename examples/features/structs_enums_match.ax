@@ -1,0 +1,26 @@
+// Structs, enums, and exhaustive `match` — the headline v0 type-system subset.
+// Parses clean at M0; type-checked at M2, runs at M4.
+struct Point {
+    x: Float,
+    y: Float,
+}
+
+enum Shape {
+    Circle(Float),
+    Rect(Float, Float),
+    Empty,
+}
+
+fn area(let s: Shape) -> Float {
+    match s {
+        Circle(r) => r * r,
+        Rect(w, h) => w * h,
+        Empty => 0.0,
+    }
+}
+
+fn main() {
+    val origin = Point { x: 0.0, y: 0.0 }
+    val s = Circle(3.0)
+    print(area(s))
+}

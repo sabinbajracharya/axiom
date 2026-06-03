@@ -1,0 +1,4 @@
+// The canonical first program. Parses clean at M0; runs at M4.
+fn main() {
+    print("Hello, Axiom!")
+}

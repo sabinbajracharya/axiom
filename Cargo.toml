@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/axiom-lexer", "crates/axiom-parser"]
+members = ["crates/axiom-lexer", "crates/axiom-parser", "crates/axiom-cli"]
 # Add crates here as they are created, e.g. members = ["crates/axiom-core"].
 #
 # EVERY crate MUST opt into the lint policy below by adding to its Cargo.toml:

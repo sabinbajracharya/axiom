@@ -1,0 +1,11 @@
+// Functions, bindings, and the arithmetic/comparison operators of the v0 subset.
+fn add(let a: Int, let b: Int) -> Int {
+    a + b
+}
+
+fn main() {
+    val x = 1 + 2
+    var y = x * 3
+    val ok = x < y
+    print(add(x, y))
+}

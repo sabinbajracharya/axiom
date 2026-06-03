@@ -1,0 +1,17 @@
+[package]
+name = "axiom-cli"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "axiom"
+path = "src/main.rs"
+
+[dependencies]
+axiom-parser = { path = "../axiom-parser" }
+thiserror = { workspace = true }
