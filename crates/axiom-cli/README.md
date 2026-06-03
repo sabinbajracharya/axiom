@@ -8,9 +8,10 @@ Two jobs:
 - **The command surface.** `axiom <command> [file.ax]`, hand-rolled (the v0
   surface is small, so no CLI dependency). The surface is stable now so the
   stages behind it can land one milestone at a time.
-- **The `.ax` feature-test harness** (`harness`) — discovers the
-  `examples/features/**` corpus so tests run every program through the pipeline.
-  The *pattern* is harvested from Oxy; re-implemented here with no dependencies.
+- **The `.ax` feature-test harness** (`harness`) — discovers the `corpus/**`
+  programs so tests run every one through the pipeline, classified by expected
+  outcome (`valid/` vs `errors/`). The *pattern* is harvested from Oxy;
+  re-implemented here with no dependencies.
 
 ## Commands
 
@@ -44,14 +45,14 @@ deliberately not built here.)
 | `src/lib.rs` | Driver entry; dispatch + stdout/stderr/exit wiring; help text | `run`, re-exports |
 | `src/cli.rs` | Argument parsing (pure, total) | `Command`, `CliError`, `parse_args` |
 | `src/check.rs` | The `check` core: source → CST dump + rendered diagnostics (pure) | `check_source`, `CheckReport` |
-| `src/harness.rs` | `.ax` corpus discovery for the feature tests | `features_dir`, `discover` |
-| `tests/features.rs` | Every corpus file lex+parses clean (input → output loop) | — |
+| `src/harness.rs` | `.ax` corpus discovery + outcome classification | `corpus_dir`, `discover`, `expects_errors` |
+| `tests/features.rs` | Every corpus file matches its expected outcome (input → output loop) | — |
 
 ## Commands (dev)
 
 ```bash
 cargo test -p axiom-cli                          # full suite incl. the corpus harness
-cargo run -p axiom-cli -- check examples/features/hello.ax   # the debug check
+cargo run -p axiom-cli -- check corpus/valid/hello.ax        # the debug check
 cargo run -p axiom-cli -- help
 ```
 
@@ -60,6 +61,7 @@ cargo run -p axiom-cli -- help
 - **Add a subcommand:** one `Command` variant + arm in `cli::parse_args`, one arm
   in `run`, a row in the tables above. Keep `cli` pure and `lib` the only place
   that touches stdout/stderr/exit codes.
-- **Add a corpus program:** drop a `*.ax` under `examples/features/`. The harness
-  discovers it automatically; `tests/features.rs` will check it clean (so it must
-  parse with zero diagnostics until later stages give it more meaning).
+- **Add a corpus program:** drop a `*.ax` under `corpus/valid/` (must parse clean
+  until later stages give it more meaning) or `corpus/errors/` (must produce a
+  diagnostic). The harness discovers it automatically and `tests/features.rs`
+  asserts the outcome for its directory.

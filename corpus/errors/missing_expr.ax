@@ -1,0 +1,5 @@
+// Negative test: the binding has no initializer expression after `=`.
+// `axiom check` must surface a diagnostic and exit non-zero.
+fn main() {
+    val x =
+}

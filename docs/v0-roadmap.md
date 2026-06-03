@@ -9,7 +9,9 @@
 is confirmed tolerable (`docs/spike-0-findings.md`, 23/23 scenarios matched intent). The
 **lexer** and **parser** are production-complete: lossless, total, fuzzed, snapshot-tested,
 with 94 typed AST views over a lossless CST (`crates/axiom-lexer`, `crates/axiom-parser`).
-Everything downstream of the parser is 0% — the typed AST views have no consumer yet.
+**M0 is done** — the `axiom` driver (`crates/axiom-cli`) and the `corpus/` feature-test
+harness are in place, with `axiom check` consuming the parser end-to-end. The remaining
+pipeline stages (HIR → typeck → IR → backends, M1–M6) have no consumer of the AST views yet.
 
 **What's next, per `DESIGN_SPEC.md` §14.** The next milestone is **v0 — the end-to-end
 skeleton with NO memory model**: `lex → parse → typecheck → IR → backend`, over a
@@ -100,21 +102,35 @@ These come from `RUST_CONVENTIONS.md` / `ENFORCEMENT.md` and the existing lexer/
 
 ---
 
-## M0 — Driver skeleton + feature-test harness *(deliverable: `axiom check hello.ax`)*
+## M0 — Driver skeleton + feature-test harness ✅ *(delivered: `axiom check <file>`)*
 
 **Goal:** stand up the plumbing everything else plugs into, before any new pipeline stage.
 
-- New crate **`crates/axiom-cli`** producing the `axiom` binary. Subcommand scaffold:
-  `axiom check <file>` runs lex→parse and renders diagnostics (reuse `axiom_parser::parse`
-  + the existing `ParseError::render(source)`); `run`/`build` stubbed to "not yet" exit codes.
-- New top-level **`examples/features/**/*.ax`** corpus dir + a shared harness crate/module that
-  walks it (the `.ax` feature-test harness Oxy uses; harvest the *pattern*, re-implement).
-  Seed with `hello.ax` and a couple of parse-only programs.
-- Decide naming now: keep `axiom` as the compiler-driver binary; `forge` (package manager)
-  stays a v2 concern — note it, don't build it.
+**Shipped** (`crates/axiom-cli`, the `axiom` binary):
+- **`axiom check <file>`** runs lex→parse, prints the CST to stdout and rendered diagnostics
+  to stderr (reuses `axiom_parser::parse` / `serialize` / `ParseError::render` verbatim — no
+  new analysis at M0). `run`/`build` are recognized but stubbed to a "not yet (M4/M5)" message,
+  so the command surface is stable before the stages behind it land.
+- Exit codes: `0` clean · `1` diagnostics · `2` usage/IO · `3` unimplemented.
+- Clean split: `cli.rs` (pure, total arg parsing → `Command`), `check.rs` (side-effect-free
+  `check_source`), `harness.rs` (the corpus walker), `lib.rs` (dispatch + the only
+  stdout/stderr/exit wiring), one-line `main.rs`.
+- **`corpus/`** — the `.ax` feature-test corpus everything downstream iterates, organized by
+  **expected outcome** (a milestone-stable axis — a program never moves as the pipeline grows):
+  `corpus/valid/**` (must parse clean now; run with expected output at M4) and `corpus/errors/**`
+  (must produce diagnostics). The harness (`corpus_dir` / `discover` / `expects_errors`) walks it
+  recursively, so dropping a `*.ax` in is all it takes to add a test. Mirrors the parser's
+  `tests/fixtures/` + `fixtures/errors/` split, lifted to the whole-pipeline level. Seeded with
+  `valid/{hello,arithmetic,structs_enums_match}.ax` + `errors/missing_expr.ax`.
+- Naming settled: `axiom` is the compiler-driver binary; `forge` (package manager) stays a v2
+  concern — noted, not built.
 
-**Exit / tests:** `axiom check` prints a parse tree or well-formed diagnostics for every corpus
-file; harness discovers and iterates fixtures; workspace builds clean with new crate's lints on.
+**Verify + debug harness:** `cargo run -p axiom-cli -- check corpus/valid/hello.ax` is the
+debug face (prints the CST). `tests/features.rs` discovers the corpus and asserts each file
+matches the outcome for its directory.
+**Exit / tests met:** `axiom check` prints a parse tree or well-formed diagnostics for every
+corpus file; harness discovers and iterates fixtures; workspace builds clean with the new
+crate's lints on (12 unit + 3 integration tests; full `fmt`/`clippy -D warnings`/`test` gate green).
 
 ---
 
@@ -215,7 +231,7 @@ well-formedness invariant checks; lowering unit tests (match decision trees, loo
 **Verify + debug harness:** `axiom run --trace <file>` (or `examples/interp.rs`) dumps the
 block/op execution trace + final register state for debugging; stdout of `axiom run` is the
 input→output oracle for corpus snapshots.
-**Exit / tests:** the `examples/features/**` corpus runs end-to-end with stdout snapshots;
+**Exit / tests:** the `corpus/valid/**` programs run end-to-end with stdout snapshots;
 `hello.ax`, `fib.ax`, `fizzbuzz.ax`, and a struct+enum+`match` program all produce correct
 output; runtime-trap fixtures (e.g. arithmetic panic) behave deterministically.
 
@@ -252,7 +268,7 @@ containing `unsafe`, all blocks justified.
 **Goal:** make v0 a clean, defensible baseline before v1's memory model lands on top of the IR.
 
 - Diagnostics quality pass across HIR/typeck (spans, fix-suggesting messages where cheap).
-- Broaden `examples/features/**` to a representative corpus (functions, recursion, structs,
+- Broaden `corpus/**` to a representative corpus (functions, recursion, structs,
   enums, nested `match`, loops) — these become v1's regression bedrock.
 - Per-folder `README.md` for every new crate, current and accurate.
 - Confirm the full pre-commit gate green; tag/document **v0**.
@@ -267,10 +283,10 @@ containing `unsafe`, all blocks justified.
 - **Per stage:** `cargo test` runs that stage's golden snapshots + coverage invariants + fuzz
   + diagnostics fixtures (the established lexer/parser pattern). Regenerate snapshots with
   `UPDATE_SNAPSHOTS=1 cargo test` and eyeball the diff.
-- **M4 smoke (first runnable):** `cargo run -p axiom-cli -- run examples/features/hello.ax`
+- **M4 smoke (first runnable):** `cargo run -p axiom-cli -- run corpus/valid/hello.ax`
   prints the expected output; same for `fib.ax`, `fizzbuzz.ax`, and a struct+enum+`match`
   program.
-- **M5 native + parity:** `cargo run -p axiom-cli -- build examples/features/hello.ax &&
+- **M5 native + parity:** `cargo run -p axiom-cli -- build corpus/valid/hello.ax &&
   ./hello`; `cargo test --test parity` (interpreter vs native binary) green over the whole
   corpus.
 - **Always:** `cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test`
