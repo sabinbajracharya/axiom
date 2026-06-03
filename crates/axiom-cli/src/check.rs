@@ -47,8 +47,11 @@ mod tests {
     fn test_check_reports_diagnostics_for_garbage() {
         let report = check_source("fn @ } )) val");
         assert!(!report.is_clean());
-        // A tree is still produced — parsing is total.
-        assert!(report.tree_dump.contains("SourceFile"));
+        // Parsing is total *and* lossless even on garbage: a well-formed root is
+        // still produced and the input tokens survive into the tree (here, the
+        // leading `fn` keyword) rather than being dropped.
+        assert!(report.tree_dump.starts_with("SourceFile @"));
+        assert!(report.tree_dump.contains("KwFn"));
     }
 
     #[test]

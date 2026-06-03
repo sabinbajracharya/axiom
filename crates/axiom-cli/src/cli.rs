@@ -1,6 +1,12 @@
 //! Argument parsing: turn `&[String]` into a [`Command`]. Hand-rolled (the v0
 //! surface is three subcommands plus help/version), so no CLI dependency. Pure
-//! and total — every input maps to a `Command` or a [`CliError`], never a panic.
+//! and total — every input maps to a `Command` or a [`CliError`], never a panic,
+//! and nothing is silently dropped (extra arguments are an error, not ignored).
+//!
+//! The first argument selects the command; `-h`/`--help`/`-V`/`--version` are
+//! recognized only in that leading position (so `axiom check --help` treats
+//! `--help` as the file path). That keeps the v0 grammar trivial; richer flag
+//! placement can come with a real CLI layer later if it earns its keep.
 
 use std::path::PathBuf;
 
@@ -28,6 +34,11 @@ pub enum CliError {
     UnknownCommand(String),
     #[error("`{0}` needs a file path, e.g. `axiom {0} hello.ax`")]
     MissingPath(&'static str),
+    #[error("`{command}` takes one file path, but got an extra argument `{extra}`")]
+    UnexpectedArg {
+        command: &'static str,
+        extra: String,
+    },
 }
 
 /// Parse the driver's arguments (the program name already stripped).
@@ -46,15 +57,23 @@ pub fn parse_args(args: &[String]) -> Result<Command, CliError> {
     }
 }
 
-/// The next argument as a path, or a `MissingPath` error naming the subcommand.
+/// Exactly one argument as a path: errors if it's missing (`MissingPath`) or if
+/// anything follows it (`UnexpectedArg`) — a trailing arg is a mistake, not junk
+/// to ignore.
 fn one_path<'a>(
     mut rest: impl Iterator<Item = &'a String>,
     command: &'static str,
 ) -> Result<PathBuf, CliError> {
-    match rest.next() {
-        Some(arg) => Ok(PathBuf::from(arg)),
-        None => Err(CliError::MissingPath(command)),
+    let Some(arg) = rest.next() else {
+        return Err(CliError::MissingPath(command));
+    };
+    if let Some(extra) = rest.next() {
+        return Err(CliError::UnexpectedArg {
+            command,
+            extra: extra.clone(),
+        });
     }
+    Ok(PathBuf::from(arg))
 }
 
 #[cfg(test)]
@@ -120,6 +139,26 @@ mod tests {
         assert_eq!(
             parse_args(&args(&["check"])),
             Err(CliError::MissingPath("check"))
+        );
+    }
+
+    #[test]
+    fn test_parse_args_rejects_trailing_args() {
+        // An extra argument is a mistake (a typo'd flag, a second file), not junk
+        // to silently drop. It names the offending argument.
+        assert_eq!(
+            parse_args(&args(&["check", "a.ax", "b.ax"])),
+            Err(CliError::UnexpectedArg {
+                command: "check",
+                extra: "b.ax".to_string()
+            })
+        );
+        assert_eq!(
+            parse_args(&args(&["run", "a.ax", "--verbose"])),
+            Err(CliError::UnexpectedArg {
+                command: "run",
+                extra: "--verbose".to_string()
+            })
         );
     }
 }

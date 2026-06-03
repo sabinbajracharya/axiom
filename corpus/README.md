@@ -29,4 +29,6 @@ corpus is the cross-crate, end-to-end set.)
 | `valid/hello.ax` | `fn main`, a `print` call, string literal |
 | `valid/arithmetic.ax` | functions + params, `val`/`var`, arithmetic + comparison ops, calls |
 | `valid/structs_enums_match.ax` | structs, enums, exhaustive `match`, struct literals, variant construction |
-| `errors/missing_expr.ax` | a binding with no initializer — must be rejected |
+| `errors/missing_expr.ax` | a binding with no initializer expression after `=` |
+| `errors/unclosed_call.ax` | an argument list that is never closed (delimiter recovery) |
+| `errors/garbage_item.ax` | stray tokens where a top-level item is expected (item-level resync) |

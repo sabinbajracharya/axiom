@@ -130,7 +130,7 @@ debug face (prints the CST). `tests/features.rs` discovers the corpus and assert
 matches the outcome for its directory.
 **Exit / tests met:** `axiom check` prints a parse tree or well-formed diagnostics for every
 corpus file; harness discovers and iterates fixtures; workspace builds clean with the new
-crate's lints on (12 unit + 3 integration tests; full `fmt`/`clippy -D warnings`/`test` gate green).
+crate's lints on (13 unit + 3 integration tests; full `fmt`/`clippy -D warnings`/`test` gate green).
 
 ---
 

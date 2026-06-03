@@ -24,11 +24,13 @@ fn test_every_corpus_file_matches_expected_outcome() {
         let source = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
         let report = check_source(&source);
-        // A tree is always produced — parsing is total.
+        // A tree is always produced — parsing is total — and it's a well-formed
+        // root (the dump leads with the `SourceFile` node and its byte span).
         assert!(
-            report.tree_dump.contains("SourceFile"),
-            "{}: produced no SourceFile tree",
-            path.display()
+            report.tree_dump.starts_with("SourceFile @"),
+            "{}: did not produce a well-formed SourceFile root, got:\n{}",
+            path.display(),
+            report.tree_dump.lines().next().unwrap_or("<empty>")
         );
         if harness::expects_errors(&path) {
             assert!(

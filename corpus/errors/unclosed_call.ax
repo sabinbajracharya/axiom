@@ -1,0 +1,5 @@
+// Negative test: the call's argument list is never closed (missing `)`).
+// Exercises delimiter recovery; `axiom check` must surface a diagnostic.
+fn main() {
+    print("hi"
+}

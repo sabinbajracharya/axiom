@@ -1,0 +1,8 @@
+// Negative test: stray tokens where a top-level item is expected. Exercises
+// item-level resync (the run collapses to one diagnostic); the valid `fn` after
+// it still parses. `axiom check` must surface a diagnostic.
+@ @ @
+
+fn main() {
+    print("ok")
+}

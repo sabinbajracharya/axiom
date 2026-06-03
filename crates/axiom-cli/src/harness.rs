@@ -28,10 +28,20 @@ pub fn discover(root: &Path) -> io::Result<Vec<PathBuf>> {
     Ok(found)
 }
 
-/// Does this corpus path live under an `errors/` directory (a negative test that
-/// must produce diagnostics), as opposed to a `valid/` program?
+/// Is this an `errors/` program (a negative test that must produce diagnostics),
+/// as opposed to a `valid/` one? Classified by the category directory directly
+/// beneath `corpus/` — anchored there so an unrelated ancestor dir named
+/// `errors` (e.g. a checkout under `/home/errors/…`) can't misclassify a file.
 pub fn expects_errors(path: &Path) -> bool {
-    path.components().any(|c| c.as_os_str() == "errors")
+    let mut components = path.components().map(|c| c.as_os_str());
+    while let Some(component) = components.next() {
+        if component == "corpus" {
+            return components
+                .next()
+                .is_some_and(|category| category == "errors");
+        }
+    }
+    false
 }
 
 /// Depth-first walk pushing every `*.ax` file path into `out`.
@@ -76,6 +86,15 @@ mod tests {
     #[test]
     fn test_expects_errors_classifies_by_directory() {
         assert!(expects_errors(Path::new("corpus/errors/missing_expr.ax")));
+        assert!(expects_errors(Path::new("corpus/errors/nested/x.ax")));
         assert!(!expects_errors(Path::new("corpus/valid/hello.ax")));
+        // Anchored to the category beneath `corpus/`: an absolute path is fine,
+        // and an ancestor dir merely *named* `errors` must NOT misclassify.
+        assert!(expects_errors(Path::new(
+            "/home/me/axiom/corpus/errors/x.ax"
+        )));
+        assert!(!expects_errors(Path::new(
+            "/home/errors/axiom/corpus/valid/hello.ax"
+        )));
     }
 }
