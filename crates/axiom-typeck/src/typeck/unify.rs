@@ -6,7 +6,7 @@
 //! return type.
 
 use super::TypeChecker;
-use crate::types::{FnTy, Ty, TypeParamId};
+use crate::types::{FnTy, InstanceTy, Ty, TypeParamId};
 use std::collections::HashMap;
 
 /// Substitution map: type parameter → concrete type.
@@ -55,6 +55,15 @@ impl TypeChecker {
                 }
                 Ok(())
             }
+            // Instance types (List<Int>, Map<String, Bool>, etc.): unify name + args.
+            (Ty::Instance(a), Ty::Instance(e))
+                if a.name == e.name && a.args.len() == e.args.len() =>
+            {
+                for (aa, ea) in a.args.iter().zip(e.args.iter()) {
+                    self.unify(aa, ea, subst)?;
+                }
+                Ok(())
+            }
             // Same concrete type: success.
             _ if actual == expected => Ok(()),
             // Mismatch.
@@ -78,6 +87,15 @@ impl TypeChecker {
             Ty::Tuple(elems) => {
                 Ty::Tuple(elems.iter().map(|e| Self::substitute(e, subst)).collect())
             }
+            Ty::Instance(inst) => Ty::Instance(InstanceTy {
+                name: inst.name.clone(),
+                def_id: inst.def_id,
+                args: inst
+                    .args
+                    .iter()
+                    .map(|a| Self::substitute(a, subst))
+                    .collect(),
+            }),
             // Concrete types (Int, Float, Bool, String, Unit, Struct, Enum, Error):
             // no substitution needed.
             _ => ty.clone(),
@@ -93,6 +111,7 @@ impl TypeChecker {
                     || Self::contains_type_param(&f.return_type)
             }
             Ty::Tuple(elems) => elems.iter().any(Self::contains_type_param),
+            Ty::Instance(inst) => inst.args.iter().any(Self::contains_type_param),
             _ => false,
         }
     }

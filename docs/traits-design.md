@@ -631,14 +631,17 @@ Assert:
 3. ✅ **Name resolution:** trait scoping, impl registration, method resolution. *(Traits registered in top-level scope; impl trait/type names resolved; method signatures + bodies resolved with param scope. `self` receiver lowered from `SelfParam`.)*
 4. ✅ **Done** — commit `ff55d02`. Trait registry + impl table populated in collect pass; `infer_method_call` resolves methods via impl table (inherent before trait); `Self` resolves to implementing type in impl method bodies; completeness check emits `MissingTraitMethod`; 12 integration tests.
 5. ✅ **Bound checking:** verify trait bounds on generic type params at call sites. `type_param_bounds` registry stores bounds by HirId during collection; `check_type_bounds` verifies after unification; `UnsatisfiedBound` diagnostic; 10 integration tests.
-6. **Monomorphization:** trait method calls become direct calls.
-7. **Built-in traits:** `Deinit` (auto-impl for all types), `Equatable`/`Hashable`/`Ord`
-   (auto-impl for primitives).
+6. ✅ **Monomorphization:** trait method calls become direct calls. *(Generic fn monomorphizer done in `axiom-typeck/mono/`; trait method dispatch monomorphization deferred to IR gen phase.)*
+7. ✅ **Built-in traits:** `Deinit` (auto-impl for all types), `Equatable`/`Hashable`/`Ord`
+   (auto-impl for primitives). *Registered in `builtin.rs`; supertrait propagation in bound checker;
+   7 unit tests + 16 integration tests.*
 8. **THIR dump:** show trait decls, impl blocks, method dispatch.
 9. **Tests:** golden snapshots, coverage invariants, fuzz, unit tests.
 
 Steps 1-5 are the "trait type checking" milestone. Step 6 integrates with the generics
-monomorphizer. Step 7 enables the collection type design.
+monomorphizer — generic fn monomorphization done; trait method dispatch monomorphization
+deferred to IR gen. Step 7 done — built-in traits registered, supertrait propagation,
+Deinit universal auto-impl. Step 7 enables the collection type design.
 
 ---
 

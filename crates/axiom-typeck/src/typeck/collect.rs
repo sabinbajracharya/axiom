@@ -11,6 +11,10 @@ use axiom_hir::*;
 
 impl TypeChecker {
     pub(super) fn collect_pass(&mut self) {
+        self.register_builtin_traits();
+        self.register_builtin_impls();
+        self.register_builtin_types();
+        self.register_builtin_methods();
         self.collect_struct_defs();
         self.collect_enum_defs();
         self.collect_fn_sigs();
@@ -199,6 +203,14 @@ impl TypeChecker {
                     }
                 }
 
+                // Collect supertrait names from the trait's own type param bounds.
+                let supertraits: Vec<String> = trait_def
+                    .type_params
+                    .iter()
+                    .flat_map(|tp| &tp.bounds)
+                    .map(|b| name_text(&b.name))
+                    .collect();
+
                 self.trait_registry.insert(
                     trait_def.name.clone(),
                     TraitInfo {
@@ -206,6 +218,7 @@ impl TypeChecker {
                         def_id: trait_def.id,
                         required_methods: required,
                         default_methods: default,
+                        supertraits,
                     },
                 );
             }

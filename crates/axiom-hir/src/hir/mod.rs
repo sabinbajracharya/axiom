@@ -186,6 +186,7 @@ pub enum Expr {
     Match(MatchExpr),
     Loop(LoopExpr),
     StructLit(StructLitExpr),
+    ListLit(ListLitExpr),
     Assign(AssignExpr),
 }
 
@@ -206,6 +207,7 @@ impl Expr {
             Expr::Loop(e) => e.id,
             Expr::StructLit(e) => e.id,
             Expr::Assign(e) => e.id,
+            Expr::ListLit(e) => e.id,
         }
     }
 }
@@ -399,6 +401,12 @@ pub struct StructLitExpr {
 pub struct StructLitField {
     pub name: String,
     pub value: Expr,
+}
+
+#[derive(Debug, Clone)]
+pub struct ListLitExpr {
+    pub id: HirId,
+    pub elements: Vec<Expr>,
 }
 
 #[derive(Debug, Clone)]

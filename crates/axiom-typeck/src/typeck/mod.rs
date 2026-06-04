@@ -14,10 +14,12 @@
 //! On error, return `Ty::Error` and emit a diagnostic. `Ty::Error` is sticky
 //! (does not cascade additional diagnostics from subexpressions).
 
+mod builtin;
 mod collect;
 mod control;
 mod helpers;
 mod infer;
+mod methods;
 mod stmt;
 mod unify;
 
@@ -74,6 +76,9 @@ struct TypeChecker {
     /// Populated during collect_pass for all generic functions.
     /// Used by bound checking to find the bounds for a callee's type params.
     type_param_bounds: HashMap<HirId, Vec<String>>,
+    /// Built-in generic type names and their type parameter counts.
+    /// e.g., "List" → 1, "Map" → 2.
+    builtin_types: HashMap<String, usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,6 +137,8 @@ struct TraitInfo {
     def_id: HirId,
     required_methods: Vec<TraitMethodInfo>,
     default_methods: Vec<TraitMethodInfo>,
+    /// Supertrait names (e.g., Hashable requires Equatable).
+    supertraits: Vec<String>,
 }
 
 /// Signature of a trait method (used for completeness checking and bound verification).
@@ -215,6 +222,7 @@ impl TypeChecker {
             impl_table: Vec::new(),
             current_self_type: None,
             type_param_bounds: HashMap::new(),
+            builtin_types: HashMap::new(),
         }
     }
 

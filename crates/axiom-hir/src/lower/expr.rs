@@ -54,19 +54,11 @@ pub(super) fn lower_expr(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx) ->
     if let Some(e) = ast::AssignExpr::cast(node.clone()) {
         return lower_assign_expr(&e, ctx);
     }
-    if let Some(e) = ast::ReturnStmt::cast(node.clone()) {
-        return lower_return_as_expr(&e, ctx);
+    if let Some(e) = ast::ListLitExpr::cast(node.clone()) {
+        return lower_list_lit_expr(&e, ctx);
     }
-    if let Some(e) = ast::BreakStmt::cast(node.clone()) {
-        return lower_break_expr(&e, ctx);
-    }
-    if ast::ContinueStmt::cast(node.clone()).is_some() {
-        let id = ctx.alloc_id();
-        return Expr::Block(Block {
-            id,
-            stmts: vec![Stmt::ContinueStmt(ContinueStmt { id: ctx.alloc_id() })],
-            tail: None,
-        });
+    if let Some(result) = lower_stmt_expr(node, ctx) {
+        return result;
     }
     unsupported_expr(ctx, &format!("expression kind {:?}", node.kind()), node)
 }
@@ -325,6 +317,35 @@ fn lower_loop_expr(e: &ast::LoopExpr, ctx: &mut LowerCtx) -> Expr {
         LoopKind::Infinite(body)
     };
     Expr::Loop(LoopExpr { id, kind })
+}
+
+fn lower_list_lit_expr(e: &ast::ListLitExpr, ctx: &mut LowerCtx) -> Expr {
+    let id = ctx.alloc_id();
+    let elements = e
+        .elements()
+        .into_iter()
+        .map(|elem| lower_expr(&elem, ctx))
+        .collect();
+    Expr::ListLit(ListLitExpr { id, elements })
+}
+
+fn lower_stmt_expr(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> Option<Expr> {
+    if let Some(e) = ast::ReturnStmt::cast(node.clone()) {
+        return Some(lower_return_as_expr(&e, ctx));
+    }
+    if let Some(e) = ast::BreakStmt::cast(node.clone()) {
+        return Some(lower_break_expr(&e, ctx));
+    }
+    if ast::ContinueStmt::cast(node.clone()).is_some() {
+        let id = ctx.alloc_id();
+        let cont = ContinueStmt { id: ctx.alloc_id() };
+        return Some(Expr::Block(Block {
+            id,
+            stmts: vec![Stmt::ContinueStmt(cont)],
+            tail: None,
+        }));
+    }
+    None
 }
 
 fn lower_struct_lit_expr(e: &ast::StructLitExpr, ctx: &mut LowerCtx) -> Expr {

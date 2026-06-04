@@ -142,6 +142,11 @@ fn check_expr(expr: &Expr, diagnosed: &[String], errors: &mut Vec<CoverageError>
             check_assign_target(&a.target, a.id, diagnosed, errors);
             check_expr(&a.value, diagnosed, errors);
         }
+        Expr::ListLit(l) => {
+            for elem in &l.elements {
+                check_expr(elem, diagnosed, errors);
+            }
+        }
         Expr::Lit(_) => {}
     }
 }

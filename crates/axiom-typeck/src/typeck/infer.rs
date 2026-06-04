@@ -1,4 +1,4 @@
-//! Leaf expression type inference: literals, paths, binary/unary ops, calls, fields, indexing.
+//! Leaf expression type inference: literals, paths, binary/unary ops, calls.
 
 use super::unify::Substitution;
 use super::{helpers, TypeChecker};
@@ -27,6 +27,7 @@ impl TypeChecker {
             Expr::Match(match_expr) => self.infer_match(match_expr),
             Expr::Loop(loop_expr) => self.infer_loop(loop_expr),
             Expr::StructLit(sl) => self.infer_struct_lit(sl),
+            Expr::ListLit(list) => self.infer_list_lit(list),
             Expr::Assign(assign) => self.infer_assign(assign),
         }
     }
@@ -52,7 +53,6 @@ impl TypeChecker {
     fn infer_path(&mut self, name_ref: &NameRef, expr_id: HirId) -> Ty {
         let ty = match name_ref {
             NameRef::Resolved(r) => {
-                // `Self` resolves to the implementing type inside impl blocks.
                 if r.text == "Self" {
                     if let Some(ref self_ty) = self.current_self_type {
                         self_ty.clone()
@@ -78,7 +78,6 @@ impl TypeChecker {
                 }
             }
             NameRef::Unresolved(u) => {
-                // `Self` may be unresolved by name resolution — handle it here.
                 if u.text == "Self" {
                     if let Some(ref self_ty) = self.current_self_type {
                         self_ty.clone()
@@ -267,8 +266,6 @@ impl TypeChecker {
             });
             *fn_ty.return_type.clone()
         } else if Self::contains_type_param(&Ty::Fn(fn_ty.clone())) {
-            // Generic call: unify arguments with parameter types, then
-            // substitute type params in the return type.
             let mut subst = Substitution::new();
             for (arg_ty, param_ty) in arg_types.iter().zip(fn_ty.params.iter()) {
                 if !helpers::is_error(arg_ty) && !helpers::is_error(param_ty) {
@@ -281,11 +278,9 @@ impl TypeChecker {
                     }
                 }
             }
-            // Check that each substituted type satisfies its trait bounds.
             self.check_type_bounds(&subst, self.span_for(call.id));
             Self::substitute(&fn_ty.return_type, &subst)
         } else {
-            // Non-generic call: structural equality check.
             for (i, (arg_ty, param_ty)) in arg_types.iter().zip(fn_ty.params.iter()).enumerate() {
                 if !helpers::is_error(arg_ty) && !helpers::is_error(param_ty) && arg_ty != param_ty
                 {
@@ -302,15 +297,13 @@ impl TypeChecker {
     }
 
     /// Check that each concrete type in `subst` satisfies the trait bounds
-    /// declared on its type parameter. Emits `UnsatisfiedBound` for each
-    /// missing impl.
+    /// declared on its type parameter.
     fn check_type_bounds(
         &mut self,
         subst: &std::collections::HashMap<crate::types::TypeParamId, Ty>,
         span: axiom_lexer::Span,
     ) {
         for (tp_id, concrete_ty) in subst {
-            // Find bounds for this type param from the global registry.
             let bounds: Vec<String> = self
                 .type_param_bounds
                 .get(&tp_id.def_id)
@@ -319,205 +312,57 @@ impl TypeChecker {
 
             let type_name = match Self::type_name_from_ty(concrete_ty) {
                 Some(n) => n,
-                None => continue, // Can't look up bounds for anonymous types.
+                None => continue,
             };
 
             for bound in &bounds {
-                let has_impl = self.impl_table.iter().any(|info| {
-                    info.trait_name.as_deref() == Some(bound) && info.type_name == type_name
-                });
-                if !has_impl {
-                    self.emit(TypeDiagnostic::UnsatisfiedBound {
-                        type_name: type_name.clone(),
-                        bound: bound.clone(),
-                        param: tp_id.name.clone(),
-                        span,
-                    });
-                }
+                self.check_single_bound(bound, &type_name, tp_id, span);
+            }
+        }
+    }
+
+    /// Check that a single trait bound (and its supertraits) are satisfied.
+    fn check_single_bound(
+        &mut self,
+        bound: &str,
+        type_name: &str,
+        tp_id: &crate::types::TypeParamId,
+        span: axiom_lexer::Span,
+    ) {
+        if bound == "Deinit" {
+            return;
+        }
+        let has_impl = self
+            .impl_table
+            .iter()
+            .any(|info| info.trait_name.as_deref() == Some(bound) && info.type_name == type_name);
+        if !has_impl {
+            self.emit(TypeDiagnostic::UnsatisfiedBound {
+                type_name: type_name.to_string(),
+                bound: bound.to_string(),
+                param: tp_id.name.clone(),
+                span,
+            });
+            return;
+        }
+        if let Some(trait_info) = self.trait_registry.get(bound).cloned() {
+            for supertrait in &trait_info.supertraits {
+                self.check_single_bound(supertrait, type_name, tp_id, span);
             }
         }
     }
 
     /// Extract the type name string used in the impl table from a `Ty`.
-    fn type_name_from_ty(ty: &Ty) -> Option<String> {
+    pub(super) fn type_name_from_ty(ty: &Ty) -> Option<String> {
         match ty {
             Ty::Struct(s) => Some(s.name.clone()),
             Ty::Enum(e) => Some(e.name.clone()),
+            Ty::Instance(inst) => Some(inst.name.clone()),
             Ty::Int => Some("Int".to_string()),
             Ty::Float => Some("Float".to_string()),
             Ty::Bool => Some("Bool".to_string()),
             Ty::String => Some("String".to_string()),
             _ => None,
         }
-    }
-
-    fn infer_method_call(&mut self, mc: &MethodCallExpr) -> Ty {
-        let receiver_ty = self.infer_expr(&mc.receiver);
-        let arg_types: Vec<Ty> = mc.args.iter().map(|a| self.infer_expr(a)).collect();
-
-        let ty = if helpers::is_error(&receiver_ty) {
-            Ty::Error
-        } else {
-            // Extract the type name from the receiver for impl table lookup.
-            let receiver_name = match &receiver_ty {
-                Ty::Struct(s) => Some(s.name.clone()),
-                Ty::Enum(e) => Some(e.name.clone()),
-                _ => None,
-            };
-
-            match receiver_name {
-                Some(name) => {
-                    // Search impl table: inherent impls first, then trait impls.
-                    let method_info = self.find_impl_method(&name, &mc.method);
-                    match method_info {
-                        Some((fn_def, _impl_info)) => {
-                            self.check_method_call(mc, &fn_def, &arg_types)
-                        }
-                        None => {
-                            self.emit(TypeDiagnostic::UnknownMethod {
-                                method: mc.method.clone(),
-                                ty: receiver_ty.to_string(),
-                                span: self.span_for(mc.id),
-                            });
-                            Ty::Error
-                        }
-                    }
-                }
-                None => {
-                    self.emit(TypeDiagnostic::UnknownMethod {
-                        method: mc.method.clone(),
-                        ty: receiver_ty.to_string(),
-                        span: self.span_for(mc.id),
-                    });
-                    Ty::Error
-                }
-            }
-        };
-        self.types.insert(mc.id, ty.clone());
-        ty
-    }
-
-    /// Find an impl method matching the given type name and method name.
-    /// Searches inherent impls first, then trait impls.
-    fn find_impl_method(
-        &self,
-        type_name: &str,
-        method_name: &str,
-    ) -> Option<(FnDef, &super::ImplInfo)> {
-        // First pass: inherent impls (no trait_name).
-        for info in &self.impl_table {
-            if info.trait_name.is_none() && info.type_name == type_name {
-                for m in &info.methods {
-                    if m.name == method_name {
-                        return Some((m.clone(), info));
-                    }
-                }
-            }
-        }
-        // Second pass: trait impls.
-        for info in &self.impl_table {
-            if info.trait_name.is_some() && info.type_name == type_name {
-                for m in &info.methods {
-                    if m.name == method_name {
-                        return Some((m.clone(), info));
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    /// Check a method call against a resolved FnDef: arity, arg types, return type.
-    fn check_method_call(&mut self, mc: &MethodCallExpr, fn_def: &FnDef, arg_types: &[Ty]) -> Ty {
-        // Resolve the method's parameter types (excluding `self` if present).
-        let param_types: Vec<Ty> = fn_def
-            .params
-            .iter()
-            .filter(|p| p.name != "self")
-            .map(|p| {
-                p.ty.as_ref()
-                    .map(|t| self.resolve_hir_ty(t))
-                    .unwrap_or(Ty::Error)
-            })
-            .collect();
-        let return_type = fn_def
-            .return_type
-            .as_ref()
-            .map(|t| self.resolve_hir_ty(t))
-            .unwrap_or(Ty::Unit);
-
-        // Arity check.
-        if param_types.len() != arg_types.len() {
-            self.emit(TypeDiagnostic::CallArityMismatch {
-                name: mc.method.clone(),
-                expected: param_types.len(),
-                found: arg_types.len(),
-                span: self.span_for(mc.id),
-            });
-            return return_type;
-        }
-
-        // Argument type check.
-        for (arg_ty, param_ty) in arg_types.iter().zip(param_types.iter()) {
-            if !helpers::is_error(arg_ty) && !helpers::is_error(param_ty) && arg_ty != param_ty {
-                self.emit(TypeDiagnostic::TypeMismatch {
-                    expected: param_ty.to_string(),
-                    found: arg_ty.to_string(),
-                    span: self.span_for(mc.id),
-                });
-            }
-        }
-
-        return_type
-    }
-
-    fn infer_field(&mut self, field: &FieldExpr) -> Ty {
-        let receiver_ty = self.infer_expr(&field.receiver);
-        let ty = if helpers::is_error(&receiver_ty) {
-            Ty::Error
-        } else {
-            match &receiver_ty {
-                Ty::Struct(s) => {
-                    let fields = self.lookup_struct_fields(&s.name);
-                    match fields {
-                        Some(fields) => {
-                            match fields.iter().find(|(name, _)| *name == field.field) {
-                                Some((_, field_ty)) => field_ty.clone(),
-                                None => {
-                                    self.emit(TypeDiagnostic::UnknownField {
-                                        field: field.field.clone(),
-                                        ty: receiver_ty.to_string(),
-                                        span: self.span_for(field.id),
-                                    });
-                                    Ty::Error
-                                }
-                            }
-                        }
-                        None => Ty::Error,
-                    }
-                }
-                _ => {
-                    self.emit(TypeDiagnostic::UnknownField {
-                        field: field.field.clone(),
-                        ty: receiver_ty.to_string(),
-                        span: self.span_for(field.id),
-                    });
-                    Ty::Error
-                }
-            }
-        };
-        self.types.insert(field.id, ty.clone());
-        ty
-    }
-
-    fn infer_index(&mut self, index: &IndexExpr) -> Ty {
-        self.infer_expr(&index.base);
-        self.infer_expr(&index.index);
-        self.emit(TypeDiagnostic::NotYetSupported {
-            feature: "index expressions".to_string(),
-            span: self.span_for(index.id),
-        });
-        self.types.insert(index.id, Ty::Error);
-        Ty::Error
     }
 }

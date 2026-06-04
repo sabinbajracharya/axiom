@@ -774,14 +774,20 @@ Generate random trait bound scenarios. Assert:
 
 #### Monomorphization
 
-| Test | What it verifies |
-|---|---|
-| `test_mono_single_instance` | One call site → one instance |
-| `test_mono_dedup` | Two call sites, same types → one instance |
-| `test_mono_multi_instance` | Two call sites, different types → two instances |
-| `test_mono_terminates` | Recursive generic → worklist terminates |
-| `test_mono_no_type_params_in_output` | No `Ty::TypeParam` in monomorphized IR |
-| `test_mono_all_instances_generated` | Every `InstanceTy` has a function |
+| Test | What it verifies | Status |
+|---|---|---|
+| `test_mono_identity_int` | One call site → one `id__Int` instance with correct signature | ✅ |
+| `test_mono_identity_string` | `id("hello")` → `id__String` with String types | ✅ |
+| `test_mono_dedup` | Two call sites, same types → one instance | ✅ |
+| `test_mono_identity_two_types` | Two calls same type → dedup to 1 instance | ✅ |
+| `test_mono_no_generics` | Non-generic program → 0 instances | ✅ |
+| `test_mono_mangled_name` | Mangled name format `fn__Type` | ✅ |
+| `test_mono_substituted_signature` | Concrete params + return type after substitution | ✅ |
+| `test_mono_two_type_params` | `pair(1, true)` → `pair__Int_Bool` with 2 type args | ✅ |
+| `test_mono_trait_bound_type` | Generic fn with bound → instance with concrete struct type | ✅ |
+| `test_mono_nested_generic_call` | `wrap<T>` calls `id<T>` → both get specialized | ✅ |
+| `test_mono_builtin_bool` | `id(true)` → `id__Bool` | ✅ |
+| `test_mono_builtin_float` | `id(3.14)` → `id__Float` | ✅ |
 
 ---
 
@@ -792,13 +798,13 @@ Generate random trait bound scenarios. Assert:
 3. **Name resolution:** type param scoping, type arg resolution, `resolve_ty_names`. ✅ **Done** — commit `44651e8`.
 4. **Type checker:** `TypeParam` variant in `Ty`, unification with type params, bound checking. ✅ **Done** — commit `3306305`. `Ty::TypeParam`/`Ty::Instance` added; `resolve_hir_ty` resolves type params via `current_type_params` scope; `unify.rs` implements unification + substitution; `check_call_args` uses unification for generic callees; 10 integration tests + 7 unit tests. Bound checking completed in generics+traits integration phase.
 5. **Bound checking:** verify trait bounds on type params at call sites. ✅ **Done** — `type_param_bounds` registry stores bounds by HirId during collection; `check_type_bounds` verifies after unification; `UnsatisfiedBound` diagnostic; 10 integration tests.
-6. **Monomorphizer:** instantiation table, specialization, worklist. ⬚ Not started.
+6. **Monomorphizer:** instantiation table, specialization, worklist. ✅ **Done** — `mono/` module in `axiom-typeck`; `Monomorphizer` walks THIR, discovers generic call sites, builds substitution via unification, produces `MonoResult` with `MonoInstance` per unique `(FnDef, type_args)` pair; mangled names `original__Type1_Type2`; dedup via string key; nested generic call discovery; 12 integration tests + 13 unit tests.
 7. **IR:** generic function representation, monomorphized instances. ⬚ Not started.
 8. **THIR dump:** show type params, type args, monomorphized instances. ⬚ Not started.
 9. **Tests:** golden snapshots, coverage invariants, fuzz, unit tests. ⬚ Partial — golden fixture `generics.ax`, 7 unit tests for HIR layer; typeck/mono tests not yet.
 
 Steps 1-5 are the "generic type checking" milestone. Steps 6-7 are the "monomorphization"
-milestone. Steps 8-9 run in parallel with everything.
+milestone. Steps 8-9 run in parallel with everything. Step 6 done.
 
 ---
 

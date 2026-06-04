@@ -24,6 +24,7 @@
 mod coverage;
 mod error;
 pub mod exhaustiveness;
+pub mod mono;
 mod serialize;
 mod thir;
 mod typeck;
@@ -31,6 +32,7 @@ mod types;
 
 pub use coverage::{check_all, TypeckCoverageError};
 pub use error::TypeDiagnostic;
+pub use mono::{monomorphize, MonoInstance, MonoResult};
 pub use serialize::serialize;
 pub use thir::{Thir, TypeMap};
 pub use typeck::check;

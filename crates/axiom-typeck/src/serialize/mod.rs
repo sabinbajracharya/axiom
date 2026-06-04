@@ -234,6 +234,7 @@ fn serialize_expr(expr: &Expr, depth: usize, thir: &Thir, out: &mut String) {
         Expr::Loop(e) => serialize_loop_expr(e, depth, &type_ann, thir, out),
         Expr::StructLit(e) => serialize_struct_lit_expr(e, depth, &type_ann, thir, out),
         Expr::Assign(e) => serialize_assign_expr(e, depth, &type_ann, thir, out),
+        Expr::ListLit(e) => serialize_list_lit_expr(e, depth, &type_ann, thir, out),
     }
 }
 
@@ -412,6 +413,23 @@ fn serialize_struct_lit_expr(
         serialize_expr(&f.value, depth + 1, thir, out);
         out.push('\n');
     }
+}
+
+fn serialize_list_lit_expr(
+    e: &ListLitExpr,
+    depth: usize,
+    type_ann: &str,
+    thir: &Thir,
+    out: &mut String,
+) {
+    out.push_str(&format!("ListLit({}){} [", e.id, type_ann));
+    for (i, elem) in e.elements.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        serialize_expr(elem, depth, thir, out);
+    }
+    out.push(']');
 }
 
 fn serialize_assign_expr(

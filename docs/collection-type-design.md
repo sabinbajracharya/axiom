@@ -327,13 +327,19 @@ val s: Set<Int> = {1, 2, 3}                   // desugars to Set::from_array(...
 
 ## 7. Migration path (built-in → library)
 
-### 7.1 v0: Built-in `List<T>` (temporary)
+### 7.1 v0: Built-in `List<T>` and `Map<K,V>` ✅
 
-Before generics and traits exist, `List<T>` is a compiler built-in:
-- `Ty::Builtin("List", vec![element_ty])` — name-based, extensible.
-- Flat/inline storage, container-level refcount.
-- Hard-coded subscript for indexing.
-- Literal syntax `[1, 2, 3]` hard-coded in the parser.
+With generics and traits now implemented, collections are compiler built-ins:
+- `Ty::Instance(InstanceTy { name: "List", args: [T] })` — uses existing Instance type path.
+- `Ty::Instance(InstanceTy { name: "Map", args: [K, V] })` — same pattern.
+- HIR: `Expr::ListLit` variant for `[1, 2, 3]` literals (lowered from parser's `ListLitExpr`).
+- Type checker: list literal inference (element type unification), method resolution on Instance types, index expressions for List/Map.
+- Built-in methods registered in `builtin.rs`: List (push, count, is_empty, capacity), Map (set, get, has, count, is_empty).
+- `new()` constructors deferred — require path expression support (associated function calls on types).
+- Map literal syntax (`["a": 1]`) deferred — requires parser changes.
+- Unification/substitution extended for Instance types (name + args element-wise).
+- `builtin_types` registry: "List" → 1 type param, "Map" → 2 type params.
+- **10 integration tests + 2 unit tests** for collection types.
 
 ### 7.2 v1: Generics + traits exist
 

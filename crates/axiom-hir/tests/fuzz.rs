@@ -286,6 +286,7 @@ fn check_expr_ids(expr: &axiom_hir::Expr, seen: &mut HashSet<axiom_hir::HirId>) 
             true
         }
         axiom_hir::Expr::Assign(a) => check_expr_ids(&a.value, seen),
+        axiom_hir::Expr::ListLit(l) => check_expr_slice(&l.elements, seen),
     }
 }
 

@@ -170,6 +170,7 @@ fn expr_kind_name(expr: &axiom_hir::Expr) -> &'static str {
         axiom_hir::Expr::Loop(_) => "Loop",
         axiom_hir::Expr::StructLit(_) => "StructLit",
         axiom_hir::Expr::Assign(_) => "Assign",
+        axiom_hir::Expr::ListLit(_) => "ListLit",
     }
 }
 
@@ -227,6 +228,11 @@ fn collect_expr_children(expr: &axiom_hir::Expr, ids: &mut Vec<(HirId, String)>)
         axiom_hir::Expr::Assign(a) => {
             collect_assign_target_ids(&a.target, ids);
             collect_expr_ids(&a.value, ids);
+        }
+        axiom_hir::Expr::ListLit(l) => {
+            for elem in &l.elements {
+                collect_expr_ids(elem, ids);
+            }
         }
     }
 }

@@ -323,6 +323,11 @@ fn resolve_expr_names(expr: &mut Expr, scope: &mut Scope, diagnostics: &mut Vec<
             resolve_assign_target_names(&mut a.target, scope, diagnostics);
             resolve_expr_names(&mut a.value, scope, diagnostics);
         }
+        Expr::ListLit(l) => {
+            for elem in &mut l.elements {
+                resolve_expr_names(elem, scope, diagnostics);
+            }
+        }
     }
 }
 
