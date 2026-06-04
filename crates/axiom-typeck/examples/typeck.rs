@@ -38,7 +38,7 @@ fn main() {
     let hir = lower(&root, &source);
     let thir = check(hir);
 
-    let dump = serialize(&thir);
+    let dump = serialize(&thir, None);
     print!("{dump}");
 
     for diag in &thir.diagnostics {

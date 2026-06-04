@@ -14,7 +14,7 @@ fn check_source(source: &str) -> Thir {
 }
 
 fn dump(thir: &Thir) -> String {
-    serialize(thir)
+    serialize(thir, None)
 }
 
 #[test]

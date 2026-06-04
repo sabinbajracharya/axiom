@@ -63,7 +63,7 @@ pub fn check_source(source: &str) -> CheckReport {
     for diag in &thir.diagnostics {
         diagnostics.push(TypeDiagnostic::render(diag, source));
     }
-    let thir_dump = thir_serialize(&thir);
+    let thir_dump = thir_serialize(&thir, None);
 
     CheckReport {
         tree_dump,

@@ -17,7 +17,7 @@
 //! let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
 //! let hir = lower(&root, "fn main() { val x = 1 + 2 }");
 //! let thir = check(hir);
-//! let dump = serialize(&thir);
+//! let dump = serialize(&thir, None);
 //! assert!(dump.contains("Bin"));
 //! ```
 

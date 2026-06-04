@@ -37,14 +37,14 @@ fn test_typeck_deterministic() {
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
         let hir = lower(&root, source);
         let thir = check(hir);
-        serialize(&thir)
+        serialize(&thir, None)
     };
     let result2 = {
         let result = axiom_parser::parse(source);
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
         let hir = lower(&root, source);
         let thir = check(hir);
-        serialize(&thir)
+        serialize(&thir, None)
     };
     assert_eq!(result1, result2, "THIR dump must be deterministic");
 }

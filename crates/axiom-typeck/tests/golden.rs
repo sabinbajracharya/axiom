@@ -5,14 +5,23 @@
 
 use axiom_hir::lower;
 use axiom_parser::ast::AstNode;
-use axiom_typeck::{check, serialize};
+use axiom_typeck::{check, monomorphize, serialize};
 
 fn typeck_source(source: &str) -> String {
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
     let hir = lower(&root, source);
     let thir = check(hir);
-    serialize(&thir)
+    serialize(&thir, None)
+}
+
+fn typeck_source_with_mono(source: &str) -> String {
+    let result = axiom_parser::parse(source);
+    let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
+    let hir = lower(&root, source);
+    let thir = check(hir);
+    let mono = monomorphize(&thir);
+    serialize(&thir, Some(&mono))
 }
 
 fn read_golden(path: &str) -> Option<String> {
@@ -259,4 +268,46 @@ fn test_golden_continue() {
     }
 }",
     );
+}
+
+#[test]
+fn test_golden_generics() {
+    let source = "fn id<T>(x: T) -> T { x }
+fn main() {
+    val a = id(42)
+}";
+    let actual = typeck_source_with_mono(source);
+    let golden_path = "tests/fixtures/generics.thir";
+    if std::env::var("UPDATE_SNAPSHOTS").is_ok() {
+        std::fs::write(golden_path, &actual).unwrap();
+    } else {
+        let expected = std::fs::read_to_string(golden_path)
+            .unwrap_or_else(|_| panic!("golden file missing: {golden_path}"));
+        assert_eq!(actual, expected, "golden mismatch for generics");
+    }
+}
+
+#[test]
+fn test_golden_traits() {
+    let source = "trait Shape {
+    fn area(let self) -> Float;
+}
+struct Circle { radius: Float }
+impl Shape for Circle {
+    fn area(let self) -> Float { 3.14 * self.radius * self.radius }
+}
+fn main() {
+    val c = Circle { radius: 5.0 }
+    val a = c.area()
+    print(a)
+}";
+    let actual = typeck_source(source);
+    let golden_path = "tests/fixtures/traits.thir";
+    if std::env::var("UPDATE_SNAPSHOTS").is_ok() {
+        std::fs::write(golden_path, &actual).unwrap();
+    } else {
+        let expected = std::fs::read_to_string(golden_path)
+            .unwrap_or_else(|_| panic!("golden file missing: {golden_path}"));
+        assert_eq!(actual, expected, "golden mismatch for traits");
+    }
 }

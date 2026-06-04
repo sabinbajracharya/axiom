@@ -1,4 +1,4 @@
-StructDef(0) name=Wrapper vis=private fields=[private value: Int→<unresolved>]
+StructDef(0) name=Wrapper vis=private fields=[private value: Int]
 FnDef(2) name=main vis=private params=[] return=() : () -> Unit
   Block(3) stmts=[1] tail=Some : ///error///
     ValStmt(7) : Unit

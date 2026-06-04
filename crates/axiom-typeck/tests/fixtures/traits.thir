@@ -1,0 +1,29 @@
+TraitDef(0) name=Shape vis=private
+  Method(1) name=area
+    Param(2) self : _
+    Return : Float→<unresolved>
+StructDef(3) name=Circle vis=private fields=[private radius: Float]
+ImplDef(5) trait=Shape for=Circle
+  FnDef(6) name=area vis=private params=[let self: ///error///] return=Float→<unresolved> : (///error///) -> Float
+    Block(8) stmts=[0] tail=Some : ///error///
+      Bin(10) op=* : ///error///
+        Bin(11) op=* : ///error///
+          Lit(12) Float(3.14) : Float
+          Field(13) radius : ///error///
+            Path(14) self→7 : ///error///
+        Field(15) radius : ///error///
+          Path(16) self→7 : ///error///
+FnDef(17) name=main vis=private params=[] return=() : () -> Unit
+  Block(18) stmts=[2] tail=Some : Unit
+    ValStmt(22) : Unit
+Ident(19) c→19 : Circle
+      StructLit(20) Circle→3 : Circle
+        radius:         Lit(21) Float(5) : Float
+
+    ValStmt(26) : Unit
+Ident(23) a→23 : Float
+      MethodCall(24) method=area : Float
+        Path(25) c→19 : Circle
+
+    Call(28) callee=print→1000000 : Unit
+      Path(29) a→23 : Float

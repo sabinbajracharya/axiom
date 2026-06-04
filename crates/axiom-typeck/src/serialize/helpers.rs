@@ -2,6 +2,34 @@
 
 use axiom_hir::*;
 
+/// Format type parameters: `[T: Ord, U: Eq]` or `[T, U]`.
+pub(super) fn fmt_type_params(params: &[HirTypeParam]) -> String {
+    params
+        .iter()
+        .map(|tp| {
+            if tp.bounds.is_empty() {
+                tp.name.clone()
+            } else {
+                let bounds = tp
+                    .bounds
+                    .iter()
+                    .map(|b| name_text(&b.name))
+                    .collect::<Vec<_>>()
+                    .join(" + ");
+                format!("{}: {}", tp.name, bounds)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn name_text(nr: &NameRef) -> String {
+    match nr {
+        NameRef::Resolved(r) => r.text.clone(),
+        NameRef::Unresolved(u) => u.text.clone(),
+    }
+}
+
 pub(super) fn fmt_hir_ty(ty: &HirTy) -> String {
     match ty {
         HirTy::Named(nr) => match nr {

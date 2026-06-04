@@ -23,46 +23,67 @@ impl TypeChecker {
     }
 
     fn collect_struct_defs(&mut self) {
-        let struct_infos: Vec<StructInfo> = self
+        // First pass: resolve field types and collect struct infos.
+        // We also track (field_hir_id, resolved_ty) for populating the TypeMap.
+        struct StructCollect {
+            info: StructInfo,
+            field_ids: Vec<(HirId, Ty)>,
+        }
+
+        let collected: Vec<StructCollect> = self
             .hir
             .items
             .iter()
             .filter_map(|item| match item {
-                Item::StructDef(s) => Some(StructInfo {
-                    name: s.name.clone(),
-                    def_id: s.id,
-                    fields: s
+                Item::StructDef(s) => {
+                    let mut field_ids = Vec::new();
+                    let fields = s
                         .fields
                         .iter()
                         .map(|f| {
                             let ty = self.resolve_hir_ty(&f.ty);
+                            field_ids.push((f.id, ty.clone()));
                             FieldInfo {
                                 name: f.name.clone(),
                                 ty,
                             }
                         })
-                        .collect(),
-                }),
+                        .collect();
+                    Some(StructCollect {
+                        info: StructInfo {
+                            name: s.name.clone(),
+                            def_id: s.id,
+                            fields,
+                        },
+                        field_ids,
+                    })
+                }
                 _ => None,
             })
             .collect();
 
-        for info in &struct_infos {
-            let field_types: Vec<(String, Ty)> = info
+        // Second pass: register in env, TypeMap, and field table.
+        for sc in &collected {
+            // Populate TypeMap for struct field declarations.
+            for (fid, fty) in &sc.field_ids {
+                self.types.insert(*fid, fty.clone());
+            }
+            let field_types: Vec<(String, Ty)> = sc
+                .info
                 .fields
                 .iter()
                 .map(|f| (f.name.clone(), f.ty.clone()))
                 .collect();
             self.env.define(
-                info.name.clone(),
+                sc.info.name.clone(),
                 Ty::Struct(StructTy {
-                    name: info.name.clone(),
-                    def_id: info.def_id,
+                    name: sc.info.name.clone(),
+                    def_id: sc.info.def_id,
                 }),
-                info.def_id,
+                sc.info.def_id,
                 Mutability::Immutable,
             );
-            self.register_struct_fields(&info.name, &field_types);
+            self.register_struct_fields(&sc.info.name, &field_types);
         }
     }
 

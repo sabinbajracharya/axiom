@@ -158,7 +158,7 @@ fn nongeneric_type_mismatch_still_reported() {
 #[test]
 fn generic_fn_type_param_in_thir() {
     let thir = check_source("fn id<T>(let x: T) -> T { x }");
-    let dump = axiom_typeck::serialize(&thir);
+    let dump = axiom_typeck::serialize(&thir, None);
     // The THIR dump should contain the type parameter T.
     assert!(dump.contains('T'), "expected T in THIR dump:\n{dump}");
 }

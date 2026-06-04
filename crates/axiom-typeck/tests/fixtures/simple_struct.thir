@@ -1,4 +1,4 @@
-StructDef(0) name=Point vis=private fields=[private x: Float→<unresolved>, private y: Float→<unresolved>]
+StructDef(0) name=Point vis=private fields=[private x: Float, private y: Float]
 FnDef(3) name=main vis=private params=[] return=() : () -> Unit
   Block(4) stmts=[1] tail=None : Unit
     ValStmt(9) : Unit

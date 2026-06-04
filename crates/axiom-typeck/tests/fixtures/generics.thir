@@ -1,0 +1,13 @@
+FnDef(0) name=id vis=private type_params=[T] params=[let x: T] return=T→1 : (T) -> T
+  Block(3) stmts=[0] tail=Some : T
+    Path(5) x→2 : T
+FnDef(6) name=main vis=private params=[] return=() : () -> Unit
+  Block(7) stmts=[1] tail=None : Unit
+    ValStmt(11) : Unit
+Ident(8) a→8 : Int
+      Call(9) callee=id→0 : Int
+        Lit(10) Int(42) : Int
+
+FnDef(name=id__Int) vis=private generic_origin=id<Int> params=[let _0: Int] return=Int : (Int) -> Int
+  Block(3) stmts=[0] tail=Some : T
+    Path(5) x→2 : T
