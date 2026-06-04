@@ -57,12 +57,9 @@ impl TypeChecker {
                         other => other.clone(),
                     }
                 } else {
-                    match r.text.as_str() {
-                        "print" | "println" => Ty::Fn(FnTy {
-                            params: vec![Ty::String],
-                            return_type: Box::new(Ty::Unit),
-                        }),
-                        _ => {
+                    match helpers::builtin_fn(&r.text) {
+                        Some(ty) => ty,
+                        None => {
                             self.emit(TypeDiagnostic::UndefinedType {
                                 name: r.text.clone(),
                                 span: self.span_for(expr_id),
@@ -224,12 +221,9 @@ impl TypeChecker {
                 if let Some(info) = self.env.lookup(&r.text) {
                     info.ty.clone()
                 } else {
-                    match r.text.as_str() {
-                        "print" | "println" => Ty::Fn(FnTy {
-                            params: vec![Ty::String],
-                            return_type: Box::new(Ty::Unit),
-                        }),
-                        _ => {
+                    match helpers::builtin_fn(&r.text) {
+                        Some(ty) => ty,
+                        None => {
                             self.emit(TypeDiagnostic::UndefinedType {
                                 name: r.text.clone(),
                                 span: self.span_for(call.id),

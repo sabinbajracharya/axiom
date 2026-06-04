@@ -23,7 +23,7 @@ use axiom_lexer::Span;
 pub fn check_match_exhaustiveness(
     arms: &[MatchArm],
     all_variants: &[String],
-    is_unit_variant: &dyn Fn(&str) -> bool,
+    is_unit_variant: &impl Fn(&str) -> bool,
     span: Span,
 ) -> Vec<TypeDiagnostic> {
     if all_variants.is_empty() {
@@ -58,7 +58,7 @@ fn collect_covered_variants(
     pat: &Pattern,
     all_variants: &[String],
     covered: &mut Vec<String>,
-    is_unit_variant: &dyn Fn(&str) -> bool,
+    is_unit_variant: &impl Fn(&str) -> bool,
 ) {
     match pat {
         Pattern::Wildcard(_) => {

@@ -151,6 +151,8 @@ impl TypeChecker {
         self.diagnostics.push(diag);
     }
 
+    // TODO(v1): wire up real spans from the HIR. Currently all diagnostics
+    // report `0:0:` because the type checker does not yet track source positions.
     pub(super) fn span_for(&self, _id: HirId) -> axiom_lexer::Span {
         axiom_lexer::Span { lo: 0, hi: 0 }
     }

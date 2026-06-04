@@ -27,3 +27,14 @@ pub(super) fn call_name(name_ref: &NameRef) -> String {
         NameRef::Unresolved(u) => u.text.clone(),
     }
 }
+
+/// Look up a builtin function by name. Returns `None` for unknown names.
+pub(super) fn builtin_fn(name: &str) -> Option<Ty> {
+    match name {
+        "print" | "println" => Some(Ty::Fn(crate::types::FnTy {
+            params: vec![Ty::String],
+            return_type: Box::new(Ty::Unit),
+        })),
+        _ => None,
+    }
+}

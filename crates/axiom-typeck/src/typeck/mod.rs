@@ -162,9 +162,10 @@ impl TypeChecker {
     }
 
     fn check_pass(&mut self) {
-        for item in &self.hir.items.clone() {
+        // Clone required: check_fn_body borrows self mutably while iterating.
+        for item in self.hir.items.clone() {
             if let Item::FnDef(f) = item {
-                self.check_fn_body(f);
+                self.check_fn_body(&f);
             }
         }
     }

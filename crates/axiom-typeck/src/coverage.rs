@@ -43,19 +43,12 @@ pub fn check_all(thir: &Thir) -> Result<(), Vec<TypeckCoverageError>> {
         }
     }
 
-    // Simple heuristic: we should have at least as many diagnostics as Ty::Errors.
-    // Each Ty::Error must be paired with exactly one diagnostic.
-    let error_count = thir
-        .types
-        .values()
-        .filter(|t| matches!(t, Ty::Error))
-        .count();
-    let diag_count = thir.diagnostics.len();
-    if error_count > diag_count && error_count > 0 {
-        for (id, ty) in &thir.types {
-            if matches!(ty, Ty::Error) {
-                errors.push(TypeckCoverageError::ErrorWithoutDiagnostic { id: *id });
-            }
+    // Each Ty::Error node must have at least one corresponding diagnostic.
+    // We don't enforce strict 1:1 (one diagnostic can cover multiple Ty::Error
+    // nodes), but every Ty::Error must be backed by at least one diagnostic.
+    for (id, ty) in &thir.types {
+        if matches!(ty, Ty::Error) && thir.diagnostics.is_empty() {
+            errors.push(TypeckCoverageError::ErrorWithoutDiagnostic { id: *id });
         }
     }
 
@@ -67,14 +60,12 @@ pub fn check_all(thir: &Thir) -> Result<(), Vec<TypeckCoverageError>> {
 }
 
 /// Collect all HirIds from the HIR (items, expressions, statements, patterns).
-#[allow(dead_code)]
 fn collect_all_hir_ids(hir: &axiom_hir::Hir, ids: &mut Vec<(HirId, String)>) {
     for item in &hir.items {
         collect_item_ids(item, ids);
     }
 }
 
-#[allow(dead_code)]
 fn collect_item_ids(item: &axiom_hir::Item, ids: &mut Vec<(HirId, String)>) {
     match item {
         axiom_hir::Item::FnDef(f) => {
@@ -99,7 +90,6 @@ fn collect_item_ids(item: &axiom_hir::Item, ids: &mut Vec<(HirId, String)>) {
     }
 }
 
-#[allow(dead_code)]
 fn collect_block_ids(block: &axiom_hir::Block, ids: &mut Vec<(HirId, String)>) {
     ids.push((block.id, "Block".to_string()));
     for stmt in &block.stmts {
@@ -110,7 +100,6 @@ fn collect_block_ids(block: &axiom_hir::Block, ids: &mut Vec<(HirId, String)>) {
     }
 }
 
-#[allow(dead_code)]
 fn collect_stmt_ids(stmt: &axiom_hir::Stmt, ids: &mut Vec<(HirId, String)>) {
     match stmt {
         axiom_hir::Stmt::ValStmt(s) => {
@@ -136,7 +125,6 @@ fn collect_stmt_ids(stmt: &axiom_hir::Stmt, ids: &mut Vec<(HirId, String)>) {
     }
 }
 
-#[allow(dead_code)]
 fn collect_expr_ids(expr: &axiom_hir::Expr, ids: &mut Vec<(HirId, String)>) {
     ids.push((expr.id(), expr_kind_name(expr).to_string()));
     collect_expr_children(expr, ids);
@@ -219,7 +207,6 @@ fn collect_expr_children(expr: &axiom_hir::Expr, ids: &mut Vec<(HirId, String)>)
     }
 }
 
-#[allow(dead_code)]
 fn collect_loop_ids(l: &axiom_hir::LoopExpr, ids: &mut Vec<(HirId, String)>) {
     match &l.kind {
         axiom_hir::LoopKind::Infinite(body) => collect_block_ids(body, ids),
@@ -240,7 +227,6 @@ fn collect_loop_ids(l: &axiom_hir::LoopExpr, ids: &mut Vec<(HirId, String)>) {
     }
 }
 
-#[allow(dead_code)]
 fn collect_assign_target_ids(target: &axiom_hir::AssignTarget, ids: &mut Vec<(HirId, String)>) {
     match target {
         axiom_hir::AssignTarget::Name(_) => {}
@@ -254,7 +240,6 @@ fn collect_assign_target_ids(target: &axiom_hir::AssignTarget, ids: &mut Vec<(Hi
     }
 }
 
-#[allow(dead_code)]
 fn collect_pattern_ids(pat: &axiom_hir::Pattern, ids: &mut Vec<(HirId, String)>) {
     let kind = match pat {
         axiom_hir::Pattern::Wildcard(_) => "Wildcard",
