@@ -36,17 +36,18 @@ block of `T` elements.
 
 ---
 
-### Step 2: `Deinit` auto-impl for user-defined structs
+### Step 2: `Deinit` auto-impl for user-defined structs ✅
 
 `Deinit` auto-impls exist for primitives (Int, Float, Bool, String, Unit). Need to extend
 so user-defined structs also get `Deinit` automatically — a struct's `drop` calls `drop`
 on each field.
 
 **Files to touch:**
-- `crates/axiom-typeck/src/typeck/builtin.rs` — extend `register_auto_impls` to generate `Deinit` for `StructInfo` entries
-- `crates/axiom-typeck/tests/builtin_traits.rs` — add test: user-defined struct satisfies `Deinit` bound
+- `crates/axiom-typeck/src/typeck/collect.rs` — added `register_struct_deinit_impls` called after `collect_struct_defs`, registers Deinit impl for each user-defined struct
+- `crates/axiom-typeck/src/typeck/infer.rs` — removed hardcoded `if bound == "Deinit" { return; }` shortcut; Deinit now resolved via impl table like all other traits
+- `crates/axiom-typeck/tests/builtin_traits.rs` — added `test_deinit_bound_satisfied_for_nested_struct`
 
-**Exit gate:** `struct Foo { x: Int }` satisfies `T: Deinit`.
+**Exit gate:** `struct Foo { x: Int }` satisfies `T: Deinit`. ✅
 
 ---
 

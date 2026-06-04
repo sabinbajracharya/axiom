@@ -16,6 +16,7 @@ impl TypeChecker {
         self.register_builtin_types();
         self.register_builtin_methods();
         self.collect_struct_defs();
+        self.register_struct_deinit_impls();
         self.collect_enum_defs();
         self.collect_fn_sigs();
         self.collect_trait_defs();
@@ -84,6 +85,24 @@ impl TypeChecker {
                 Mutability::Immutable,
             );
             self.register_struct_fields(&sc.info.name, &field_types);
+        }
+    }
+
+    /// Register `Deinit` auto-impls for every user-defined struct.
+    ///
+    /// A struct's drop conceptually calls `drop` on each field. All primitive
+    /// fields already have Deinit from `register_builtin_impls`; nested structs
+    /// get their own Deinit impl from this same pass. The bound-checker resolves
+    /// the chain at check time.
+    fn register_struct_deinit_impls(&mut self) {
+        for item in &self.hir.items {
+            if let Item::StructDef(s) = item {
+                self.impl_table.push(ImplInfo {
+                    trait_name: Some("Deinit".to_string()),
+                    type_name: s.name.clone(),
+                    methods: vec![],
+                });
+            }
         }
     }
 

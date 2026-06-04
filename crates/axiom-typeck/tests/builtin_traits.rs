@@ -58,6 +58,22 @@ fn main() { drop_val(Foo { x: 1 }) }",
     );
 }
 
+#[test]
+fn test_deinit_bound_satisfied_for_nested_struct() {
+    // A struct whose field is another struct — both get Deinit auto-impls.
+    let thir = check_source(
+        "struct Inner { v: Int }
+struct Outer { inner: Inner }
+fn drop_val<T: Deinit>(let x: T) { }
+fn main() { drop_val(Outer { inner: Inner { v: 42 } }) }",
+    );
+    assert!(
+        thir.diagnostics.is_empty(),
+        "expected no diagnostics for Deinit(Outer), got: {:?}",
+        thir.diagnostics
+    );
+}
+
 // ── Equatable bound ─────────────────────────────────────────────────────────
 
 #[test]

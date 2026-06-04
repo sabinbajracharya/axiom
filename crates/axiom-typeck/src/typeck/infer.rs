@@ -329,9 +329,6 @@ impl TypeChecker {
         tp_id: &crate::types::TypeParamId,
         span: axiom_lexer::Span,
     ) {
-        if bound == "Deinit" {
-            return;
-        }
         let has_impl = self
             .impl_table
             .iter()
