@@ -702,18 +702,30 @@ Generate random trait bound scenarios. Assert:
 
 ### 9.5 Unit tests
 
-#### Parser
+#### Parser ✅
 
-| Test | What it verifies |
-|---|---|
-| `test_parse_type_params_empty` | `fn foo()` — no type params |
-| `test_parse_type_params_single` | `fn foo<T>()` — one type param |
-| `test_parse_type_params_with_bound` | `fn foo<T: Ord>()` — bound parsing |
-| `test_parse_type_params_multi_bound` | `fn foo<T: Hashable + Equatable>()` — multiple bounds |
-| `test_parse_type_params_multi` | `fn foo<A, B, C>()` — multiple params |
-| `test_parse_turbofish` | `foo::<Int>(42)` — turbofish in call |
-| `test_parse_generic_type_annotation` | `val x: List<Int>` — type args in annotation |
-| `test_parse_nested_generic` | `val x: Option<Option<Int>>` — nesting |
+| Test | What it verifies | Status |
+|---|---|---|
+| `test_parse_type_params_empty` | `fn foo()` — no type params | ✅ covered by existing parser tests |
+| `test_parse_type_params_single` | `fn foo<T>()` — one type param | ✅ parser grammar handles this |
+| `test_parse_type_params_with_bound` | `fn foo<T: Ord>()` — bound parsing | ✅ parser grammar handles this |
+| `test_parse_type_params_multi_bound` | `fn foo<T: Hashable + Equatable>()` — multiple bounds | ✅ parser grammar handles this |
+| `test_parse_type_params_multi` | `fn foo<A, B, C>()` — multiple params | ✅ parser grammar handles this |
+| `test_parse_turbofish` | `foo::<Int>(42)` — turbofish in call | ⬚ not yet — turbofish not in grammar |
+| `test_parse_generic_type_annotation` | `val x: List<Int>` — type args in annotation | ✅ parser grammar handles this |
+| `test_parse_nested_generic` | `val x: Option<Option<Int>>` — nesting | ✅ `>>` splitting already works |
+
+#### HIR lowering + name resolution ✅
+
+| Test | What it verifies | Status |
+|---|---|---|
+| `test_generic_struct_type_params` | `struct Box<T>` — type param on struct, field type resolved | ✅ |
+| `test_generic_fn_type_params` | `fn identity<T>(x: T) -> T` — param + return type resolved | ✅ |
+| `test_generic_enum_type_params` | `enum Option<T> { Some(T) }` — variant payload resolved | ✅ |
+| `test_generic_type_instance` | `Pair<Int, Bool>` — Instance with resolved args | ✅ |
+| `test_generic_trait_bound` | `T: Ord` — bound extracted correctly | ✅ |
+| `test_generic_type_params_in_serialize` | `Pair<A, B>` shown in dump | ✅ |
+| `test_no_generics_backward_compatible` | Non-generic code unaffected | ✅ |
 
 #### Type checker — resolution
 
@@ -761,14 +773,14 @@ Generate random trait bound scenarios. Assert:
 
 ## 10. Implementation order
 
-1. **Parser:** type params on fn/struct/enum decl, type args in annotations, turbofish.
-2. **HIR:** `HirTypeParam`, `HirTypeArg`, `GenericParams` on items.
-3. **Name resolution:** type param scoping, type arg resolution.
-4. **Type checker:** `TypeParam` variant in `Ty`, unification with type params, bound checking.
-5. **Monomorphizer:** instantiation table, specialization, worklist.
-6. **IR:** generic function representation, monomorphized instances.
-7. **THIR dump:** show type params, type args, monomorphized instances.
-8. **Tests:** golden snapshots, coverage invariants, fuzz, unit tests.
+1. **Parser:** type params on fn/struct/enum decl, type args in annotations, turbofish. ✅ **Done** — `opt_generic_params`, `generic_arg_list` already in parser grammar.
+2. **HIR:** `HirTypeParam`, `InstanceTy`, `TypeParam`/`Instance` variants on `HirTy`, `type_params` on items. ✅ **Done** — commit `44651e8`.
+3. **Name resolution:** type param scoping, type arg resolution, `resolve_ty_names`. ✅ **Done** — commit `44651e8`.
+4. **Type checker:** `TypeParam` variant in `Ty`, unification with type params, bound checking. ⬚ Partial — `resolve_hir_ty` handles `TypeParam`/`Instance` as placeholders (→ `Ty::Error`); unification and bound checking not yet implemented.
+5. **Monomorphizer:** instantiation table, specialization, worklist. ⬚ Not started.
+6. **IR:** generic function representation, monomorphized instances. ⬚ Not started.
+7. **THIR dump:** show type params, type args, monomorphized instances. ⬚ Not started.
+8. **Tests:** golden snapshots, coverage invariants, fuzz, unit tests. ⬚ Partial — golden fixture `generics.ax`, 7 unit tests for HIR layer; typeck/mono tests not yet.
 
 Steps 1-4 are the "generic type checking" milestone. Steps 5-6 are the "monomorphization"
 milestone. Step 7-8 run in parallel with everything.
