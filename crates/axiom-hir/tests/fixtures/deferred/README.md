@@ -1,10 +1,15 @@
 # Deferred fixtures
 
-These `.ax` programs exercise name resolution that M1 can't fully validate yet —
-struct constructors, enum variant calls, field access, method dispatch, and
-closures all produce `→<unresolved>` because the M1 resolver only handles
-value-level names (functions, variables, builtins).
+These `.ax` programs exercise language features beyond v0's scope. When the
+features land, promote the fixture to `fixtures/` (axiom-hir) and add a typeck
+golden test.
 
-When M2 (type checker) lands, these should be promoted to `fixtures/` and
-given `.hir` golden snapshots. Until then, they are tracked here as the
-target M2 must aim for.
+- **closures.ax** — nested `fn` with capture (closure capture, §8.2 in
+  DESIGN_SPEC.md). Blocked on closure capture semantics (Spike 0 / v1+).
+- **method_chains.ax** — higher-order `Fn` type syntax, lambda expressions,
+  recursive struct types, `Nil` sentinel. Blocked on generics or associated
+  features (v1+).
+
+Previously deferred and now promoted (M2):
+- structs_enums_match.ax → fixtures/ (enum variant construction + exhaustive match)
+- struct_field_access.ax → fixtures/ (struct field access + mutation with `inout`)

@@ -167,6 +167,52 @@ fn main() {
 }
 
 #[test]
+fn test_golden_structs_enums_match() {
+    check_golden(
+        "structs_enums_match",
+        "enum Shape {
+    Circle(Float),
+    Rect(Float, Float),
+    Empty,
+}
+
+fn area(s: Shape) -> Float {
+    match s {
+        Circle(r) => 3.14 * r * r
+        Rect(w, h) => w * h
+        Empty => 0.0
+    }
+}
+
+fn main() {
+    val c = Circle(3.0)
+    val a = area(c)
+    print(a)
+}",
+    );
+}
+
+#[test]
+fn test_golden_struct_field_access() {
+    check_golden(
+        "struct_field_access",
+        "struct Point {
+    x: Float,
+    y: Float,
+}
+
+fn origin() -> Point {
+    Point { x: 0.0, y: 0.0 }
+}
+
+fn translate(p: Point, dx: Float, dy: Float) {
+    p.x = p.x + dx
+    p.y = p.y + dy
+}",
+    );
+}
+
+#[test]
 fn test_golden_bindings() {
     check_golden(
         "bindings",
