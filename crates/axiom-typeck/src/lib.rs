@@ -23,6 +23,7 @@
 
 mod coverage;
 mod error;
+pub mod exhaustiveness;
 mod serialize;
 mod thir;
 mod typeck;

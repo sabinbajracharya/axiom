@@ -37,6 +37,7 @@ Thir → axiom_typeck::check_all → coverage invariant check
 | `src/error.rs` | Type-check diagnostics (`thiserror` enum) + render | `TypeDiagnostic` |
 | `src/thir.rs` | THIR wrapper (HIR + TypeMap + diagnostics) | `Thir`, `TypeMap` |
 | `src/typeck.rs` | The type checker: `TypeChecker` struct, `TypeEnv`, two passes | `check()`, bidirectional typing |
+| `src/exhaustiveness.rs` | Match exhaustiveness checking for enums | `check_match_exhaustiveness` |
 | `src/serialize.rs` | Canonical THIR dump (pure function) | `serialize` |
 | `src/coverage.rs` | Coverage invariant checks | `check_all`, `TypeckCoverageError` |
 | `examples/typeck.rs` | Debug CLI (`cargo run -p axiom-typeck --example typeck -- file.ax`) | — |

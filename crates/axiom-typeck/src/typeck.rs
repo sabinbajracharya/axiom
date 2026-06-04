@@ -800,7 +800,18 @@ impl TypeChecker {
         // Check exhaustiveness for enum scrutinees.
         if !is_error(&scrutinee_ty) {
             if let Ty::Enum(enum_ty) = &scrutinee_ty {
-                for diag in self.check_match_exhaustiveness(match_expr, enum_ty) {
+                let all_variants: Vec<String> = self
+                    .lookup_enum_variants(&enum_ty.name)
+                    .map(|vs| vs.iter().map(|v| v.name.clone()).collect())
+                    .unwrap_or_default();
+                let span = self.span_for(match_expr.id);
+                let is_unit_variant = |name: &str| self.is_unit_variant(name);
+                for diag in crate::exhaustiveness::check_match_exhaustiveness(
+                    &match_expr.arms,
+                    &all_variants,
+                    &is_unit_variant,
+                    span,
+                ) {
                     self.emit(diag);
                 }
             }
@@ -1264,94 +1275,6 @@ impl TypeChecker {
             }
         }
         None
-    }
-}
-
-// ── Match exhaustiveness ─────────────────────────────────────────────────────
-
-impl TypeChecker {
-    fn check_match_exhaustiveness(
-        &self,
-        match_expr: &MatchExpr,
-        enum_ty: &EnumTy,
-    ) -> Vec<TypeDiagnostic> {
-        let all_variants: Vec<String> = self
-            .lookup_enum_variants(&enum_ty.name)
-            .map(|vs| vs.iter().map(|v| v.name.clone()).collect())
-            .unwrap_or_default();
-
-        if all_variants.is_empty() {
-            return Vec::new();
-        }
-
-        let mut covered: Vec<String> = Vec::new();
-        for arm in &match_expr.arms {
-            self.collect_covered_variants(&arm.pattern, &all_variants, &mut covered);
-        }
-
-        let missing: Vec<String> = all_variants
-            .iter()
-            .filter(|v| !covered.contains(&v.to_string()))
-            .cloned()
-            .collect();
-
-        if !missing.is_empty() {
-            vec![TypeDiagnostic::NonExhaustiveMatch {
-                missing,
-                span: self.span_for(match_expr.id),
-            }]
-        } else {
-            Vec::new()
-        }
-    }
-
-    fn collect_covered_variants(
-        &self,
-        pat: &Pattern,
-        all_variants: &[String],
-        covered: &mut Vec<String>,
-    ) {
-        match pat {
-            Pattern::Wildcard(_) => {
-                covered.extend(all_variants.iter().cloned());
-            }
-            Pattern::Ident(p) => {
-                // If the identifier resolves to a unit variant, it covers that variant.
-                // Otherwise it's a catch-all binding.
-                if self.is_unit_variant(&p.name) {
-                    if !covered.contains(&p.name) {
-                        covered.push(p.name.clone());
-                    }
-                } else {
-                    covered.extend(all_variants.iter().cloned());
-                }
-            }
-            Pattern::Literal(_) => {
-                // Literals don't cover enum variants.
-            }
-            Pattern::TupleStruct(ts) => match &ts.path {
-                NameRef::Resolved(r) => {
-                    if !covered.contains(&r.text) {
-                        covered.push(r.text.clone());
-                    }
-                }
-                NameRef::Unresolved(_) => {}
-            },
-            Pattern::Struct(sp) => match &sp.path {
-                NameRef::Resolved(r) => {
-                    if !covered.contains(&r.text) {
-                        covered.push(r.text.clone());
-                    }
-                }
-                NameRef::Unresolved(_) => {}
-            },
-            Pattern::Or(op) => {
-                for alt in &op.alternatives {
-                    self.collect_covered_variants(alt, all_variants, covered);
-                }
-            }
-            Pattern::Range(_) => {}
-        }
     }
 }
 
