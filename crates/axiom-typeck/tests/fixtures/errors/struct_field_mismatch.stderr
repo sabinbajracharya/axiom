@@ -1,0 +1,2 @@
+1:1: struct `Point` missing field `y`
+1:1: struct `Point` expects 2 field(s), found 1

@@ -1,0 +1,8 @@
+enum Shape { Circle(Float), Rect(Float, Float) }
+fn main() {
+    val s = Rect(1.0, 2.0)
+    match s {
+        Circle(r) => r
+        Square(w) => w
+    }
+}

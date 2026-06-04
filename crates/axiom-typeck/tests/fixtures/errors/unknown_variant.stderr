@@ -1,0 +1,2 @@
+1:1: undefined type: `w`
+1:1: non-exhaustive match: patterns do not cover all possible values

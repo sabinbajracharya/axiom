@@ -1,0 +1,2 @@
+struct Point { x: Float, y: Float }
+fn main() { val p = Point { x: 1.0 } val z = p.z }
