@@ -138,6 +138,7 @@ struct EnumInfo {
 
 struct VariantInfo {
     name: String,
+    def_id: DefId,
     payload: Vec<Ty>,
 }
 
@@ -221,6 +222,7 @@ impl TypeChecker {
                                 v.payload.iter().map(|t| self.resolve_hir_ty(t)).collect();
                             VariantInfo {
                                 name: v.name.clone(),
+                                def_id: v.id,
                                 payload,
                             }
                         })
@@ -231,16 +233,17 @@ impl TypeChecker {
             .collect();
 
         for info in &enum_infos {
+            let enum_ty = Ty::Enum(EnumTy {
+                name: info.name.clone(),
+                def_id: info.def_id,
+            });
             self.env.define(
                 info.name.clone(),
-                Ty::Enum(EnumTy {
-                    name: info.name.clone(),
-                    def_id: info.def_id,
-                }),
+                enum_ty.clone(),
                 info.def_id,
                 Mutability::Immutable,
             );
-            self.register_enum_variants(&info.name, &info.variants);
+            self.register_enum_variants(&info.name, &info.variants, &enum_ty);
         }
     }
 
@@ -432,9 +435,11 @@ impl TypeChecker {
         let ty = match name_ref {
             NameRef::Resolved(r) => {
                 if let Some(info) = self.env.lookup(&r.text) {
-                    info.ty.clone()
+                    match &info.ty {
+                        Ty::Fn(fn_ty) if fn_ty.params.is_empty() => *fn_ty.return_type.clone(),
+                        other => other.clone(),
+                    }
                 } else {
-                    // Maybe it's a builtin. Check reserved names.
                     match r.text.as_str() {
                         "print" | "println" => Ty::Fn(FnTy {
                             params: vec![Ty::String],
@@ -450,10 +455,7 @@ impl TypeChecker {
                     }
                 }
             }
-            NameRef::Unresolved(_) => {
-                // HIR already emitted UnresolvedName — don't cascade.
-                Ty::Error
-            }
+            NameRef::Unresolved(_) => Ty::Error,
         };
         self.types.insert(expr_id, ty.clone());
         ty
@@ -1100,9 +1102,15 @@ impl TypeChecker {
     fn define_pattern(&mut self, pat: &Pattern, ty: &Ty, mutab: Mutability) {
         match pat {
             Pattern::Ident(p) => {
-                self.env.define(p.name.clone(), ty.clone(), p.id, mutab);
-                self.types.insert(p.id, ty.clone());
-                self.mutability.insert(p.id, mutab);
+                // If this identifier resolves to an enum variant in the type
+                // environment, it's a unit variant match — not a new binding.
+                if self.is_unit_variant(&p.name) {
+                    self.types.insert(p.id, ty.clone());
+                } else {
+                    self.env.define(p.name.clone(), ty.clone(), p.id, mutab);
+                    self.types.insert(p.id, ty.clone());
+                    self.mutability.insert(p.id, mutab);
+                }
             }
             Pattern::Wildcard(id) => {
                 self.types.insert(*id, ty.clone());
@@ -1206,8 +1214,32 @@ impl TypeChecker {
         None
     }
 
-    fn register_enum_variants(&mut self, _name: &str, _variants: &[VariantInfo]) {
-        // v0: we look up variants from the HIR directly.
+    fn register_enum_variants(&mut self, _name: &str, variants: &[VariantInfo], enum_ty: &Ty) {
+        for variant in variants {
+            let fn_ty = Ty::Fn(FnTy {
+                params: variant.payload.clone(),
+                return_type: Box::new(enum_ty.clone()),
+            });
+            self.env.define(
+                variant.name.clone(),
+                fn_ty,
+                variant.def_id,
+                Mutability::Immutable,
+            );
+        }
+    }
+
+    fn is_unit_variant(&self, name: &str) -> bool {
+        if let Some(info) = self.env.lookup(name) {
+            if let Ty::Fn(fn_ty) = &info.ty {
+                if fn_ty.params.is_empty() {
+                    if let Ty::Enum(_) = *fn_ty.return_type {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 
     fn lookup_enum_variants(&self, name: &str) -> Option<Vec<VariantInfo>> {
@@ -1222,6 +1254,7 @@ impl TypeChecker {
                                 v.payload.iter().map(|t| self.resolve_hir_ty(t)).collect();
                             VariantInfo {
                                 name: v.name.clone(),
+                                def_id: v.id,
                                 payload,
                             }
                         })
@@ -1282,9 +1315,16 @@ impl TypeChecker {
             Pattern::Wildcard(_) => {
                 covered.extend(all_variants.iter().cloned());
             }
-            Pattern::Ident(_) => {
-                // An identifier pattern covers all variants (it's a catch-all).
-                covered.extend(all_variants.iter().cloned());
+            Pattern::Ident(p) => {
+                // If the identifier resolves to a unit variant, it covers that variant.
+                // Otherwise it's a catch-all binding.
+                if self.is_unit_variant(&p.name) {
+                    if !covered.contains(&p.name) {
+                        covered.push(p.name.clone());
+                    }
+                } else {
+                    covered.extend(all_variants.iter().cloned());
+                }
             }
             Pattern::Literal(_) => {
                 // Literals don't cover enum variants.

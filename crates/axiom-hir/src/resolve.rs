@@ -10,7 +10,7 @@ use crate::hir::*;
 use crate::lower::DefKind;
 use crate::HirDiagnostic;
 use axiom_lexer::Span;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Run name resolution over the HIR built by lowering.
 /// Mutates the HIR in-place: resolves `NameRef::Unresolved` entries
@@ -21,7 +21,10 @@ pub fn resolve(ctx: &mut crate::lower::LowerCtx) {
     // Build a top-level scope map.
     let mut top_level: HashMap<String, (DefId, DefKind)> = HashMap::new();
     for def in &ctx.defs {
-        if matches!(def.kind, DefKind::Fn | DefKind::Struct | DefKind::Enum) {
+        if matches!(
+            def.kind,
+            DefKind::Fn | DefKind::Struct | DefKind::Enum | DefKind::Variant
+        ) {
             if top_level.contains_key(&def.name) {
                 ctx.diagnostics.push(HirDiagnostic::DuplicateDefinition {
                     name: def.name.clone(),
@@ -98,13 +101,12 @@ fn define_pattern_bindings(
 ) {
     match pat {
         Pattern::Ident(p) => {
-            if scope.bindings.contains_key(&p.name) {
+            if scope.define(p.name.clone(), p.id, DefKind::Local) {
                 diagnostics.push(HirDiagnostic::DuplicateDefinition {
                     name: p.name.clone(),
                     span: Span { lo: 0, hi: 0 },
                 });
             }
-            scope.define(p.name.clone(), p.id, DefKind::Local);
             p.binding = Some(p.id);
         }
         Pattern::Wildcard(_) | Pattern::Literal(_) | Pattern::Range(_) => {}
@@ -336,17 +338,28 @@ fn builtin_def_id(name: &str) -> Option<DefId> {
 // ── Scope ──────────────────────────────────────────────────────────────────────
 
 struct Scope {
+    /// All bindings visible in this scope (own + inherited from parent).
     bindings: HashMap<String, (DefId, DefKind)>,
+    /// Names defined in THIS scope only (not inherited).
+    /// Used to detect same-scope redefinition, which is an error,
+    /// while allowing shadowing of parent-scope names, which is allowed.
+    own_names: HashSet<String>,
 }
 
 impl Scope {
     fn new_child(parent: &HashMap<String, (DefId, DefKind)>) -> Self {
         Scope {
             bindings: parent.clone(),
+            own_names: HashSet::new(),
         }
     }
 
-    fn define(&mut self, name: String, id: DefId, kind: DefKind) {
-        self.bindings.insert(name, (id, kind));
+    /// Define a binding in this scope. Returns `true` if this is a same-scope
+    /// redefinition (error), `false` if it's a new name or shadowing a parent name.
+    fn define(&mut self, name: String, id: DefId, kind: DefKind) -> bool {
+        let redefines_own = self.own_names.contains(&name);
+        self.bindings.insert(name.clone(), (id, kind));
+        self.own_names.insert(name);
+        redefines_own
     }
 }

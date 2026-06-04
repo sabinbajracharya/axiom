@@ -1,11 +1,20 @@
-// Structs, enums, and exhaustive `match` — the headline v0 type-system subset.
-// Type-checked at M2: struct literals, field access, and match exhaustiveness.
+// Structs, enums, and exhaustive match — the headline v0 type-system feature.
 struct Point {
     x: Float,
     y: Float,
 }
-
+enum Shape {
+    Circle(Float),
+    Rect(Float, Float),
+    Empty,
+}
 fn main() {
     val origin = Point { x: 0.0, y: 0.0 }
-    val x_coord = origin.x
+    val x = origin.x
+    val s = Empty
+    val result = match s {
+        Circle(r) => 3.14 * r * r
+        Rect(w, h) => w * h
+        Empty => 0.0
+    }
 }
