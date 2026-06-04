@@ -24,7 +24,7 @@ mismatched break types → `BreakTypeMismatch` diagnostic. Spec updated with
 ---
 
 ### 2. §7.2 Guards × exhaustiveness — underspecified
-- [ ] **Status:** OPEN
+- [x] **Status:** DONE
 
 §7.2 lists guards (`if cond` on a match arm) as a pattern feature alongside
 exhaustiveness enforcement. But it doesn't say how guards interact with
@@ -32,9 +32,10 @@ exhaustiveness. A guarded arm `A(x) if x > 0` doesn't cover all `A` values —
 guard conditions can't be checked statically. The exhaustiveness checker
 (`exhaustiveness.rs`) ignores guards entirely.
 
-**Resolution needed:** Add one sentence to §7.2:
-"Guarded arms do not contribute to exhaustiveness checking. A match with any
-guarded arm requires a wildcard or other unguarded arm to be exhaustive."
+**Resolution:** Added "Guards × exhaustiveness" bullet to §7.2: guarded arms
+do not contribute to exhaustiveness. Updated `exhaustiveness.rs` to skip arms
+with guards in the coverage loop. Added 4 unit tests + 1 diagnostic snapshot
+fixture for the guard case.
 
 ---
 

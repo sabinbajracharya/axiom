@@ -128,6 +128,19 @@ fn area(s: Shape) -> Float { match s { Circle(r) => r } }",
 }
 
 #[test]
+fn test_diag_snapshot_guarded_non_exhaustive() {
+    check_diagnostics_snapshot(
+        "guarded_non_exhaustive",
+        "enum Shape { Circle(Float), Rect(Float, Float) }
+fn area(s: Shape) -> Float {
+    match s {
+        Circle(r) if r > 0.0 => r
+    }
+}",
+    );
+}
+
+#[test]
 fn test_diag_snapshot_match_arm_type_mismatch() {
     check_diagnostics_snapshot(
         "match_arm_type_mismatch",

@@ -32,6 +32,12 @@ pub fn check_match_exhaustiveness(
 
     let mut covered: Vec<String> = Vec::new();
     for arm in arms {
+        // Guarded arms do not contribute to exhaustiveness — a guard is a
+        // runtime predicate the compiler cannot evaluate statically. The arm
+        // only covers its pattern when the guard is true, not universally.
+        if arm.guard.is_some() {
+            continue;
+        }
         collect_covered_variants(&arm.pattern, all_variants, &mut covered, is_unit_variant);
     }
 
@@ -223,6 +229,178 @@ mod tests {
         let diags =
             check_match_exhaustiveness(&arms, &["A".into(), "B".into()], &|_| false, span());
         assert!(diags.is_empty());
+    }
+
+    // ── Guard × exhaustiveness tests ───────────────────────────────────────
+
+    /// A guarded arm alone does NOT cover its variant — the guard is a
+    /// runtime predicate the compiler cannot evaluate statically.
+    #[test]
+    fn test_guarded_arm_does_not_cover() {
+        let arms = vec![MatchArm {
+            pattern: Pattern::TupleStruct(TupleStructPat {
+                id: HirId(0),
+                path: NameRef::Resolved(ResolvedName {
+                    def_id: HirId(10),
+                    text: "A".into(),
+                }),
+                fields: vec![],
+            }),
+            guard: Some(Expr::Lit(LitExpr {
+                id: HirId(99),
+                kind: LitKind::Bool(true),
+            })),
+            body: Expr::Lit(LitExpr {
+                id: HirId(998),
+                kind: LitKind::Int(0),
+            }),
+        }];
+        let diags =
+            check_match_exhaustiveness(&arms, &["A".into(), "B".into()], &|_| false, span());
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].to_string().contains("non-exhaustive"));
+    }
+
+    /// A guarded arm + a wildcard is exhaustive — the wildcard covers everything.
+    #[test]
+    fn test_guarded_arm_plus_wildcard_is_exhaustive() {
+        let arms = vec![
+            MatchArm {
+                pattern: Pattern::TupleStruct(TupleStructPat {
+                    id: HirId(0),
+                    path: NameRef::Resolved(ResolvedName {
+                        def_id: HirId(10),
+                        text: "A".into(),
+                    }),
+                    fields: vec![],
+                }),
+                guard: Some(Expr::Lit(LitExpr {
+                    id: HirId(99),
+                    kind: LitKind::Bool(true),
+                })),
+                body: Expr::Lit(LitExpr {
+                    id: HirId(998),
+                    kind: LitKind::Int(0),
+                }),
+            },
+            MatchArm {
+                pattern: Pattern::Wildcard(HirId(1)),
+                guard: None,
+                body: Expr::Lit(LitExpr {
+                    id: HirId(999),
+                    kind: LitKind::Int(0),
+                }),
+            },
+        ];
+        let diags =
+            check_match_exhaustiveness(&arms, &["A".into(), "B".into()], &|_| false, span());
+        assert!(diags.is_empty());
+    }
+
+    /// A guarded arm + an unguarded arm for the same variant is exhaustive —
+    /// the unguarded arm covers the variant; the guarded arm narrows it.
+    #[test]
+    fn test_guarded_plus_unguarded_same_variant_is_exhaustive() {
+        let arms = vec![
+            MatchArm {
+                pattern: Pattern::TupleStruct(TupleStructPat {
+                    id: HirId(0),
+                    path: NameRef::Resolved(ResolvedName {
+                        def_id: HirId(10),
+                        text: "A".into(),
+                    }),
+                    fields: vec![],
+                }),
+                guard: Some(Expr::Lit(LitExpr {
+                    id: HirId(99),
+                    kind: LitKind::Bool(true),
+                })),
+                body: Expr::Lit(LitExpr {
+                    id: HirId(998),
+                    kind: LitKind::Int(1),
+                }),
+            },
+            MatchArm {
+                pattern: Pattern::TupleStruct(TupleStructPat {
+                    id: HirId(1),
+                    path: NameRef::Resolved(ResolvedName {
+                        def_id: HirId(11),
+                        text: "A".into(),
+                    }),
+                    fields: vec![],
+                }),
+                guard: None,
+                body: Expr::Lit(LitExpr {
+                    id: HirId(999),
+                    kind: LitKind::Int(2),
+                }),
+            },
+            MatchArm {
+                pattern: Pattern::TupleStruct(TupleStructPat {
+                    id: HirId(2),
+                    path: NameRef::Resolved(ResolvedName {
+                        def_id: HirId(12),
+                        text: "B".into(),
+                    }),
+                    fields: vec![],
+                }),
+                guard: None,
+                body: Expr::Lit(LitExpr {
+                    id: HirId(1000),
+                    kind: LitKind::Int(3),
+                }),
+            },
+        ];
+        let diags =
+            check_match_exhaustiveness(&arms, &["A".into(), "B".into()], &|_| false, span());
+        assert!(diags.is_empty());
+    }
+
+    /// Two guarded arms for all variants → still non-exhaustive.
+    #[test]
+    fn test_all_guarded_arms_still_non_exhaustive() {
+        let arms = vec![
+            MatchArm {
+                pattern: Pattern::TupleStruct(TupleStructPat {
+                    id: HirId(0),
+                    path: NameRef::Resolved(ResolvedName {
+                        def_id: HirId(10),
+                        text: "A".into(),
+                    }),
+                    fields: vec![],
+                }),
+                guard: Some(Expr::Lit(LitExpr {
+                    id: HirId(99),
+                    kind: LitKind::Bool(true),
+                })),
+                body: Expr::Lit(LitExpr {
+                    id: HirId(998),
+                    kind: LitKind::Int(1),
+                }),
+            },
+            MatchArm {
+                pattern: Pattern::TupleStruct(TupleStructPat {
+                    id: HirId(1),
+                    path: NameRef::Resolved(ResolvedName {
+                        def_id: HirId(11),
+                        text: "B".into(),
+                    }),
+                    fields: vec![],
+                }),
+                guard: Some(Expr::Lit(LitExpr {
+                    id: HirId(100),
+                    kind: LitKind::Bool(true),
+                })),
+                body: Expr::Lit(LitExpr {
+                    id: HirId(999),
+                    kind: LitKind::Int(2),
+                }),
+            },
+        ];
+        let diags =
+            check_match_exhaustiveness(&arms, &["A".into(), "B".into()], &|_| false, span());
+        assert_eq!(diags.len(), 1);
+        assert!(diags[0].to_string().contains("non-exhaustive"));
     }
 
     fn span() -> Span {

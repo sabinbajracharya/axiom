@@ -444,6 +444,7 @@ match shape {
 }
 ```
 - **Exhaustiveness enforced.** Missing a variant is a compile error. Add a variant ⇒ every `match` on that type fails to compile until updated. This is the compiler-as-refactoring-tool property.
+- **Guards × exhaustiveness:** guarded arms (`A(x) if x > 0 =>`) do not contribute to exhaustiveness — a guard is a runtime predicate the compiler cannot evaluate statically. A match with any guarded arm requires an unguarded arm (or wildcard `_`) covering the same variant to be exhaustive.
 - **Match ergonomics:** destructuring borrows is automatic — no explicit `ref`/`ref mut`. Whether a binding is a read-projection or `inout`-projection follows the scrutinee's convention and the exclusivity rule. *(This auto-binding interacting with §4.3 is on the spike's radar.)*
 - Patterns: literals, variant destructure, struct destructure, bindings, `_` wildcard, guards (`Circle(r) if r > 0.0 =>`), `|` alternatives, range patterns (`1..=9 =>`).
 - `match` is an **expression**.
