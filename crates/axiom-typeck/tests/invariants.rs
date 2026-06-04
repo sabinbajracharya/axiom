@@ -81,11 +81,12 @@ fn test_every_error_type_has_diagnostic_kind() {
         "unary_op_mismatch",
         "assign_to_immutable",
         "return_type_mismatch",
+        "if_without_else_not_unit",
         "not_yet_supported",
     ];
     assert_eq!(
         diagnostic_kinds.len(),
-        19,
+        20,
         "diagnostic kinds count changed — update this test"
     );
 }

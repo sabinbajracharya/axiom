@@ -63,7 +63,10 @@ impl TypeChecker {
             }
         } else {
             if then_type != Ty::Unit && !helpers::is_error(&then_type) {
-                // If without else must produce Unit.
+                self.emit(TypeDiagnostic::IfWithoutElseNotUnit {
+                    found: then_type.to_string(),
+                    span: self.span_for(if_expr.id),
+                });
             }
             Ty::Unit
         };

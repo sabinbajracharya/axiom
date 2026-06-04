@@ -4,13 +4,12 @@ EnumDef(0) name=Color vis=private variants=[
   Variant(3) name=Blue
 ]
 FnDef(4) name=paint vis=private params=[let c: Color] return=Float→<unresolved> : (Color) -> Float
-  Block(6) stmts=[1] tail=None : Unit
-    ExprStmt(7) : Unit
-      Match(8) : Float
-        Path(9) c→5 : Color
-        Arm pattern=Ident(10) Red→10 : Color
-          Lit(11) Float(1) : Float
-        Arm pattern=Ident(12) Green→12 : Color
-          Lit(13) Float(2) : Float
-        Arm pattern=Ident(14) Blue→14 : Color
-          Lit(15) Float(3) : Float
+  Block(6) stmts=[0] tail=Some : Float
+    Match(8) : Float
+      Path(9) c→5 : Color
+      Arm pattern=Ident(10) Red→10 : Color
+        Lit(11) Float(1) : Float
+      Arm pattern=Ident(12) Green→12 : Color
+        Lit(13) Float(2) : Float
+      Arm pattern=Ident(14) Blue→14 : Color
+        Lit(15) Float(3) : Float

@@ -280,9 +280,13 @@ mod tests {
             hir.diagnostics
         );
         match &hir.items[0] {
-            Item::FnDef(f) => match &f.body.stmts[0] {
-                Stmt::ExprStmt(s) => match &s.expr {
-                    Expr::Call(c) => match &c.callee {
+            Item::FnDef(f) => {
+                assert!(
+                    f.body.stmts.is_empty(),
+                    "single-expr block should have empty stmts"
+                );
+                match f.body.tail.as_deref() {
+                    Some(Expr::Call(c)) => match &c.callee {
                         NameRef::Resolved(r) => {
                             assert_eq!(r.text, "print");
                         }
@@ -290,10 +294,9 @@ mod tests {
                             panic!("print should resolve as builtin, got: {}", u.text)
                         }
                     },
-                    _ => panic!("expected Call"),
-                },
-                _ => panic!("expected ExprStmt"),
-            },
+                    _ => panic!("expected Call in tail"),
+                }
+            }
             _ => panic!("expected FnDef"),
         }
     }
@@ -307,18 +310,21 @@ mod tests {
             hir.diagnostics
         );
         match &hir.items[1] {
-            Item::FnDef(main_fn) => match &main_fn.body.stmts[0] {
-                Stmt::ExprStmt(s) => match &s.expr {
-                    Expr::Call(c) => match &c.callee {
+            Item::FnDef(main_fn) => {
+                assert!(
+                    main_fn.body.stmts.is_empty(),
+                    "single-expr block should have empty stmts"
+                );
+                match main_fn.body.tail.as_deref() {
+                    Some(Expr::Call(c)) => match &c.callee {
                         NameRef::Resolved(r) => assert_eq!(r.text, "add"),
                         NameRef::Unresolved(u) => {
                             panic!("add should resolve, got: {}", u.text)
                         }
                     },
-                    _ => panic!("expected Call"),
-                },
-                _ => panic!("expected ExprStmt"),
-            },
+                    _ => panic!("expected Call in tail"),
+                }
+            }
             _ => panic!("expected FnDef for main"),
         }
     }

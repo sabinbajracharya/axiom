@@ -1,20 +1,18 @@
 StructDef(0) name=Point vis=private fields=[private x: Float→<unresolved>, private y: Float→<unresolved>]
 FnDef(3) name=origin vis=private params=[] return=Point→<unresolved> : () -> Point
-  Block(4) stmts=[1] tail=None : Unit
-    ExprStmt(5) : Unit
-      StructLit(6) Point→0 : Point
-        x:         Lit(7) Float(0) : Float
-        y:         Lit(8) Float(0) : Float
+  Block(4) stmts=[0] tail=Some : Point
+    StructLit(6) Point→0 : Point
+      x:       Lit(7) Float(0) : Float
+      y:       Lit(8) Float(0) : Float
 
 FnDef(9) name=translate vis=private params=[let p: Point, let dx: Float, let dy: Float] return=() : (Point, Float, Float) -> Unit
-  Block(13) stmts=[2] tail=None : Unit
+  Block(13) stmts=[1] tail=Some : Unit
     ExprStmt(14) : Unit
       Assign(15) =  : Unit      Path(16) p→10 : Point.x =       Bin(17) op=+ : Float
         Field(18) x : Float
           Path(19) p→10 : Point
         Path(20) dx→11 : Float
-    ExprStmt(21) : Unit
-      Assign(22) =  : Unit      Path(23) p→10 : Point.y =       Bin(24) op=+ : Float
-        Field(25) y : Float
-          Path(26) p→10 : Point
-        Path(27) dy→12 : Float
+    Assign(22) =  : Unit    Path(23) p→10 : Point.y =     Bin(24) op=+ : Float
+      Field(25) y : Float
+        Path(26) p→10 : Point
+      Path(27) dy→12 : Float

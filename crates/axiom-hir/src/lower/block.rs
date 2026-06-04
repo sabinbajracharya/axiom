@@ -12,17 +12,33 @@ use axiom_parser::SyntaxKind;
 
 pub(super) fn lower_block(block: &ast::BlockExpr, ctx: &mut LowerCtx) -> Block {
     let id = ctx.alloc_id();
+    let raw_stmts = block.stmts();
     let mut stmts = Vec::new();
-    for child in block.stmts() {
-        if let Some(stmt) = lower_stmt(child, ctx) {
+    for child in &raw_stmts {
+        if let Some(stmt) = lower_stmt(child.clone(), ctx) {
             stmts.push(stmt);
         }
     }
-    Block {
-        id,
-        stmts,
-        tail: None,
-    }
+    // The last ExprStmt in a block is the tail expression — its value is
+    // the block's result. Pop it off the stmts list and store as `tail`.
+    let tail = match stmts.last() {
+        Some(Stmt::ExprStmt(_)) => {
+            let is_last_expr = raw_stmts
+                .last()
+                .map(|n| ast::is_expr_kind(n.kind()) || n.kind() == SyntaxKind::ExprStmt)
+                .unwrap_or(false);
+            if is_last_expr {
+                match stmts.pop() {
+                    Some(Stmt::ExprStmt(e)) => Some(Box::new(e.expr)),
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+    Block { id, stmts, tail }
 }
 
 fn lower_stmt(child: axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> Option<Stmt> {

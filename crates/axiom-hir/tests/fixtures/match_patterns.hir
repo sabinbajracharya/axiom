@@ -1,5 +1,5 @@
 FnDef(0) name=describe vis=private params=[let x: Int→<unresolved>] return=Float→<unresolved> {
-  ExprStmt(3) Match(4) Path(5) x→1 {
+  tail: Match(4) Path(5) x→1 {
     Lit(6) Int(0) => Lit(7) Float(1)
     Wild(8) => Lit(9) Float(0)
   }

@@ -3,8 +3,8 @@ FnDef(0) name=run vis=private params=[let hot: Bool→<unresolved>] return=_ {
     ValStmt(8) Ident(6) x→6: _ = Lit(7) Int(1)
   }
   ValStmt(18) Ident(9) g→9: _ = If(10) Path(11) hot→1 Block(12) {
-    ExprStmt(13) Lit(14) Int(1)
+    tail: Lit(14) Int(1)
   } else Block(15) {
-    ExprStmt(16) Lit(17) Int(2)
+    tail: Lit(17) Int(2)
   }
 }

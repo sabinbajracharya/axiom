@@ -4,19 +4,18 @@ EnumDef(0) name=Shape vis=private variants=[
   Variant(3) name=Empty
 ]
 FnDef(4) name=describe vis=private params=[let s: Shape] return=Float→<unresolved> : (Shape) -> Float
-  Block(6) stmts=[1] tail=None : Unit
-    ExprStmt(7) : Unit
-      Match(8) : Float
-        Path(9) s→5 : Shape
-        Arm pattern=Circle→1(Ident(11) r→11 : Float) : Shape
-          Bin(12) op=* : Float
-            Bin(13) op=* : Float
-              Lit(14) Float(3.14) : Float
-              Path(15) r→11 : Float
-            Path(16) r→11 : Float
-        Arm pattern=Rect→2(Ident(18) w→18 : Float, Ident(19) h→19 : Float) : Shape
-          Bin(20) op=* : Float
-            Path(21) w→18 : Float
-            Path(22) h→19 : Float
-        Arm pattern=Ident(23) Empty→23 : Shape
-          Lit(24) Float(0) : Float
+  Block(6) stmts=[0] tail=Some : Float
+    Match(8) : Float
+      Path(9) s→5 : Shape
+      Arm pattern=Circle→1(Ident(11) r→11 : Float) : Shape
+        Bin(12) op=* : Float
+          Bin(13) op=* : Float
+            Lit(14) Float(3.14) : Float
+            Path(15) r→11 : Float
+          Path(16) r→11 : Float
+      Arm pattern=Rect→2(Ident(18) w→18 : Float, Ident(19) h→19 : Float) : Shape
+        Bin(20) op=* : Float
+          Path(21) w→18 : Float
+          Path(22) h→19 : Float
+      Arm pattern=Ident(23) Empty→23 : Shape
+        Lit(24) Float(0) : Float

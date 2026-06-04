@@ -1,1 +1,2 @@
 1:1: call arity mismatch: `add` expects 2 argument(s), found 1
+1:1: type mismatch: expected `Unit`, found `Int`

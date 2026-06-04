@@ -1,11 +1,10 @@
 StructDef(0) name=Wrapper vis=private fields=[private value: Int→<unresolved>]
 FnDef(2) name=main vis=private params=[] return=() : () -> Unit
-  Block(3) stmts=[2] tail=None : Unit
+  Block(3) stmts=[1] tail=Some : ///error///
     ValStmt(7) : Unit
 Ident(4) w→4 : Wrapper
       StructLit(5) Wrapper→0 : Wrapper
         value:         Lit(6) Int(42) : Int
 
-    ExprStmt(8) : Unit
-      Field(9) value : Int
-        Path(10) w→4 : Wrapper
+    Field(9) value : ///error///
+      Path(10) w→4 : Wrapper

@@ -120,6 +120,9 @@ pub enum TypeDiagnostic {
         span: Span,
     },
 
+    #[error("if without else must produce Unit, found `{found}`")]
+    IfWithoutElseNotUnit { found: String, span: Span },
+
     #[error("`{feature}` is not yet supported in type checking")]
     NotYetSupported { feature: String, span: Span },
 }
@@ -147,6 +150,7 @@ impl TypeDiagnostic {
             | TypeDiagnostic::UnaryOpMismatch { span, .. }
             | TypeDiagnostic::AssignToImmutable { span, .. }
             | TypeDiagnostic::ReturnTypeMismatch { span, .. }
+            | TypeDiagnostic::IfWithoutElseNotUnit { span, .. }
             | TypeDiagnostic::NotYetSupported { span, .. } => *span,
         }
     }
@@ -183,6 +187,7 @@ impl TypeDiagnostic {
             TypeDiagnostic::UnaryOpMismatch { .. } => "unary_op_mismatch",
             TypeDiagnostic::AssignToImmutable { .. } => "assign_to_immutable",
             TypeDiagnostic::ReturnTypeMismatch { .. } => "return_type_mismatch",
+            TypeDiagnostic::IfWithoutElseNotUnit { .. } => "if_without_else_not_unit",
             TypeDiagnostic::NotYetSupported { .. } => "not_yet_supported",
         }
     }

@@ -1,5 +1,5 @@
 FnDef(0) name=double vis=private params=[let x: Int→<unresolved>] return=Int→<unresolved> {
-  ExprStmt(3) Bin(4) +(Path(5) x→1, Path(6) x→1)
+  tail: Bin(4) +(Path(5) x→1, Path(6) x→1)
 }
 FnDef(7) name=run vis=private params=[] return=_ {
   ValStmt(12) Ident(9) y→9: _ = Call(10) double→0(Lit(11) Int(1))

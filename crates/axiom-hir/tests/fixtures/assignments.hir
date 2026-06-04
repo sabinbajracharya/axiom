@@ -1,3 +1,3 @@
 FnDef(0) name=update vis=private params=[inout p: Int→<unresolved>] return=_ {
-  ExprStmt(3) p→1 = Bin(5) +(Path(6) p→1, Lit(7) Int(1))
+  tail: p→1 = Bin(5) +(Path(6) p→1, Lit(7) Int(1))
 }

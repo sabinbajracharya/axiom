@@ -195,7 +195,12 @@ impl TypeChecker {
             && !helpers::is_error(&return_type)
             && body_type != return_type
         {
-            // Only emit if we haven't already diagnosed it via the block check.
+            self.emit(TypeDiagnostic::ReturnTypeMismatch {
+                expected: return_type.to_string(),
+                found: body_type.to_string(),
+                span: self.span_for(f.id),
+            });
+            self.types.insert(f.id, crate::types::Ty::Error);
         }
 
         let fn_ty = crate::types::Ty::Fn(crate::types::FnTy {
@@ -274,7 +279,11 @@ mod tests {
 
     #[test]
     fn test_fn_call_with_params() {
-        let thir = check_source("fn add(a: Int, b: Int) -> Int { a + b } fn main() { add(1, 2) }");
+        // `main` has no explicit return type (defaults to Unit), but the body
+        // produces Int via `add(1, 2)`. That is a real type mismatch now that
+        // block tail expressions are properly tracked.
+        let thir =
+            check_source("fn add(a: Int, b: Int) -> Int { a + b } fn main() -> Int { add(1, 2) }");
         assert!(
             thir.diagnostics.iter().all(|d| d.kind() != "type_mismatch"),
             "unexpected type errors: {:?}",

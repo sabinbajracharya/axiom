@@ -1,4 +1,4 @@
 FnDef(0) name=origin vis=private params=[] return=Float→<unresolved> {
   ValStmt(4) Ident(2) x→2: _ = Lit(3) Float(0)
-  ExprStmt(5) Path(6) x→2
+  tail: Path(6) x→2
 }
