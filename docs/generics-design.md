@@ -729,32 +729,46 @@ Generate random trait bound scenarios. Assert:
 
 #### Type checker — resolution
 
-| Test | What it verifies |
-|---|---|
-| `test_resolve_type_param_in_body` | `T` resolves inside generic fn body |
-| `test_resolve_type_param_in_annotation` | `T` resolves in return type annotation |
-| `test_resolve_generic_struct_usage` | `Pair<Int, String>` resolves to InstanceTy |
-| `test_resolve_generic_enum_usage` | `Option<Int>` resolves to InstanceTy |
-| `test_resolve_turbofish` | `::<Int>` overrides inference |
+| Test | What it verifies | Status |
+|---|---|---|
+| `generic_body_uses_type_param` | `T` resolves inside generic fn body | ✅ |
+| `test_resolve_type_param_in_annotation` | `T` resolves in return type annotation | ✅ (covered by `generic_body_uses_type_param`) |
+| `test_resolve_generic_struct_usage` | `Pair<Int, String>` resolves to InstanceTy | ⬚ Deferred — generic struct instantiation not yet |
+| `test_resolve_generic_enum_usage` | `Option<Int>` resolves to InstanceTy | ⬚ Deferred — generic enum instantiation not yet |
+| `test_resolve_turbofish` | `::<Int>` overrides inference | ⬚ Not yet |
 
 #### Type checker — unification
 
-| Test | What it verifies |
-|---|---|
-| `test_unify_type_param_with_concrete` | `T = Int` succeeds |
-| `test_unify_type_param_with_type_param` | `T = U` succeeds |
-| `test_unify_concrete_with_concrete_same` | `Int = Int` succeeds |
-| `test_unify_concrete_with_concrete_diff` | `Int = Float` fails |
-| `test_unify_already_bound_same` | `T = Int, T = Int` succeeds |
-| `test_unify_already_bound_diff` | `T = Int, T = Float` fails |
-| `test_unify_nested_generic` | `Option<T> = Option<Int>` → T = Int |
+| Test | What it verifies | Status |
+|---|---|---|
+| `test_unify_type_param_with_concrete` | `T = Int` succeeds | ✅ |
+| `test_unify_type_param_with_type_param` | `T = U` succeeds | ✅ (unit test in unify.rs) |
+| `test_unify_concrete_with_concrete_same` | `Int = Int` succeeds | ✅ |
+| `test_unify_concrete_with_concrete_diff` | `Int = Float` fails | ✅ |
+| `test_unify_already_bound_same` | `T = Int, T = Int` succeeds | ✅ |
+| `test_unify_already_bound_diff` | `T = Int, T = Float` fails | ✅ |
+| `test_unify_nested_generic` | `Option<T> = Option<Int>` → T = Int | ⬚ Deferred — generic struct instantiation not yet |
+
+#### Type checker — call-site integration
+
+| Test | What it verifies | Status |
+|---|---|---|
+| `generic_identity_int` | `id(42)` → `Int` | ✅ |
+| `generic_identity_string` | `id("hello")` → `String` | ✅ |
+| `generic_two_params_same_type` | `first(1, 2)` — same T for both args | ✅ |
+| `generic_two_different_type_params` | `pair(1, true)` — A=Int, B=Bool | ✅ |
+| `generic_type_mismatch_same_param` | `f(1, true)` — T=Int vs T=Bool → error | ✅ |
+| `generic_return_type_substituted` | Return type T substituted to Int | ✅ |
+| `nongeneric_still_works` | Non-generic calls unchanged | ✅ |
+| `nongeneric_type_mismatch_still_reported` | Non-generic mismatch still errors | ✅ |
+| `generic_fn_type_param_in_thir` | THIR dump shows T | ✅ |
 
 #### Type checker — bound checking
 
-| Test | What it verifies |
-|---|---|
-| `test_bound_satisfied` | `T: Ord, T=Int, Int: Ord` → pass |
-| `test_bound_unsatisfied` | `T: Ord, T=Foo, Foo: !Ord` → error |
+| Test | What it verifies | Status |
+|---|---|---|
+| `test_bound_satisfied` | `T: Ord, T=Int, Int: Ord` → pass | ⬚ Deferred — needs trait impl resolution |
+| `test_bound_unsatisfied` | `T: Ord, T=Foo, Foo: !Ord` → error | ⬚ Deferred — needs trait impl resolution |
 | `test_multiple_bounds_all_satisfied` | `T: Hashable + Equatable, T=String` → pass |
 | `test_multiple_bounds_one_missing` | `T: Hashable + Equatable, T=Foo` where only `Hashable` → error |
 
@@ -776,7 +790,7 @@ Generate random trait bound scenarios. Assert:
 1. **Parser:** type params on fn/struct/enum decl, type args in annotations, turbofish. ✅ **Done** — `opt_generic_params`, `generic_arg_list` already in parser grammar.
 2. **HIR:** `HirTypeParam`, `InstanceTy`, `TypeParam`/`Instance` variants on `HirTy`, `type_params` on items. ✅ **Done** — commit `44651e8`.
 3. **Name resolution:** type param scoping, type arg resolution, `resolve_ty_names`. ✅ **Done** — commit `44651e8`.
-4. **Type checker:** `TypeParam` variant in `Ty`, unification with type params, bound checking. ⬚ Partial — `resolve_hir_ty` handles `TypeParam`/`Instance` as placeholders (→ `Ty::Error`); unification and bound checking not yet implemented.
+4. **Type checker:** `TypeParam` variant in `Ty`, unification with type params, bound checking. ✅ **Done** — commit `3306305`. `Ty::TypeParam`/`Ty::Instance` added; `resolve_hir_ty` resolves type params via `current_type_params` scope; `unify.rs` implements unification + substitution; `check_call_args` uses unification for generic callees; 10 integration tests + 7 unit tests. Bound checking deferred to traits phase 2.
 5. **Monomorphizer:** instantiation table, specialization, worklist. ⬚ Not started.
 6. **IR:** generic function representation, monomorphized instances. ⬚ Not started.
 7. **THIR dump:** show type params, type args, monomorphized instances. ⬚ Not started.
