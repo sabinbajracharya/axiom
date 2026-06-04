@@ -11,6 +11,7 @@
 use super::{ImplInfo, TraitInfo, TraitMethodInfo, TypeChecker};
 use crate::types::Ty;
 use axiom_hir::{Block, CallingConvention, FnDef, HirId, HirTy, HirTypeParam, Param, Visibility};
+use std::collections::HashMap;
 
 /// All primitive type names that get auto-impls for Equatable/Hashable/Ord.
 const PRIMITIVE_TYPES: &[&str] = &["Int", "Float", "Bool", "String"];
@@ -187,6 +188,8 @@ impl TypeChecker {
             type_name: "List".to_string(),
             methods,
             subscripts: vec![],
+            type_params: vec![("T".to_string(), HirId(100))],
+            type_param_bounds: HashMap::new(),
         });
     }
 
@@ -245,6 +248,8 @@ impl TypeChecker {
             type_name: "Map".to_string(),
             methods,
             subscripts: vec![],
+            type_params: vec![("K".to_string(), HirId(200)), ("V".to_string(), HirId(201))],
+            type_param_bounds: HashMap::new(),
         });
     }
 
@@ -256,6 +261,8 @@ impl TypeChecker {
                 type_name: type_name.to_string(),
                 methods: vec![],
                 subscripts: vec![],
+                type_params: vec![],
+                type_param_bounds: HashMap::new(),
             });
         }
 
@@ -266,6 +273,8 @@ impl TypeChecker {
                     type_name: type_name.to_string(),
                     methods: vec![],
                     subscripts: vec![],
+                    type_params: vec![],
+                    type_param_bounds: HashMap::new(),
                 });
             }
         }

@@ -8,6 +8,7 @@ use super::{
 use crate::error::TypeDiagnostic;
 use crate::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 use axiom_hir::*;
+use std::collections::HashMap;
 
 impl TypeChecker {
     pub(super) fn collect_pass(&mut self) {
@@ -102,6 +103,8 @@ impl TypeChecker {
                     type_name: s.name.clone(),
                     methods: vec![],
                     subscripts: vec![],
+                    type_params: vec![],
+                    type_param_bounds: HashMap::new(),
                 });
             }
         }
@@ -316,11 +319,28 @@ impl TypeChecker {
                     }
                 }
 
+                // Collect the impl's type parameters for generic matching.
+                let type_params: Vec<(String, DefId)> = impl_def
+                    .type_params
+                    .iter()
+                    .map(|tp| (tp.name.clone(), tp.id))
+                    .collect();
+                let mut tp_bounds = HashMap::new();
+                for tp in &impl_def.type_params {
+                    let bounds: Vec<String> =
+                        tp.bounds.iter().map(|b| name_text(&b.name)).collect();
+                    if !bounds.is_empty() {
+                        tp_bounds.insert(tp.id, bounds);
+                    }
+                }
+
                 self.impl_table.push(ImplInfo {
                     trait_name,
                     type_name: type_name_text,
                     methods: impl_def.methods.clone(),
                     subscripts: impl_def.subscripts.clone(),
+                    type_params,
+                    type_param_bounds: tp_bounds,
                 });
             }
         }

@@ -157,6 +157,13 @@ struct ImplInfo {
     type_name: String,
     methods: Vec<FnDef>,
     subscripts: Vec<SubscriptDef>,
+    /// Type parameters of the impl block (e.g., `T` in `impl<T> List<T>`).
+    /// Empty for non-generic impls.
+    type_params: Vec<(String, DefId)>,
+    /// Bounds for each type param, keyed by HirId. Used for bound checking
+    /// at call sites (e.g., ensuring `T: Hashable` when needed).
+    #[allow(dead_code)]
+    type_param_bounds: HashMap<DefId, Vec<String>>,
 }
 
 impl TypeEnv {
@@ -238,6 +245,27 @@ impl TypeChecker {
                     // Resolve the Self type for this impl block.
                     let self_ty = self.resolve_impl_self_type(&impl_def);
                     self.current_self_type = Some(self_ty);
+
+                    // Set impl-level type params so T, U, etc. resolve inside
+                    // method and subscript bodies. check_fn_body extends (not
+                    // clears) these with any method-level type params.
+                    self.current_type_params = impl_def
+                        .type_params
+                        .iter()
+                        .map(|tp| {
+                            let bounds = tp
+                                .bounds
+                                .iter()
+                                .map(|b| collect::name_text(&b.name))
+                                .collect();
+                            (tp.name.clone(), tp.id, bounds)
+                        })
+                        .collect();
+                    // Store bounds for bound checking at call sites.
+                    for (_, tp_id, bounds) in &self.current_type_params {
+                        self.type_param_bounds.insert(*tp_id, bounds.clone());
+                    }
+
                     for method in &impl_def.methods {
                         self.check_fn_body(method);
                     }
@@ -245,6 +273,7 @@ impl TypeChecker {
                         self.check_subscript_body(sub);
                     }
                     self.current_self_type = None;
+                    self.current_type_params.clear();
                 }
                 _ => {}
             }
@@ -252,53 +281,52 @@ impl TypeChecker {
     }
 
     /// Resolve the `Self` type for an impl block (the type being implemented).
+    /// For generic impls like `impl<T> List<T>`, constructs a `Ty::Instance`
+    /// with `Ty::TypeParam` args so that `Self` resolves to `List<T>` inside
+    /// method bodies.
     fn resolve_impl_self_type(&self, impl_def: &ImplDef) -> crate::types::Ty {
         let text = match &impl_def.type_name {
             NameRef::Resolved(r) => &r.text,
             NameRef::Unresolved(u) => &u.text,
         };
-        if let Some(info) = self.env.lookup(text) {
-            info.ty.clone()
-        } else {
-            crate::types::Ty::Error
+        if impl_def.type_params.is_empty() {
+            // Non-generic: plain lookup.
+            if let Some(info) = self.env.lookup(text) {
+                return info.ty.clone();
+            }
+            return crate::types::Ty::Error;
         }
+        // Generic impl: construct Instance with TypeParam args.
+        // e.g., `impl<T> List<T>` → Self = Ty::Instance("List", [Ty::TypeParam(T)]).
+        let args: Vec<crate::types::Ty> = impl_def
+            .type_params
+            .iter()
+            .enumerate()
+            .map(|(i, tp)| {
+                crate::types::Ty::TypeParam(crate::types::TypeParamId {
+                    name: tp.name.clone(),
+                    index: i,
+                    def_id: tp.id,
+                })
+            })
+            .collect();
+        crate::types::Ty::Instance(crate::types::InstanceTy {
+            name: text.to_string(),
+            def_id: HirId(0),
+            args,
+        })
     }
 
     fn check_fn_body(&mut self, f: &FnDef) {
-        // Set type param scope so resolve_hir_ty can resolve T, U, etc.
-        self.current_type_params = f
-            .type_params
-            .iter()
-            .map(|tp| {
-                let bounds = tp
-                    .bounds
-                    .iter()
-                    .map(|b| collect::name_text(&b.name))
-                    .collect();
-                (tp.name.clone(), tp.id, bounds)
-            })
-            .collect();
-        self.env.push_scope();
-        for param in &f.params {
-            let param_type = param
-                .ty
-                .as_ref()
-                .map(|t| self.resolve_hir_ty(t))
-                .unwrap_or(crate::types::Ty::Error);
-            let mutability = Mutability::Immutable;
-            self.env
-                .define(param.name.clone(), param_type.clone(), param.id, mutability);
-            self.types.insert(param.id, param_type);
-            self.mutability.insert(param.id, mutability);
-        }
+        let impl_param_count = self.current_type_params.len();
+        self.extend_type_params(&f.type_params);
+        self.register_params(&f.params);
         let return_type = f
             .return_type
             .as_ref()
             .map(|t| self.resolve_hir_ty(t))
             .unwrap_or(crate::types::Ty::Unit);
-
         let body_type = self.check_block(&f.body, &return_type);
-
         if !helpers::is_error(&body_type)
             && !helpers::is_error(&return_type)
             && body_type != return_type
@@ -310,7 +338,6 @@ impl TypeChecker {
             });
             self.types.insert(f.id, crate::types::Ty::Error);
         }
-
         let fn_ty = crate::types::Ty::Fn(crate::types::FnTy {
             params: f
                 .params
@@ -326,11 +353,52 @@ impl TypeChecker {
         });
         self.types.insert(f.id, fn_ty);
         self.env.pop_scope();
-        self.current_type_params.clear();
+        self.current_type_params.truncate(impl_param_count);
+    }
+
+    /// Extend `current_type_params` with new type params, skipping duplicates.
+    fn extend_type_params(&mut self, type_params: &[axiom_hir::HirTypeParam]) {
+        for tp in type_params {
+            let bounds = tp
+                .bounds
+                .iter()
+                .map(|b| collect::name_text(&b.name))
+                .collect();
+            if !self
+                .current_type_params
+                .iter()
+                .any(|(name, _, _)| *name == tp.name)
+            {
+                self.current_type_params
+                    .push((tp.name.clone(), tp.id, bounds));
+            }
+        }
+    }
+
+    /// Register function/subscript parameters in the current scope.
+    fn register_params(&mut self, params: &[axiom_hir::Param]) {
+        self.env.push_scope();
+        for param in params {
+            let param_type = if param.name == "self" {
+                self.current_self_type
+                    .clone()
+                    .unwrap_or(crate::types::Ty::Error)
+            } else {
+                param
+                    .ty
+                    .as_ref()
+                    .map(|t| self.resolve_hir_ty(t))
+                    .unwrap_or(crate::types::Ty::Error)
+            };
+            let mutability = Mutability::Immutable;
+            self.env
+                .define(param.name.clone(), param_type.clone(), param.id, mutability);
+            self.types.insert(param.id, param_type);
+            self.mutability.insert(param.id, mutability);
+        }
     }
 
     fn check_subscript_body(&mut self, sub: &SubscriptDef) {
-        self.current_type_params.clear();
         self.env.push_scope();
         // Register parameters. The first `self` param uses the impl's Self type.
         for param in &sub.params {
@@ -393,174 +461,4 @@ impl TypeChecker {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use super::*;
-    use axiom_hir::lower;
-    use axiom_parser::ast::AstNode;
-
-    fn check_source(source: &str) -> Thir {
-        let result = axiom_parser::parse(source);
-        let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-        let hir = lower(&root, source);
-        check(hir)
-    }
-
-    #[test]
-    fn test_infer_int_literal() {
-        let thir = check_source("fn main() { val x = 42 }");
-        let has_int = thir.types.values().any(|t| *t == crate::types::Ty::Int);
-        assert!(
-            has_int,
-            "expected Int type somewhere, got: {:?}",
-            thir.types
-        );
-    }
-
-    #[test]
-    fn test_infer_string_literal() {
-        let thir = check_source("fn main() { print(\"hello\") }");
-        let has_string = thir
-            .types
-            .values()
-            .any(|t| matches!(t, crate::types::Ty::String));
-        assert!(has_string, "expected String type somewhere");
-    }
-
-    #[test]
-    fn test_infer_bin_op_add() {
-        let thir = check_source("fn main() { val x = 1 + 2 }");
-        let has_int = thir.types.values().any(|t| *t == crate::types::Ty::Int);
-        assert!(has_int, "expected Int type from addition");
-    }
-
-    #[test]
-    fn test_type_mismatch_bin_op() {
-        let thir = check_source("fn main() { val x = 1 + 2.0 }");
-        assert!(
-            thir.diagnostics
-                .iter()
-                .any(|d| d.kind() == "bin_op_mismatch"),
-            "expected bin op mismatch diagnostic, got: {:?}",
-            thir.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_fn_call_with_params() {
-        // `main` has no explicit return type (defaults to Unit), but the body
-        // produces Int via `add(1, 2)`. That is a real type mismatch now that
-        // block tail expressions are properly tracked.
-        let thir =
-            check_source("fn add(a: Int, b: Int) -> Int { a + b } fn main() -> Int { add(1, 2) }");
-        assert!(
-            thir.diagnostics.iter().all(|d| d.kind() != "type_mismatch"),
-            "unexpected type errors: {:?}",
-            thir.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_fn_call_arity_mismatch() {
-        let thir = check_source("fn add(a: Int, b: Int) -> Int { a + b } fn main() { add(1) }");
-        assert!(
-            thir.diagnostics
-                .iter()
-                .any(|d| d.kind() == "call_arity_mismatch"),
-            "expected arity mismatch, got: {:?}",
-            thir.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_struct_literal() {
-        let thir = check_source(
-            "struct Point { x: Float, y: Float }
-fn main() { val p = Point { x: 1.0, y: 2.0 } }",
-        );
-        let has_struct = thir
-            .types
-            .values()
-            .any(|t| matches!(t, crate::types::Ty::Struct(_)));
-        assert!(has_struct, "expected Struct type");
-    }
-
-    #[test]
-    fn test_enum_match() {
-        let thir = check_source(
-            "enum Shape { Circle(Float), Rect(Float, Float), Empty }
-fn area(s: Shape) -> Float { match s { Circle(r) => 3.14 Rect(w, h) => 1.0 Empty => 0.0 } }",
-        );
-        let non_exhaustive: Vec<_> = thir
-            .diagnostics
-            .iter()
-            .filter(|d| d.kind() == "non_exhaustive_match")
-            .collect();
-        assert!(
-            non_exhaustive.is_empty(),
-            "unexpected non-exhaustive match: {:?}",
-            non_exhaustive
-        );
-    }
-
-    #[test]
-    fn test_non_exhaustive_match() {
-        let thir = check_source(
-            "enum Shape { Circle(Float), Rect(Float, Float) }
-fn area(s: Shape) -> Float { match s { Circle(r) => r } }",
-        );
-        assert!(
-            thir.diagnostics
-                .iter()
-                .any(|d| d.kind() == "non_exhaustive_match"),
-            "expected non-exhaustive match diagnostic, got: {:?}",
-            thir.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_assign_to_immutable() {
-        let thir = check_source("fn main() { val x = 1 x = 2 }");
-        assert!(
-            thir.diagnostics
-                .iter()
-                .any(|d| d.kind() == "assign_to_immutable"),
-            "expected assign_to_immutable diagnostic, got: {:?}",
-            thir.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_if_branch_mismatch() {
-        let thir = check_source("fn main() { val x: Float = if true { 1.0 } else { 2 } }");
-        assert!(
-            thir.diagnostics
-                .iter()
-                .any(|d| d.kind() == "type_mismatch" || d.kind() == "if_branch_mismatch"),
-            "expected type mismatch diagnostic, got: {:?}",
-            thir.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_unknown_field() {
-        let thir = check_source(
-            "struct Point { x: Float, y: Float }
-fn main() { val p = Point { x: 1.0, y: 2.0 } val z = p.z }",
-        );
-        assert!(
-            thir.diagnostics.iter().any(|d| d.kind() == "unknown_field"),
-            "expected unknown_field diagnostic, got: {:?}",
-            thir.diagnostics
-        );
-    }
-
-    #[test]
-    fn test_not_callable() {
-        let thir = check_source("fn main() { val x = 1 x() }");
-        assert!(
-            thir.diagnostics.iter().any(|d| d.kind() == "not_callable"),
-            "expected not_callable diagnostic, got: {:?}",
-            thir.diagnostics
-        );
-    }
-}
+mod tests;

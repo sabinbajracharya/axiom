@@ -4,15 +4,15 @@ TraitDef(0) name=Shape vis=private
     Return : Float→<unresolved>
 StructDef(3) name=Circle vis=private fields=[private radius: Float]
 ImplDef(5) trait=Shape for=Circle
-  FnDef(6) name=area vis=private params=[let self: ///error///] return=Float→<unresolved> : (///error///) -> Float
-    Block(8) stmts=[0] tail=Some : ///error///
-      Bin(10) op=* : ///error///
-        Bin(11) op=* : ///error///
+  FnDef(6) name=area vis=private params=[let self: Circle] return=Float→<unresolved> : (Circle) -> Float
+    Block(8) stmts=[0] tail=Some : Float
+      Bin(10) op=* : Float
+        Bin(11) op=* : Float
           Lit(12) Float(3.14) : Float
-          Field(13) radius : ///error///
-            Path(14) self→7 : ///error///
-        Field(15) radius : ///error///
-          Path(16) self→7 : ///error///
+          Field(13) radius : Float
+            Path(14) self→7 : Circle
+        Field(15) radius : Float
+          Path(16) self→7 : Circle
 FnDef(17) name=main vis=private params=[] return=() : () -> Unit
   Block(18) stmts=[2] tail=Some : Unit
     ValStmt(22) : Unit

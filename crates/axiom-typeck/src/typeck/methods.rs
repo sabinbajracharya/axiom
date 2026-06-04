@@ -4,6 +4,7 @@ use super::{helpers, TypeChecker};
 use crate::error::TypeDiagnostic;
 use crate::types::{InstanceTy, Ty, TypeParamId};
 
+use super::unify::Substitution;
 use axiom_hir::*;
 
 impl TypeChecker {
@@ -27,10 +28,25 @@ impl TypeChecker {
 
             match receiver_name {
                 Some(name) => {
-                    let method_info = self.find_impl_method(&name, &mc.method);
+                    let method_info = self.find_impl_method(&name, &mc.method, &receiver_ty);
                     match method_info {
-                        Some((fn_def, _impl_info)) => {
-                            self.check_method_call(mc, &fn_def, &arg_types, &receiver_ty)
+                        Some((fn_def, impl_subst)) => {
+                            // Merge impl-level and fn-level substitutions.
+                            let mut subst = impl_subst;
+                            if let Ty::Instance(inst) = &receiver_ty {
+                                for (i, tp) in fn_def.type_params.iter().enumerate() {
+                                    if let Some(arg) = inst.args.get(i) {
+                                        subst
+                                            .entry(TypeParamId {
+                                                name: tp.name.clone(),
+                                                index: i,
+                                                def_id: tp.id,
+                                            })
+                                            .or_insert_with(|| arg.clone());
+                                    }
+                                }
+                            }
+                            self.check_method_call(mc, &fn_def, &arg_types, &subst)
                         }
                         None => {
                             self.emit(TypeDiagnostic::UnknownMethod {
@@ -58,73 +74,97 @@ impl TypeChecker {
 
     /// Find an impl method matching the given type name and method name.
     /// Searches inherent impls first, then trait impls.
+    /// For generic impls (e.g., `impl<T> List<T>`), unifies the impl's self
+    /// type pattern against the concrete receiver to build a substitution.
     pub(super) fn find_impl_method(
         &self,
         type_name: &str,
         method_name: &str,
-    ) -> Option<(FnDef, &super::ImplInfo)> {
+        receiver_ty: &Ty,
+    ) -> Option<(FnDef, Substitution)> {
+        // Inherent impls first, then trait impls.
         for info in &self.impl_table {
             if info.trait_name.is_none() && info.type_name == type_name {
-                for m in &info.methods {
-                    if m.name == method_name {
-                        return Some((m.clone(), info));
-                    }
+                if let Some(m) = info.methods.iter().find(|m| m.name == method_name) {
+                    let subst = self.build_impl_subst(info, receiver_ty);
+                    return Some((m.clone(), subst));
                 }
             }
         }
         for info in &self.impl_table {
             if info.trait_name.is_some() && info.type_name == type_name {
-                for m in &info.methods {
-                    if m.name == method_name {
-                        return Some((m.clone(), info));
-                    }
+                if let Some(m) = info.methods.iter().find(|m| m.name == method_name) {
+                    let subst = self.build_impl_subst(info, receiver_ty);
+                    return Some((m.clone(), subst));
                 }
             }
         }
         None
     }
 
-    /// Find a subscript definition for the given type. Searches inherent impls
-    /// first, then trait impls. Returns the first subscript found (v0: at most
-    /// one subscript per type).
-    fn find_impl_subscript(&self, type_name: &str) -> Option<&SubscriptDef> {
+    /// Find a subscript definition for the given type, returning the subscript
+    /// and a type-parameter substitution for generic impls.
+    fn find_impl_subscript(
+        &self,
+        type_name: &str,
+        receiver_ty: &Ty,
+    ) -> Option<(&SubscriptDef, Substitution)> {
         for info in &self.impl_table {
             if info.type_name == type_name {
                 if let Some(sub) = info.subscripts.first() {
-                    return Some(sub);
+                    let subst = self.build_impl_subst(info, receiver_ty);
+                    return Some((sub, subst));
                 }
             }
         }
         None
     }
 
+    /// Build a type-parameter substitution by unifying an impl's self type
+    /// pattern with a concrete receiver type. For non-generic impls, returns
+    /// an empty substitution.
+    fn build_impl_subst(&self, info: &super::ImplInfo, receiver_ty: &Ty) -> Substitution {
+        if info.type_params.is_empty() {
+            return Substitution::new();
+        }
+        let pattern = self.build_impl_self_pattern(info);
+        let mut subst = Substitution::new();
+        // Unify receiver against pattern: extract TypeParam → concrete mappings.
+        unify_instances(receiver_ty, &pattern, &mut subst);
+        subst
+    }
+
+    /// Build the self-type pattern for a generic impl (e.g., `List<T>` for
+    /// `impl<T> List<T>`). Type params become `Ty::TypeParam` placeholders.
+    fn build_impl_self_pattern(&self, info: &super::ImplInfo) -> Ty {
+        let args: Vec<Ty> = info
+            .type_params
+            .iter()
+            .enumerate()
+            .map(|(i, (name, def_id))| {
+                Ty::TypeParam(TypeParamId {
+                    name: name.clone(),
+                    index: i,
+                    def_id: *def_id,
+                })
+            })
+            .collect();
+        Ty::Instance(InstanceTy {
+            name: info.type_name.clone(),
+            def_id: HirId(0),
+            args,
+        })
+    }
+
     /// Check a method call against a resolved FnDef: arity, arg types, return type.
-    /// `receiver_ty` is used to substitute type arguments for generic methods on
-    /// Instance types (e.g., `List<Int>.push(42)` substitutes `T → Int`).
+    /// `subst` is the merged type-parameter substitution (impl-level + fn-level).
     pub(super) fn check_method_call(
         &mut self,
         mc: &MethodCallExpr,
         fn_def: &FnDef,
         arg_types: &[Ty],
-        receiver_ty: &Ty,
+        subst: &Substitution,
     ) -> Ty {
-        let subst = if let Ty::Instance(inst) = receiver_ty {
-            let mut s = super::unify::Substitution::new();
-            for (i, tp) in fn_def.type_params.iter().enumerate() {
-                if let Some(arg) = inst.args.get(i) {
-                    let tp_id = TypeParamId {
-                        name: tp.name.clone(),
-                        index: i,
-                        def_id: tp.id,
-                    };
-                    s.insert(tp_id, arg.clone());
-                }
-            }
-            s
-        } else {
-            super::unify::Substitution::new()
-        };
-
         let param_types: Vec<Ty> = fn_def
             .params
             .iter()
@@ -134,7 +174,7 @@ impl TypeChecker {
                     p.ty.as_ref()
                         .map(|t| self.resolve_hir_ty(t))
                         .unwrap_or(Ty::Error);
-                Self::substitute(&resolved, &subst)
+                Self::substitute(&resolved, subst)
             })
             .collect();
         let return_type = fn_def
@@ -142,7 +182,7 @@ impl TypeChecker {
             .as_ref()
             .map(|t| {
                 let resolved = self.resolve_hir_ty(t);
-                Self::substitute(&resolved, &subst)
+                Self::substitute(&resolved, subst)
             })
             .unwrap_or(Ty::Unit);
 
@@ -217,11 +257,14 @@ impl TypeChecker {
 
         // Try subscript lookup first (library-defined indexing).
         if let Some(ref name) = type_name {
-            if let Some(sub) = self.find_impl_subscript(name) {
+            if let Some((sub, subst)) = self.find_impl_subscript(name, &base_ty) {
                 let ty = sub
                     .return_type
                     .as_ref()
-                    .map(|t| self.resolve_hir_ty(t))
+                    .map(|t| {
+                        let resolved = self.resolve_hir_ty(t);
+                        Self::substitute(&resolved, &subst)
+                    })
                     .unwrap_or(Ty::Unit);
                 self.types.insert(index.id, ty.clone());
                 return ty;
@@ -283,5 +326,22 @@ impl TypeChecker {
         });
         self.types.insert(list.id, ty.clone());
         ty
+    }
+}
+
+/// Unify two `Instance` types by matching type arguments positionally.
+/// `actual` is the concrete type (e.g., `List<Int>`), `expected` may contain
+/// `TypeParam` placeholders (e.g., `List<T>`). Records `T → Int` in `subst`.
+fn unify_instances(actual: &Ty, expected: &Ty, subst: &mut Substitution) {
+    match (actual, expected) {
+        (Ty::Instance(a), Ty::Instance(e)) if a.name == e.name => {
+            for (at, et) in a.args.iter().zip(e.args.iter()) {
+                unify_instances(at, et, subst);
+            }
+        }
+        (_, Ty::TypeParam(tp)) => {
+            subst.entry(tp.clone()).or_insert_with(|| actual.clone());
+        }
+        _ => {}
     }
 }
