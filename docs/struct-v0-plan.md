@@ -51,7 +51,7 @@ on each field.
 
 ---
 
-### Step 3: Subscript declarations (`yield`)
+### Step 3: Subscript declarations (`yield`) ✅
 
 Collections need `xs[i]` syntax. The design specifies subscript declarations with `yield`
 that suspend/resume for in-place mutation. For v0, we can start with read-only subscripts
@@ -69,7 +69,34 @@ and defer `inout` projections.
 - `crates/axiom-typeck/src/typeck/methods.rs` — resolve `xs[i]` as subscript call on the receiver type
 - `crates/axiom-typeck/src/typeck/collect.rs` — collect subscript definitions from impl blocks
 
-**Exit gate:** `xs[0]` on a struct with a subscript definition resolves and type-checks.
+**Exit gate:** `xs[0]` on a struct with a subscript definition resolves and type-checks. ✅
+
+**Implemented:**
+- `crates/axiom-lexer/src/token.rs` — `Keyword::Subscript` + `Keyword::Yield` + symbol arrays
+- `crates/axiom-lexer/src/symbols.rs` — keyword table entries + labels
+- `crates/axiom-parser/src/syntax_kind.rs` — `KwSubscript`, `KwYield`, `SubscriptDef`, `YieldStmt`
+- `crates/axiom-parser/src/grammar/stmt.rs` — `yield_stmt()`, `KwYield` in `STMT_ONLY_START`
+- `crates/axiom-parser/src/grammar/item.rs` — `subscript_def()`, `at_member_start` dispatch
+- `crates/axiom-parser/src/ast/item.rs` — `SubscriptDef` AST view
+- `crates/axiom-parser/src/ast/stmt.rs` — `YieldStmt` AST view
+- `crates/axiom-parser/src/ast/item_part.rs` — `subscripts()` on `AssocItemList`
+- `crates/axiom-parser/src/ast/expr.rs` — `YieldStmt` in `block.stmts()` filter
+- `crates/axiom-parser/src/ast/mod.rs` — `YieldStmt` in `is_expr_kind`
+- `crates/axiom-hir/src/hir/items.rs` — `SubscriptDef` struct + `Item::SubscriptDef`
+- `crates/axiom-hir/src/hir/mod.rs` — `YieldStmt` struct + `Stmt::YieldStmt`
+- `crates/axiom-hir/src/lower/item.rs` — `lower_subscript_def`, impl block subscript collection
+- `crates/axiom-hir/src/lower/block.rs` — `lower_yield_stmt`, `YieldStmt` in `lower_stmt`
+- `crates/axiom-hir/src/resolve.rs` — `SubscriptDef` + `YieldStmt` arms
+- `crates/axiom-hir/src/serialize.rs` — subscript + yield serialization
+- `crates/axiom-hir/tests/invariants.rs` — coverage for new node kinds
+- `crates/axiom-typeck/src/typeck/mod.rs` — `ImplInfo.subscripts`, `check_subscript_body`
+- `crates/axiom-typeck/src/typeck/methods.rs` — `find_impl_subscript`, `infer_index` dispatch
+- `crates/axiom-typeck/src/typeck/stmt.rs` — `type_yield_stmt`, `Stmt::YieldStmt` arm
+- `crates/axiom-typeck/src/typeck/builtin.rs` — `subscripts: vec![]` in ImplInfo initializers
+- `crates/axiom-typeck/src/typeck/collect.rs` — `subscripts: vec![]` in Deinit registration
+- `crates/axiom-ir/src/lower/item.rs` — `Item::SubscriptDef` arm
+- `crates/axiom-ir/src/lower/stmt.rs` — `Stmt::YieldStmt` arm
+- Two parser integration bugs fixed: `KwYield` missing from `STMT_ONLY_START`, `YieldStmt` missing from `block.stmts()` filter
 
 ---
 
