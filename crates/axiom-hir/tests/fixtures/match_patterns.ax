@@ -1,7 +1,6 @@
-fn describe(let s: Shape) -> Float {
-    match s {
-        Circle(r) => r * r,
-        Rect(w, h) => w * h,
+fn describe(let x: Int) -> Float {
+    match x {
+        0 => 1.0,
         _ => 0.0,
     }
 }

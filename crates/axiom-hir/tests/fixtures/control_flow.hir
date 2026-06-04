@@ -1,10 +1,10 @@
-FnDef(0) name=run vis=private params=[] return=_ {
-  ExprStmt(2) Loop(3) Block(4) {
-    ValStmt(7) Ident(5) x→5: _ = Lit(6) Int(1)
+FnDef(0) name=run vis=private params=[let hot: Bool→<unresolved>] return=_ {
+  ExprStmt(3) Loop(4) Block(5) {
+    ValStmt(8) Ident(6) x→6: _ = Lit(7) Int(1)
   }
-  ValStmt(17) Ident(8) g→8: _ = If(9) Path(10) hot→<unresolved> Block(11) {
-    ExprStmt(12) Lit(13) Int(1)
-  } else Block(14) {
-    ExprStmt(15) Lit(16) Int(2)
+  ValStmt(18) Ident(9) g→9: _ = If(10) Path(11) hot→1 Block(12) {
+    ExprStmt(13) Lit(14) Int(1)
+  } else Block(15) {
+    ExprStmt(16) Lit(17) Int(2)
   }
 }

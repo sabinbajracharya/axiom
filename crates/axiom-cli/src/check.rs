@@ -4,6 +4,10 @@
 //!
 //! Kept side-effect-free so it is trivially testable; `lib.rs` owns the
 //! stdout/stderr/exit-code wiring.
+//!
+//! At **M1** the `check` command runs lex + parse + HIR lowering + name
+//! resolution. Unresolved names produce `HirDiagnostic::UnresolvedName`
+//! diagnostics in the report.
 
 use axiom_hir::{lower, serialize as hir_serialize, HirDiagnostic};
 use axiom_parser::ast::AstNode;
@@ -98,7 +102,10 @@ mod tests {
     #[test]
     fn test_check_unresolved_name_in_hir() {
         let report = check_source("fn main() { val x = unknown_var }");
-        assert!(report.is_clean(), "parse errors: {:?}", report.diagnostics);
+        assert!(
+            !report.diagnostics.is_empty(),
+            "expected unresolved diagnostic"
+        );
         assert!(report.hir_dump.contains("unknown_var"));
         assert!(report.hir_dump.contains("unresolved"));
     }

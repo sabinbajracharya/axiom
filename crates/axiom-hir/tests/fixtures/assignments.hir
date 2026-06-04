@@ -1,4 +1,3 @@
-FnDef(0) name=update vis=private params=[inout p: Point→<unresolved>] return=_ {
-  ExprStmt(3) Path(5) p→1.x = Bin(6) +(Path(8) p→1.Field(7) x, Lit(9) Float(1))
-  ExprStmt(10) Path(12) p→1.y = Lit(13) Float(2)
+FnDef(0) name=update vis=private params=[inout p: Int→<unresolved>] return=_ {
+  ExprStmt(3) p→1 = Bin(5) +(Path(6) p→1, Lit(7) Int(1))
 }

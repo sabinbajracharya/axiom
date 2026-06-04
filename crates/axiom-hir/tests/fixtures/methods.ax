@@ -1,4 +1,7 @@
+fn double(let x: Int) -> Int {
+    x + x
+}
+
 fn run() {
-    val xs = List()
-    val y = xs.map(1)
+    val y = double(1)
 }

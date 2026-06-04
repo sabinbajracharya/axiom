@@ -289,7 +289,7 @@ fn resolve_pattern_names(
 fn resolve_name_ref(
     nr: &mut NameRef,
     bindings: &HashMap<String, (DefId, DefKind)>,
-    _diagnostics: &mut Vec<HirDiagnostic>,
+    diagnostics: &mut Vec<HirDiagnostic>,
 ) {
     let text = match nr {
         NameRef::Resolved(_) => return,
@@ -306,9 +306,13 @@ fn resolve_name_ref(
 
     if let Some(def_id) = builtin_def_id(&text) {
         *nr = NameRef::Resolved(ResolvedName { def_id, text });
+        return;
     }
 
-    // Leave as unresolved — diagnostics emitted later during type checking.
+    diagnostics.push(HirDiagnostic::UnresolvedName {
+        name: text,
+        span: Span { lo: 0, hi: 0 },
+    });
 }
 
 /// Reserved HirId range for builtins. Real definitions start above this.

@@ -1,0 +1,1 @@
+fn main() { unknown_fn(1) }

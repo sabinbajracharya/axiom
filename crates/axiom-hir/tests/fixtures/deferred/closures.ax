@@ -1,0 +1,8 @@
+fn outer() -> Int {
+    val x = 10
+    fn inner() -> Int {
+        val y = x + 1
+        y
+    }
+    inner()
+}

@@ -32,7 +32,7 @@ CST → axiom_parser::ast::* → axiom_hir::lower → Hir + diagnostics
 
 | File | Responsibility | Key items |
 |---|---|---|
-| `src/lib.rs` | Crate root; public API + `lower` entry + unit tests | `lower`, `serialize`, `HirDiagnostic` |
+| `src/lib.rs` | Crate root; public API (`lower`, `serialize`, `check_all`) + unit tests | `lower`, `serialize`, `check_all`, `CoverageError` |
 | `src/hir.rs` | Core HIR types (HirId, NameRef, items, stmts, exprs, patterns, types) | `Hir`, `Item`, `Expr`, `Pattern`, `HirTy` |
 | `src/error.rs` | HIR-stage diagnostics (`thiserror`) | `HirDiagnostic` |
 | `src/lower/` | Structural lowering (CST → HIR), split by family | `mod.rs` entry |
@@ -42,16 +42,19 @@ CST → axiom_parser::ast::* → axiom_hir::lower → Hir + diagnostics
 | `src/lower/expr.rs` | Expression lowering (15+ expression kinds) | `lower_expr` + per-kind helpers |
 | `src/lower/pattern.rs` | Pattern lowering (7 pattern kinds) | `lower_pattern` + per-kind helpers |
 | `src/lower/ty.rs` | Type lowering | `lower_ty` |
-| `src/resolve.rs` | Two-pass name resolution | `resolve`, `Scope` |
+| `src/resolve.rs` | Two-pass name resolution (emits `UnresolvedName` diagnostics) | `resolve`, `Scope` |
 | `src/serialize.rs` | Canonical HIR dump (pure) | `serialize` |
 | `examples/hir.rs` | Debug CLI (`cargo run -p axiom-hir --example hir -- file.ax`) | — |
 
 ## Invariants & gotchas
 
 - **Every AST node kind must be handled by the lowerer.** The drift guard test
-  `test_lowerer_handles_every_ast_node_kind` (coming in a follow-up) will
+  `test_lowerer_handles_every_ast_node_kind` in `tests/invariants.rs` will
   fail at compile time if a new `SyntaxKind` is added without a corresponding
   HIR lowering path.
+- **Every `NameRef::Unresolved` has a corresponding diagnostic.** The
+  `check_all` coverage function verifies this invariant. The resolver emits
+  `HirDiagnostic::UnresolvedName` whenever a name cannot be resolved.
 - **HirIds are assigned in source order** during lowering. This makes the dump
   deterministic and human-readable.
 - **Builtins use a reserved HirId range** starting at 1,000,000 to avoid

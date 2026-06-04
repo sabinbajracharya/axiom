@@ -121,21 +121,26 @@ pub enum CallingConvention {
     Sink,   // consume (move/transfer ownership)
 }
 
-/// A fully-qualified path resolved by name resolution.
-/// v0: single-identifier and simple `module::name` paths.
-/// v1+: multi-segment paths with generic arguments.
+/// A name that resolved successfully, pointing at its definition.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResolvedPath {
-    /// The definition this path resolves to.
+pub struct ResolvedName {
+    /// The definition this name resolves to.
     pub def_id: DefId,
     /// The text of the name as it appeared in the source (for diagnostics).
-    pub name: String,
+    pub text: String,
 }
 
-/// An unresolved name (resolution failed — diagnostic already emitted).
+/// A name that did not resolve — the diagnostic is already emitted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnresolvedName {
-    pub name: String,
+    pub text: String,
+}
+
+/// The result of name resolution: either resolved or unresolved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NameRef {
+    Resolved(ResolvedName),
+    Unresolved(UnresolvedName),
 }
 ```
 
@@ -254,13 +259,15 @@ pub enum Expr {
 ```
 
 (Full struct definitions for each expression kind are in the crate source —
-the pattern should be clear: each has an `id: HirId` plus relevant fields.)
+the pattern should be clear: each has an `id: HirId` plus relevant fields.
+Note: `PathExpr` carries a `name_ref: NameRef`, `CallExpr` has `callee: NameRef`,
+and `StructLitExpr` has `type_name: NameRef`.)
 
 ### 3.6 Patterns
 
 ```rust
 pub enum Pattern {
-    Wildcard,
+    Wildcard(HirId),
     Ident(IdentPat),
     Literal(LitPat),
     TupleStruct(TupleStructPat),
@@ -274,7 +281,7 @@ pub enum Pattern {
 
 ```rust
 pub enum HirTy {
-    Named(ResolvedPath),
+    Named(NameRef),
     Unit,
     Tuple(Vec<HirTy>),
     Fn(FnTy),
@@ -316,7 +323,8 @@ pub struct Hir {
 
 Every `NameRef` in the HIR is either resolved (carries a `DefId` pointing at the
 definition) or unresolved (produces a diagnostic). There is **no silently unresolved
-name** — if resolution fails, a diagnostic is emitted.
+name** — if resolution fails, an `UnresolvedName` diagnostic is emitted. The
+`check_all` coverage function verifies this invariant at the HIR level.
 
 ---
 
@@ -398,7 +406,9 @@ crates/axiom-hir/
       # … more as the corpus grows
       errors/
         unresolved_name.ax
+        unresolved_call.ax
         duplicate_def.ax
+        duplicate_binding.ax
         # … more error cases
 ```
 
@@ -419,8 +429,15 @@ pub fn lower(root: &ast::SourceFile, source: &str) -> Hir;
 /// Canonical serialization of the HIR (the test oracle and debug dump).
 pub fn serialize(hir: &Hir) -> String;
 
-/// Coverage checks: drift guard + resolution completeness.
-pub fn check_all(hir: &Hir, root: &ast::SourceFile, source: &str) -> Result<(), Vec<CoverageError>>;
+/// Coverage checks: verifies that every `NameRef::Unresolved` in the HIR
+/// has a corresponding `HirDiagnostic::UnresolvedName`. Returns `Ok(())`
+/// if coverage is clean, or a list of coverage errors otherwise.
+pub fn check_all(hir: &Hir) -> Result<(), Vec<CoverageError>>;
+
+/// A coverage error — an unresolved name without a corresponding diagnostic.
+pub enum CoverageError {
+    UnresolvedWithoutDiagnostic { name: String, id: HirId },
+}
 ```
 
 The entry point takes an `ast::SourceFile` (the typed CST view) and the source string
@@ -433,9 +450,10 @@ never a panic), and never fails.
 
 ```bash
 cargo test -p axiom-hir                            # full suite
+cargo test -p axiom-hir --test fuzz                # fuzz/property tests only
 UPDATE_SNAPSHOTS=1 cargo test -p axiom-hir         # regenerate .hir / .stderr
-cargo run -p axiom-hir --example hir -- file.ax     # debug HIR dump
-cargo run -p axiom-cli -- check file.ax             # still works (parser only, for now)
+cargo run -p axiom-hir --example hir -- file.ax    # debug HIR dump
+cargo run -p axiom-cli -- check file.ax             # CST + HIR dumps + diagnostics
 ```
 
 ---

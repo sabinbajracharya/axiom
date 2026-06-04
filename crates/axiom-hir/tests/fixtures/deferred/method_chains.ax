@@ -1,0 +1,14 @@
+struct List {
+    head: Int,
+    tail: List,
+}
+
+fn map(inout xs: List, f: Fn(Int) -> Int) -> List {
+    List { head: f(xs.head), tail: xs.tail }
+}
+
+fn main() {
+    val xs = List { head: 1, tail: List { head: 2, tail: List { head: 3, tail: Nil } } }
+    val ys = map(xs, fn(x) { x * 2 })
+    print(ys.head)
+}
