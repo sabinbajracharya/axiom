@@ -28,7 +28,35 @@ fn serialize_item(item: &Item, depth: usize, out: &mut String) {
     }
 }
 
+fn fmt_type_params(params: &[HirTypeParam]) -> String {
+    if params.is_empty() {
+        return String::new();
+    }
+    let inner = params
+        .iter()
+        .map(|tp| {
+            if tp.bounds.is_empty() {
+                tp.name.clone()
+            } else {
+                let bounds = tp
+                    .bounds
+                    .iter()
+                    .map(|b| match &b.name {
+                        NameRef::Resolved(r) => format!("{}→{}", r.text, r.def_id),
+                        NameRef::Unresolved(u) => format!("{}→<unresolved>", u.text),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" + ");
+                format!("{}: {}", tp.name, bounds)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("<{}>", inner)
+}
+
 fn serialize_fn_def(f: &FnDef, depth: usize, out: &mut String) {
+    let type_params = fmt_type_params(&f.type_params);
     let params = f
         .params
         .iter()
@@ -38,8 +66,8 @@ fn serialize_fn_def(f: &FnDef, depth: usize, out: &mut String) {
     let ret = fmt_ty_maybe(&f.return_type);
     indent(out, depth);
     out.push_str(&format!(
-        "FnDef({}) name={} vis={} params=[{}] return={} {{\n",
-        f.id, f.name, f.visibility, params, ret,
+        "FnDef({}) name={}{} vis={} params=[{}] return={} {{\n",
+        f.id, f.name, type_params, f.visibility, params, ret,
     ));
     serialize_block(&f.body, depth + 1, out);
     indent(out, depth);
@@ -47,6 +75,7 @@ fn serialize_fn_def(f: &FnDef, depth: usize, out: &mut String) {
 }
 
 fn serialize_struct_def(s: &StructDef, depth: usize, out: &mut String) {
+    let type_params = fmt_type_params(&s.type_params);
     let fields = s
         .fields
         .iter()
@@ -55,16 +84,17 @@ fn serialize_struct_def(s: &StructDef, depth: usize, out: &mut String) {
         .join(", ");
     indent(out, depth);
     out.push_str(&format!(
-        "StructDef({}) name={} vis={} fields=[{}]\n",
-        s.id, s.name, s.visibility, fields,
+        "StructDef({}) name={}{} vis={} fields=[{}]\n",
+        s.id, s.name, type_params, s.visibility, fields,
     ));
 }
 
 fn serialize_enum_def(e: &EnumDef, depth: usize, out: &mut String) {
+    let type_params = fmt_type_params(&e.type_params);
     indent(out, depth);
     out.push_str(&format!(
-        "EnumDef({}) name={} vis={} variants=[\n",
-        e.id, e.name, e.visibility
+        "EnumDef({}) name={}{} vis={} variants=[\n",
+        e.id, e.name, type_params, e.visibility
     ));
     for v in &e.variants {
         let payload = if v.payload.is_empty() {
@@ -402,6 +432,14 @@ fn fmt_ty(ty: &HirTy) -> String {
         HirTy::Fn(f) => {
             let params = f.params.iter().map(fmt_ty).collect::<Vec<_>>().join(", ");
             format!("fn({}) -> {}", params, fmt_ty(&f.return_type))
+        }
+        HirTy::TypeParam(tp) => format!("{}→{}", tp.name, tp.id),
+        HirTy::Instance(inst) => {
+            let args = inst.args.iter().map(fmt_ty).collect::<Vec<_>>().join(", ");
+            match &inst.name {
+                NameRef::Resolved(r) => format!("{}→{}<{}>", r.text, r.def_id, args),
+                NameRef::Unresolved(u) => format!("{}→<unresolved><{}>", u.text, args),
+            }
         }
         HirTy::Error => "<error>".to_string(),
     }

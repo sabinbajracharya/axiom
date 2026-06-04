@@ -167,6 +167,27 @@ impl TypeChecker {
                     return_type,
                 })
             }
+            HirTy::TypeParam(_tp) => {
+                // Phase 2: will resolve to Ty::TypeParam.
+                // For now, return Error — type params are not yet in the type env.
+                Ty::Error
+            }
+            HirTy::Instance(inst) => {
+                // Phase 2: will resolve to Ty::Instance with resolved type args.
+                // For now, resolve the base name as a non-generic type.
+                let text = match &inst.name {
+                    NameRef::Resolved(r) => &r.text,
+                    NameRef::Unresolved(u) => &u.text,
+                };
+                match text.as_str() {
+                    "Int" => Ty::Int,
+                    "Float" => Ty::Float,
+                    "Bool" => Ty::Bool,
+                    "String" => Ty::String,
+                    "Unit" => Ty::Unit,
+                    _ => Ty::Error,
+                }
+            }
             HirTy::Error => Ty::Error,
         }
     }

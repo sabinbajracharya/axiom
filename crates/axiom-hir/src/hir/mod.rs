@@ -1,6 +1,9 @@
 //! Core HIR types. Desugared, ID-keyed, name-resolved (or diagnosed).
 //! Every node carries a stable `HirId` for type annotation in later stages.
 
+mod ty;
+pub use ty::*;
+
 use std::fmt;
 
 // ── Stable IDs ────────────────────────────────────────────────────────────────
@@ -114,6 +117,7 @@ pub struct FnDef {
     pub id: HirId,
     pub name: String,
     pub visibility: Visibility,
+    pub type_params: Vec<HirTypeParam>,
     pub params: Vec<Param>,
     pub return_type: Option<HirTy>,
     pub body: Block,
@@ -132,6 +136,7 @@ pub struct StructDef {
     pub id: HirId,
     pub name: String,
     pub visibility: Visibility,
+    pub type_params: Vec<HirTypeParam>,
     pub fields: Vec<FieldDef>,
 }
 
@@ -148,6 +153,7 @@ pub struct EnumDef {
     pub id: HirId,
     pub name: String,
     pub visibility: Visibility,
+    pub type_params: Vec<HirTypeParam>,
     pub variants: Vec<VariantDef>,
 }
 
@@ -565,21 +571,4 @@ pub struct RangePat {
     pub start: Option<LitKind>,
     pub end: Option<LitKind>,
     pub inclusive: bool,
-}
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum HirTy {
-    Named(NameRef),
-    Unit,
-    Tuple(Vec<HirTy>),
-    Fn(FnTy),
-    Error,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct FnTy {
-    pub params: Vec<HirTy>,
-    pub return_type: Box<HirTy>,
 }

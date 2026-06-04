@@ -1,0 +1,15 @@
+StructDef(0) name=Box<T> vis=private fields=[private value: T→1]
+StructDef(3) name=Pair<A, B> vis=private fields=[private first: A→4, private second: B→5]
+FnDef(8) name=identity<T> vis=private params=[let x: T→9] return=T→9 {
+  tail: Path(13) x→10
+}
+FnDef(14) name=swap<A, B> vis=private params=[let a: A→15, let b: B→16] return=Pair→3<B→16, A→15> {
+  tail: StructLit(21) Pair→3 { first: Path(22) b→18, second: Path(23) a→17 }
+}
+EnumDef(24) name=Option<T> vis=private variants=[
+  Variant(26) name=Some(T→25)
+  Variant(27) name=None
+]
+FnDef(28) name=unwrap_or<T> vis=private params=[let opt: Option→24<T→29>, let default: T→29] return=T→29 {
+  tail: Path(34) default→31
+}

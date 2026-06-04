@@ -319,6 +319,7 @@ mod tests {
                 id: fn_id,
                 name: "main".to_string(),
                 visibility: Visibility::Private,
+                type_params: vec![],
                 params: vec![],
                 return_type: None,
                 body: Block {

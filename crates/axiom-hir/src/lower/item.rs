@@ -2,7 +2,7 @@
 
 use super::block::lower_block;
 use super::ty::lower_ty;
-use super::{name_text, token_text, Def, DefKind, LowerCtx};
+use super::{name_text, path_last_segment, token_text, Def, DefKind, LowerCtx};
 use crate::hir::*;
 use crate::HirDiagnostic;
 use axiom_parser::ast::{self, AstNode};
@@ -34,6 +34,7 @@ fn lower_fn_def(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
     } else {
         Visibility::Private
     };
+    let type_params = lower_generic_params(f.generic_param_list(), ctx);
     let params = lower_params(f.param_list(), ctx);
     let return_type = f
         .ret_type()
@@ -58,6 +59,7 @@ fn lower_fn_def(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
         id,
         name: fname,
         visibility,
+        type_params,
         params,
         return_type,
         body,
@@ -99,6 +101,49 @@ fn lower_params(param_list: Option<ast::ParamList>, ctx: &mut LowerCtx) -> Vec<P
         .collect()
 }
 
+/// Lower `<T: Ord, U>` into `Vec<HirTypeParam>`, registering each param in `ctx.defs`.
+fn lower_generic_params(
+    params: Option<ast::GenericParamList>,
+    ctx: &mut LowerCtx,
+) -> Vec<HirTypeParam> {
+    let Some(gp) = params else {
+        return Vec::new();
+    };
+    gp.params()
+        .into_iter()
+        .map(|p| {
+            let id = ctx.alloc_id();
+            let pname = token_text(p.name_token());
+            let bounds = p
+                .bounds()
+                .map(|b| {
+                    b.types()
+                        .into_iter()
+                        .map(|ty_node| {
+                            // Trait bounds are type nodes (PathType), not expr nodes.
+                            let name = ast::PathType::cast(ty_node)
+                                .and_then(|pt| pt.path())
+                                .map(|p| NameRef::unresolved(path_last_segment(Some(p))))
+                                .unwrap_or_else(|| NameRef::unresolved(""));
+                            HirTraitBound { name }
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            ctx.defs.push(Def {
+                name: pname.clone(),
+                def_id: id,
+                kind: DefKind::TypeParam,
+            });
+            HirTypeParam {
+                id,
+                name: pname,
+                bounds,
+            }
+        })
+        .collect()
+}
+
 fn lower_struct_def(s: &ast::StructDef, ctx: &mut LowerCtx) -> StructDef {
     let id = ctx.alloc_id();
     let sname = s.name().map(|n| name_text(&n)).unwrap_or_default();
@@ -107,6 +152,7 @@ fn lower_struct_def(s: &ast::StructDef, ctx: &mut LowerCtx) -> StructDef {
     } else {
         Visibility::Private
     };
+    let type_params = lower_generic_params(s.generic_param_list(), ctx);
     let fields = s
         .field_list()
         .map(|fl| fl.fields())
@@ -148,6 +194,7 @@ fn lower_struct_def(s: &ast::StructDef, ctx: &mut LowerCtx) -> StructDef {
         id,
         name: sname,
         visibility,
+        type_params,
         fields,
     }
 }
@@ -160,6 +207,7 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
     } else {
         Visibility::Private
     };
+    let type_params = lower_generic_params(e.generic_param_list(), ctx);
     let variants = e
         .variant_list()
         .map(|vl| vl.variants())
@@ -200,6 +248,7 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
         id,
         name: ename,
         visibility,
+        type_params,
         variants,
     }
 }

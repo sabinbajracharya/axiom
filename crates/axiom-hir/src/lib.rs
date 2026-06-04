@@ -391,4 +391,154 @@ mod tests {
         let hir = lower_source("fn main() { val x = unknown_var }");
         assert!(check_all(&hir).is_ok());
     }
+
+    // ── Generics tests ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_generic_struct_type_params() {
+        let hir = lower_source("struct Box<T> { value: T }");
+        assert!(
+            hir.diagnostics.is_empty(),
+            "unexpected: {:?}",
+            hir.diagnostics
+        );
+        match &hir.items[0] {
+            Item::StructDef(s) => {
+                assert_eq!(s.type_params.len(), 1);
+                assert_eq!(s.type_params[0].name, "T");
+                // Field type T should be resolved to TypeParam.
+                match &s.fields[0].ty {
+                    HirTy::TypeParam(tp) => assert_eq!(tp.name, "T"),
+                    other => panic!("expected TypeParam for field type, got: {:?}", other),
+                }
+            }
+            _ => panic!("expected StructDef"),
+        }
+    }
+
+    #[test]
+    fn test_generic_fn_type_params() {
+        let hir = lower_source("fn identity<T>(x: T) -> T { x }");
+        assert!(
+            hir.diagnostics.is_empty(),
+            "unexpected: {:?}",
+            hir.diagnostics
+        );
+        match &hir.items[0] {
+            Item::FnDef(f) => {
+                assert_eq!(f.type_params.len(), 1);
+                assert_eq!(f.type_params[0].name, "T");
+                // Param type T should be resolved.
+                match &f.params[0].ty {
+                    Some(HirTy::TypeParam(tp)) => assert_eq!(tp.name, "T"),
+                    other => panic!("expected TypeParam for param type, got: {:?}", other),
+                }
+                // Return type T should be resolved.
+                match &f.return_type {
+                    Some(HirTy::TypeParam(tp)) => assert_eq!(tp.name, "T"),
+                    other => panic!("expected TypeParam for return type, got: {:?}", other),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_generic_type_instance() {
+        let hir = lower_source("fn f(x: Pair<Int, Bool>) { x }");
+        assert!(
+            hir.diagnostics.is_empty(),
+            "unexpected: {:?}",
+            hir.diagnostics
+        );
+        match &hir.items[0] {
+            Item::FnDef(f) => {
+                match &f.params[0].ty {
+                    Some(HirTy::Instance(inst)) => {
+                        // Base name Pair is unresolved (not defined in this snippet).
+                        match &inst.name {
+                            NameRef::Unresolved(u) => assert_eq!(u.text, "Pair"),
+                            other => panic!("expected unresolved Pair, got: {:?}", other),
+                        }
+                        assert_eq!(inst.args.len(), 2);
+                        // Args Int and Bool are named types.
+                        assert!(matches!(inst.args[0], HirTy::Named(_)));
+                        assert!(matches!(inst.args[1], HirTy::Named(_)));
+                    }
+                    other => panic!("expected Instance type, got: {:?}", other),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_generic_enum_type_params() {
+        let hir = lower_source("enum Option<T> { Some(T), None }");
+        assert!(
+            hir.diagnostics.is_empty(),
+            "unexpected: {:?}",
+            hir.diagnostics
+        );
+        match &hir.items[0] {
+            Item::EnumDef(e) => {
+                assert_eq!(e.type_params.len(), 1);
+                assert_eq!(e.type_params[0].name, "T");
+                // Variant payload T should be resolved to TypeParam.
+                match &e.variants[0].payload[0] {
+                    HirTy::TypeParam(tp) => assert_eq!(tp.name, "T"),
+                    other => panic!("expected TypeParam for variant payload, got: {:?}", other),
+                }
+            }
+            _ => panic!("expected EnumDef"),
+        }
+    }
+
+    #[test]
+    fn test_generic_type_params_in_serialize() {
+        let hir = lower_source("struct Pair<A, B> { first: A, second: B }");
+        let dump = serialize(&hir);
+        assert!(dump.contains("name=Pair<A, B>"), "dump: {dump}");
+        assert!(dump.contains("first: A→"), "dump: {dump}");
+        assert!(dump.contains("second: B→"), "dump: {dump}");
+    }
+
+    #[test]
+    fn test_generic_trait_bound() {
+        let hir = lower_source("fn sort<T: Ord>(items: T) { items }");
+        assert!(
+            hir.diagnostics.is_empty(),
+            "unexpected: {:?}",
+            hir.diagnostics
+        );
+        match &hir.items[0] {
+            Item::FnDef(f) => {
+                assert_eq!(f.type_params.len(), 1);
+                assert_eq!(f.type_params[0].name, "T");
+                assert_eq!(f.type_params[0].bounds.len(), 1);
+                match &f.type_params[0].bounds[0].name {
+                    NameRef::Unresolved(u) => assert_eq!(u.text, "Ord"),
+                    other => panic!("expected unresolved bound, got: {:?}", other),
+                }
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
+
+    #[test]
+    fn test_no_generics_backward_compatible() {
+        // Non-generic code should still work exactly as before.
+        let hir = lower_source("fn add(a: Int, b: Int) -> Int { a + b }");
+        assert!(
+            hir.diagnostics.is_empty(),
+            "unexpected: {:?}",
+            hir.diagnostics
+        );
+        match &hir.items[0] {
+            Item::FnDef(f) => {
+                assert!(f.type_params.is_empty());
+            }
+            _ => panic!("expected FnDef"),
+        }
+    }
 }

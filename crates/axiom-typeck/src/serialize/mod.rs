@@ -6,8 +6,11 @@
 //!
 //! Kind labels come from the type system (never hardcoded strings).
 
+mod helpers;
+
 use crate::thir::Thir;
 use axiom_hir::*;
+use helpers::{fmt_hir_ty, fmt_lit, indent};
 
 /// Serialize a THIR to the canonical dump format.
 pub fn serialize(thir: &Thir) -> String {
@@ -140,7 +143,7 @@ fn serialize_block(block: &Block, depth: usize, thir: &Thir, out: &mut String) {
     }
 }
 
-fn stmt_type_annotation(id: axiom_hir::HirId, thir: &Thir) -> String {
+fn stmt_type_annotation(id: HirId, thir: &Thir) -> String {
     thir.types
         .get(&id)
         .map(|t| format!(" : {t}"))
@@ -551,46 +554,4 @@ fn serialize_pat_range(rp: &RangePat, type_ann: &str, out: &mut String) {
         out.push_str(&fmt_lit(e));
     }
     out.push_str(type_ann);
-}
-
-fn fmt_hir_ty(ty: &HirTy) -> String {
-    match ty {
-        HirTy::Named(nr) => match nr {
-            NameRef::Resolved(r) => format!("{}→{}", r.text, r.def_id),
-            NameRef::Unresolved(u) => format!("{}→<unresolved>", u.text),
-        },
-        HirTy::Unit => "()".to_string(),
-        HirTy::Tuple(ts) => {
-            format!(
-                "({})",
-                ts.iter().map(fmt_hir_ty).collect::<Vec<_>>().join(", ")
-            )
-        }
-        HirTy::Fn(f) => {
-            let params = f
-                .params
-                .iter()
-                .map(fmt_hir_ty)
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("fn({}) -> {}", params, fmt_hir_ty(&f.return_type))
-        }
-        HirTy::Error => "<error>".to_string(),
-    }
-}
-
-fn fmt_lit(kind: &LitKind) -> String {
-    match kind {
-        LitKind::Int(i) => format!("Int({i})"),
-        LitKind::Float(f) => format!("Float({f})"),
-        LitKind::Bool(b) => format!("Bool({b})"),
-        LitKind::String(s) => format!("String(\"{}\")", s),
-        LitKind::Unit => "Unit".to_string(),
-    }
-}
-
-fn indent(out: &mut String, depth: usize) {
-    for _ in 0..depth {
-        out.push_str("  ");
-    }
 }

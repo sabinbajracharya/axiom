@@ -18,7 +18,16 @@ pub(super) fn lower_ty(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> H
             NameRef::Unresolved(u) => u.text.clone(),
         };
         if name_text == "()" {
-            HirTy::Unit
+            return HirTy::Unit;
+        }
+        // If generic args are present (`List<Int>`), produce HirTy::Instance.
+        if let Some(generic_args) = pt.generic_arg_list() {
+            let args = generic_args
+                .args()
+                .into_iter()
+                .map(|arg_node| lower_ty(&arg_node, ctx))
+                .collect();
+            HirTy::Instance(InstanceTy { name: nr, args })
         } else {
             HirTy::Named(nr)
         }

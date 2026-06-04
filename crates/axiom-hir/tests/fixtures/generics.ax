@@ -1,0 +1,25 @@
+struct Box<T> {
+    value: T,
+}
+
+struct Pair<A, B> {
+    first: A,
+    second: B,
+}
+
+fn identity<T>(x: T) -> T {
+    x
+}
+
+fn swap<A, B>(let a: A, let b: B) -> Pair<B, A> {
+    Pair { first: b, second: a }
+}
+
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+fn unwrap_or<T>(let opt: Option<T>, let default: T) -> T {
+    default
+}

@@ -1,5 +1,5 @@
 StructDef(0) name=Point vis=private fields=[private x: Float→<unresolved>, private y: Float→<unresolved>]
-FnDef(3) name=origin vis=private params=[] return=Point→<unresolved> : () -> Point
+FnDef(3) name=origin vis=private params=[] return=Point→0 : () -> Point
   Block(4) stmts=[0] tail=Some : Point
     StructLit(6) Point→0 : Point
       x:       Lit(7) Float(0) : Float

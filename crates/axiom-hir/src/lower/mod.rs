@@ -58,6 +58,7 @@ pub(crate) enum DefKind {
     Variant,
     Field,
     Param,
+    TypeParam,
     Local,
     Builtin,
 }

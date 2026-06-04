@@ -50,12 +50,96 @@ fn resolve_item_names(
     match item {
         Item::FnDef(f) => {
             let mut scope = Scope::new_child(top_level);
-            for param in &f.params {
+            // Register type params in scope so T in param types resolves.
+            for tp in &f.type_params {
+                scope.define(tp.name.clone(), tp.id, DefKind::TypeParam);
+            }
+            // Resolve type param references in param and return types.
+            for param in &mut f.params {
+                if let Some(ty) = &mut param.ty {
+                    resolve_ty_names(ty, &scope.bindings);
+                }
                 scope.define(param.name.clone(), param.id, DefKind::Param);
+            }
+            if let Some(ret) = &mut f.return_type {
+                resolve_ty_names(ret, &scope.bindings);
             }
             resolve_block_names(&mut f.body, &scope, diagnostics);
         }
-        Item::StructDef(_) | Item::EnumDef(_) => {}
+        Item::StructDef(s) => {
+            let mut scope = Scope::new_child(top_level);
+            for tp in &s.type_params {
+                scope.define(tp.name.clone(), tp.id, DefKind::TypeParam);
+            }
+            for field in &mut s.fields {
+                resolve_ty_names(&mut field.ty, &scope.bindings);
+            }
+        }
+        Item::EnumDef(e) => {
+            let mut scope = Scope::new_child(top_level);
+            for tp in &e.type_params {
+                scope.define(tp.name.clone(), tp.id, DefKind::TypeParam);
+            }
+            for variant in &mut e.variants {
+                for payload_ty in &mut variant.payload {
+                    resolve_ty_names(payload_ty, &scope.bindings);
+                }
+            }
+        }
+    }
+}
+
+/// Resolve type parameter names within a `HirTy`.
+/// Converts `HirTy::Named("T")` to `HirTy::TypeParam(...)` when `T` is in scope
+/// as a `DefKind::TypeParam`. Also resolves names inside `HirTy::Instance` args.
+fn resolve_ty_names(ty: &mut HirTy, bindings: &HashMap<String, (DefId, DefKind)>) {
+    match ty {
+        HirTy::Named(nr) => {
+            let text = match nr {
+                NameRef::Resolved(_) => return,
+                NameRef::Unresolved(u) => u.text.clone(),
+            };
+            if let Some((def_id, kind)) = bindings.get(&text) {
+                if *kind == DefKind::TypeParam {
+                    *ty = HirTy::TypeParam(HirTypeParam {
+                        id: *def_id,
+                        name: text,
+                        bounds: Vec::new(), // Bounds are on the declaration, not the use.
+                    });
+                } else {
+                    *nr = NameRef::resolved(*def_id, &text);
+                }
+            }
+            // If not in bindings, leave as Unresolved (type checker or builtins handle it).
+        }
+        HirTy::Instance(inst) => {
+            // Resolve the base name.
+            let text = match &inst.name {
+                NameRef::Resolved(_) => String::new(),
+                NameRef::Unresolved(u) => u.text.clone(),
+            };
+            if !text.is_empty() {
+                if let Some((def_id, _)) = bindings.get(&text) {
+                    inst.name = NameRef::resolved(*def_id, &text);
+                }
+            }
+            // Recursively resolve type args.
+            for arg in &mut inst.args {
+                resolve_ty_names(arg, bindings);
+            }
+        }
+        HirTy::Tuple(elems) => {
+            for elem in elems {
+                resolve_ty_names(elem, bindings);
+            }
+        }
+        HirTy::Fn(f) => {
+            for param in &mut f.params {
+                resolve_ty_names(param, bindings);
+            }
+            resolve_ty_names(&mut f.return_type, bindings);
+        }
+        HirTy::TypeParam(_) | HirTy::Unit | HirTy::Error => {}
     }
 }
 
