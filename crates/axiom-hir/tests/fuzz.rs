@@ -36,6 +36,8 @@ fn check_item_ids(item: &axiom_hir::Item, seen: &mut HashSet<axiom_hir::HirId>) 
         axiom_hir::Item::FnDef(f) => f.id,
         axiom_hir::Item::StructDef(s) => s.id,
         axiom_hir::Item::EnumDef(e) => e.id,
+        axiom_hir::Item::TraitDef(t) => t.id,
+        axiom_hir::Item::ImplDef(i) => i.id,
     };
     if !seen.insert(id) {
         return false;
@@ -65,7 +67,35 @@ fn check_item_ids(item: &axiom_hir::Item, seen: &mut HashSet<axiom_hir::HirId>) 
             }
             true
         }
+        axiom_hir::Item::TraitDef(t) => check_trait_ids(t, seen),
+        axiom_hir::Item::ImplDef(impl_def) => {
+            for m in &impl_def.methods {
+                if !check_item_ids(&axiom_hir::Item::FnDef(m.clone()), seen) {
+                    return false;
+                }
+            }
+            true
+        }
     }
+}
+
+fn check_trait_ids(t: &axiom_hir::TraitDef, seen: &mut HashSet<axiom_hir::HirId>) -> bool {
+    for m in &t.methods {
+        if !seen.insert(m.id) {
+            return false;
+        }
+        for p in &m.params {
+            if !seen.insert(p.id) {
+                return false;
+            }
+        }
+        if let Some(body) = &m.body {
+            if !check_block_ids(body, seen) {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 fn check_block_ids(block: &axiom_hir::Block, seen: &mut HashSet<axiom_hir::HirId>) -> bool {

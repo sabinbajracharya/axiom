@@ -1,0 +1,13 @@
+struct Circle { r: Float }
+struct Rect { w: Float, h: Float }
+trait Shape {
+    fn area(let self) -> Float;
+    fn name(let self) -> String { "shape" }
+}
+impl Shape for Circle {
+    fn area(let self) -> Float { 3.14159 * self.r * self.r }
+}
+impl Shape for Rect {
+    fn area(let self) -> Float { self.w * self.h }
+    fn name(let self) -> String { "rectangle" }
+}

@@ -55,6 +55,7 @@ pub(crate) enum DefKind {
     Fn,
     Struct,
     Enum,
+    Trait,
     Variant,
     Field,
     Param,

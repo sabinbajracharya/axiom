@@ -201,6 +201,11 @@ impl ImplBlock {
     pub fn first_type(&self) -> Option<SyntaxNode> {
         child_type_node(&self.0)
     }
+    /// All type children in order. For `impl Trait for Type` this returns
+    /// `[Trait, Type]`; for `impl Type` it returns `[Type]`.
+    pub fn types(&self) -> Vec<PathType> {
+        child_nodes_of(&self.0)
+    }
     pub fn assoc_item_list(&self) -> Option<AssocItemList> {
         child_node(&self.0)
     }

@@ -32,6 +32,9 @@ fn serialize_item(item: &Item, depth: usize, thir: &Thir, out: &mut String) {
         Item::FnDef(f) => serialize_fn_def(f, depth, thir, out),
         Item::StructDef(s) => serialize_struct_def(s, depth, thir, out),
         Item::EnumDef(e) => serialize_enum_def(e, depth, thir, out),
+        Item::TraitDef(_) | Item::ImplDef(_) => {
+            // Traits/impls not yet in THIR — will be added in traits phase 2.
+        }
     }
 }
 

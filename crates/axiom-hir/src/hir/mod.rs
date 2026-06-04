@@ -1,7 +1,9 @@
 //! Core HIR types. Desugared, ID-keyed, name-resolved (or diagnosed).
 //! Every node carries a stable `HirId` for type annotation in later stages.
 
+mod items;
 mod ty;
+pub use items::*;
 pub use ty::*;
 
 use std::fmt;
@@ -101,67 +103,6 @@ impl NameRef {
 pub struct Hir {
     pub items: Vec<Item>,
     pub diagnostics: Vec<crate::HirDiagnostic>,
-}
-
-// ── Items ─────────────────────────────────────────────────────────────────────
-
-#[derive(Debug, Clone)]
-pub enum Item {
-    FnDef(FnDef),
-    StructDef(StructDef),
-    EnumDef(EnumDef),
-}
-
-#[derive(Debug, Clone)]
-pub struct FnDef {
-    pub id: HirId,
-    pub name: String,
-    pub visibility: Visibility,
-    pub type_params: Vec<HirTypeParam>,
-    pub params: Vec<Param>,
-    pub return_type: Option<HirTy>,
-    pub body: Block,
-}
-
-#[derive(Debug, Clone)]
-pub struct Param {
-    pub id: HirId,
-    pub convention: CallingConvention,
-    pub name: String,
-    pub ty: Option<HirTy>,
-}
-
-#[derive(Debug, Clone)]
-pub struct StructDef {
-    pub id: HirId,
-    pub name: String,
-    pub visibility: Visibility,
-    pub type_params: Vec<HirTypeParam>,
-    pub fields: Vec<FieldDef>,
-}
-
-#[derive(Debug, Clone)]
-pub struct FieldDef {
-    pub id: HirId,
-    pub name: String,
-    pub ty: HirTy,
-    pub visibility: Visibility,
-}
-
-#[derive(Debug, Clone)]
-pub struct EnumDef {
-    pub id: HirId,
-    pub name: String,
-    pub visibility: Visibility,
-    pub type_params: Vec<HirTypeParam>,
-    pub variants: Vec<VariantDef>,
-}
-
-#[derive(Debug, Clone)]
-pub struct VariantDef {
-    pub id: HirId,
-    pub name: String,
-    pub payload: Vec<HirTy>,
 }
 
 // ── Statements ────────────────────────────────────────────────────────────────

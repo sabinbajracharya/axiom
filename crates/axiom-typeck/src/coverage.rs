@@ -87,6 +87,21 @@ fn collect_item_ids(item: &axiom_hir::Item, ids: &mut Vec<(HirId, String)>) {
                 ids.push((variant.id, "VariantDef".to_string()));
             }
         }
+        axiom_hir::Item::TraitDef(t) => {
+            ids.push((t.id, "TraitDef".to_string()));
+            for method in &t.methods {
+                ids.push((method.id, "TraitMethod".to_string()));
+                for param in &method.params {
+                    ids.push((param.id, "Param".to_string()));
+                }
+            }
+        }
+        axiom_hir::Item::ImplDef(impl_def) => {
+            ids.push((impl_def.id, "ImplDef".to_string()));
+            for method in &impl_def.methods {
+                collect_item_ids(&axiom_hir::Item::FnDef(method.clone()), ids);
+            }
+        }
     }
 }
 

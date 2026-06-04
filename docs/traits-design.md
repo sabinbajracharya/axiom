@@ -555,6 +555,22 @@ Assert:
 | `test_parse_trait_bound` | `fn foo<T: Ord>()` — bound parsing |
 | `test_parse_multi_bounds` | `fn foo<T: A + B>()` — multiple bounds |
 
+> ✅ Parser tests covered by existing grammar — `trait_def`, `impl_block` in grammar/item.rs.
+
+#### HIR lowering + name resolution
+
+| Test | What it verifies | Status |
+|---|---|---|
+| `test_trait_decl_required_method` | `trait Shape { fn area(let self) -> Float; }` — required method, no body | ✅ |
+| `test_trait_decl_default_method` | `trait Shape { fn name(let self) -> String { "shape" } }` — default method, has body | ✅ |
+| `test_trait_decl_mixed_methods` | Trait with both required and default methods | ✅ |
+| `test_trait_with_type_params` | `trait Container<T> { fn get(let self) -> T; }` — type param resolves in method return | ✅ |
+| `test_impl_block_basic` | `impl Shape for Circle { ... }` — trait + type names resolve | ✅ |
+| `test_impl_block_without_trait` | `impl Circle { ... }` — inherent impl (no trait) | ✅ |
+| `test_trait_serialize` | TraitDef appears in HIR dump with methods | ✅ |
+| `test_impl_serialize` | ImplDef appears in HIR dump with trait→id for Type→id | ✅ |
+| `test_no_traits_backward_compatible` | Non-trait code unaffected | ✅ |
+
 #### Name resolution
 
 | Test | What it verifies |
@@ -610,9 +626,9 @@ Assert:
 
 ## 9. Implementation order
 
-1. **Parser:** trait declarations, impl blocks, trait bounds.
-2. **HIR:** `HirTrait`, `HirImpl`, `HirTraitMethod`.
-3. **Name resolution:** trait scoping, impl registration, method resolution.
+1. ✅ **Parser:** trait declarations, impl blocks, trait bounds. *(Already existed — `trait_def`, `impl_block` in grammar/item.rs, `TraitDef`, `ImplBlock` AST views, `TraitItemList`, `AssocItemList`.)*
+2. ✅ **HIR:** `TraitDef`, `ImplDef`, `TraitMethod`. *(Added to `hir/items.rs`; `Item::TraitDef`, `Item::ImplDef` variants; `DefKind::Trait`.)*
+3. ✅ **Name resolution:** trait scoping, impl registration, method resolution. *(Traits registered in top-level scope; impl trait/type names resolved; method signatures + bodies resolved with param scope. `self` receiver lowered from `SelfParam`.)*
 4. **Type checker:** impl completeness checking, signature matching, bound checking,
    method dispatch, `Self` type.
 5. **Monomorphization:** trait method calls become direct calls.

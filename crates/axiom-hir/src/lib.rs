@@ -60,7 +60,7 @@ fn check_item(item: &Item, diagnosed: &[String], errors: &mut Vec<CoverageError>
         Item::FnDef(f) => {
             check_block(&f.body, diagnosed, errors);
         }
-        Item::StructDef(_) | Item::EnumDef(_) => {}
+        Item::StructDef(_) | Item::EnumDef(_) | Item::TraitDef(_) | Item::ImplDef(_) => {}
     }
 }
 

@@ -1,0 +1,21 @@
+StructDef(0) name=Circle vis=private fields=[private r: Float→<unresolved>]
+StructDef(2) name=Rect vis=private fields=[private w: Float→<unresolved>, private h: Float→<unresolved>]
+TraitDef(5) name=Shape vis=private methods=[
+  Method(6) name=area params=[let self: _] return=Float→<unresolved>
+  Method(8) name=name params=[let self: _] return=String→<unresolved> {
+    tail: Lit(12) String("shape")
+  }
+]
+ImplDef(13) Shape→5 for Circle→0 methods=[
+  FnDef(14) name=area vis=private params=[let self: _] return=Float→<unresolved> {
+    tail: Bin(18) *(Bin(19) *(Lit(20) Float(3.14159), Path(22) self→15.Field(21) r), Path(24) self→15.Field(23) r)
+  }
+]
+ImplDef(25) Shape→5 for Rect→2 methods=[
+  FnDef(26) name=area vis=private params=[let self: _] return=Float→<unresolved> {
+    tail: Bin(30) *(Path(32) self→27.Field(31) w, Path(34) self→27.Field(33) h)
+  }
+  FnDef(35) name=name vis=private params=[let self: _] return=String→<unresolved> {
+    tail: Lit(39) String("rectangle")
+  }
+]

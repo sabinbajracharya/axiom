@@ -25,6 +25,8 @@ fn serialize_item(item: &Item, depth: usize, out: &mut String) {
         Item::FnDef(f) => serialize_fn_def(f, depth, out),
         Item::StructDef(s) => serialize_struct_def(s, depth, out),
         Item::EnumDef(e) => serialize_enum_def(e, depth, out),
+        Item::TraitDef(t) => serialize_trait_def(t, depth, out),
+        Item::ImplDef(i) => serialize_impl_def(i, depth, out),
     }
 }
 
@@ -87,6 +89,69 @@ fn serialize_struct_def(s: &StructDef, depth: usize, out: &mut String) {
         "StructDef({}) name={}{} vis={} fields=[{}]\n",
         s.id, s.name, type_params, s.visibility, fields,
     ));
+}
+
+fn serialize_trait_def(t: &TraitDef, depth: usize, out: &mut String) {
+    let type_params = fmt_type_params(&t.type_params);
+    indent(out, depth);
+    out.push_str(&format!(
+        "TraitDef({}) name={}{} vis={} methods=[\n",
+        t.id, t.name, type_params, t.visibility,
+    ));
+    for method in &t.methods {
+        let params = method
+            .params
+            .iter()
+            .map(|p| format!("{} {}: {}", p.convention, p.name, fmt_ty_maybe(&p.ty)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let ret = fmt_ty_maybe(&method.return_type);
+        indent(out, depth + 1);
+        if let Some(body) = &method.body {
+            out.push_str(&format!(
+                "Method({}) name={} params=[{}] return={} {{\n",
+                method.id, method.name, params, ret,
+            ));
+            serialize_block(body, depth + 2, out);
+            indent(out, depth + 1);
+            out.push_str("}\n");
+        } else {
+            out.push_str(&format!(
+                "Method({}) name={} params=[{}] return={}\n",
+                method.id, method.name, params, ret,
+            ));
+        }
+    }
+    indent(out, depth);
+    out.push_str("]\n");
+}
+
+fn serialize_impl_def(i: &ImplDef, depth: usize, out: &mut String) {
+    let type_params = fmt_type_params(&i.type_params);
+    let trait_part = match &i.trait_name {
+        Some(nr) => format!("{} for ", fmt_name_ref(nr)),
+        None => String::new(),
+    };
+    indent(out, depth);
+    out.push_str(&format!(
+        "ImplDef({}) {}{}{} methods=[\n",
+        i.id,
+        trait_part,
+        fmt_name_ref(&i.type_name),
+        type_params,
+    ));
+    for method in &i.methods {
+        serialize_fn_def(method, depth + 1, out);
+    }
+    indent(out, depth);
+    out.push_str("]\n");
+}
+
+fn fmt_name_ref(nr: &NameRef) -> String {
+    match nr {
+        NameRef::Resolved(r) => format!("{}→{}", r.text, r.def_id),
+        NameRef::Unresolved(u) => format!("{}→<unresolved>", u.text),
+    }
 }
 
 fn serialize_enum_def(e: &EnumDef, depth: usize, out: &mut String) {

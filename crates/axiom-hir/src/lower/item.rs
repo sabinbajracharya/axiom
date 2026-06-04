@@ -13,8 +13,12 @@ pub(super) fn lower_item(node: axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> 
         Some(Item::FnDef(lower_fn_def(&fn_def, ctx)))
     } else if let Some(struct_def) = ast::StructDef::cast(node.clone()) {
         Some(Item::StructDef(lower_struct_def(&struct_def, ctx)))
-    } else if let Some(enum_def) = ast::EnumDef::cast(node) {
+    } else if let Some(enum_def) = ast::EnumDef::cast(node.clone()) {
         Some(Item::EnumDef(lower_enum_def(&enum_def, ctx)))
+    } else if let Some(trait_def) = ast::TraitDef::cast(node.clone()) {
+        Some(Item::TraitDef(lower_trait_def(&trait_def, ctx)))
+    } else if let Some(impl_block) = ast::ImplBlock::cast(node) {
+        Some(Item::ImplDef(lower_impl_block(&impl_block, ctx)))
     } else {
         ctx.diag(HirDiagnostic::NotYetSupported {
             feature: format!("{kind:?}"),
@@ -27,6 +31,22 @@ pub(super) fn lower_item(node: axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> 
 }
 
 fn lower_fn_def(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
+    let result = lower_fn_inner(f, ctx);
+    ctx.defs.push(Def {
+        name: result.name.clone(),
+        def_id: result.id,
+        kind: DefKind::Fn,
+    });
+    result
+}
+
+/// Lower a function without registering it as a top-level definition.
+/// Used for impl methods (registered via the impl block, not individually).
+fn lower_fn_no_register(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
+    lower_fn_inner(f, ctx)
+}
+
+fn lower_fn_inner(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
     let id = ctx.alloc_id();
     let fname = f.name().map(|n| name_text(&n)).unwrap_or_default();
     let visibility = if f.visibility().is_some() {
@@ -49,12 +69,6 @@ fn lower_fn_def(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
             tail: None,
         });
 
-    ctx.defs.push(Def {
-        name: fname.clone(),
-        def_id: id,
-        kind: DefKind::Fn,
-    });
-
     FnDef {
         id,
         name: fname,
@@ -70,35 +84,57 @@ fn lower_params(param_list: Option<ast::ParamList>, ctx: &mut LowerCtx) -> Vec<P
     let Some(pl) = param_list else {
         return Vec::new();
     };
-    pl.params()
-        .into_iter()
-        .map(|param| {
-            let id = ctx.alloc_id();
-            let convention = param
-                .convention_token()
-                .map(|t| match t.text() {
-                    "inout" => CallingConvention::Inout,
-                    "sink" => CallingConvention::Sink,
-                    _ => CallingConvention::Let,
-                })
-                .unwrap_or(CallingConvention::Let);
-            let pname = token_text(param.name_token());
-            let ty = param.ty().map(|ty_node| lower_ty(&ty_node, ctx));
+    let mut result = Vec::new();
+    // Lower the `self` receiver first, if present.
+    if let Some(sp) = pl.self_param() {
+        let id = ctx.alloc_id();
+        let convention = sp
+            .convention_token()
+            .map(|t| match t.text() {
+                "inout" => CallingConvention::Inout,
+                "sink" => CallingConvention::Sink,
+                _ => CallingConvention::Let,
+            })
+            .unwrap_or(CallingConvention::Let);
+        ctx.defs.push(Def {
+            name: "self".to_string(),
+            def_id: id,
+            kind: DefKind::Param,
+        });
+        result.push(Param {
+            id,
+            convention,
+            name: "self".to_string(),
+            ty: None,
+        });
+    }
+    result.extend(pl.params().into_iter().map(|param| {
+        let id = ctx.alloc_id();
+        let convention = param
+            .convention_token()
+            .map(|t| match t.text() {
+                "inout" => CallingConvention::Inout,
+                "sink" => CallingConvention::Sink,
+                _ => CallingConvention::Let,
+            })
+            .unwrap_or(CallingConvention::Let);
+        let pname = token_text(param.name_token());
+        let ty = param.ty().map(|ty_node| lower_ty(&ty_node, ctx));
 
-            ctx.defs.push(Def {
-                name: pname.clone(),
-                def_id: id,
-                kind: DefKind::Param,
-            });
+        ctx.defs.push(Def {
+            name: pname.clone(),
+            def_id: id,
+            kind: DefKind::Param,
+        });
 
-            Param {
-                id,
-                convention,
-                name: pname,
-                ty,
-            }
-        })
-        .collect()
+        Param {
+            id,
+            convention,
+            name: pname,
+            ty,
+        }
+    }));
+    result
 }
 
 /// Lower `<T: Ord, U>` into `Vec<HirTypeParam>`, registering each param in `ctx.defs`.
@@ -251,4 +287,97 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
         type_params,
         variants,
     }
+}
+
+fn lower_trait_def(t: &ast::TraitDef, ctx: &mut LowerCtx) -> TraitDef {
+    let id = ctx.alloc_id();
+    let tname = t.name().map(|n| name_text(&n)).unwrap_or_default();
+    let visibility = if t.visibility().is_some() {
+        Visibility::Public
+    } else {
+        Visibility::Private
+    };
+    let type_params = lower_generic_params(t.generic_param_list(), ctx);
+    let methods = t
+        .item_list()
+        .map(|il| il.methods())
+        .unwrap_or_default()
+        .into_iter()
+        .map(|m| lower_trait_method(&m, ctx))
+        .collect();
+
+    ctx.defs.push(Def {
+        name: tname.clone(),
+        def_id: id,
+        kind: DefKind::Trait,
+    });
+
+    TraitDef {
+        id,
+        name: tname,
+        visibility,
+        type_params,
+        methods,
+    }
+}
+
+fn lower_trait_method(m: &ast::FnDef, ctx: &mut LowerCtx) -> TraitMethod {
+    let id = ctx.alloc_id();
+    let mname = m.name().map(|n| name_text(&n)).unwrap_or_default();
+    let params = lower_params(m.param_list(), ctx);
+    let return_type = m
+        .ret_type()
+        .and_then(|r| r.ty())
+        .map(|ty_node| lower_ty(&ty_node, ctx));
+    let body = m.body().map(|b| lower_block(&b, ctx));
+
+    TraitMethod {
+        id,
+        name: mname,
+        params,
+        return_type,
+        body,
+    }
+}
+
+fn lower_impl_block(i: &ast::ImplBlock, ctx: &mut LowerCtx) -> ImplDef {
+    let id = ctx.alloc_id();
+    let type_params = lower_generic_params(i.generic_param_list(), ctx);
+
+    // For `impl Trait for Type`, types() returns [Trait, Type].
+    // For `impl Type`, types() returns [Type].
+    let types = i.types();
+    let (trait_name, type_name) = if types.len() >= 2 {
+        let trait_nr = path_from_ast_type(&types[0], ctx);
+        let type_nr = path_from_ast_type(&types[1], ctx);
+        (Some(trait_nr), type_nr)
+    } else if let Some(first) = types.first() {
+        (None, path_from_ast_type(first, ctx))
+    } else {
+        (None, NameRef::unresolved(""))
+    };
+
+    let methods = i
+        .assoc_item_list()
+        .map(|il| il.methods())
+        .unwrap_or_default()
+        .into_iter()
+        .map(|m| lower_fn_no_register(&m, ctx))
+        .collect();
+
+    ImplDef {
+        id,
+        trait_name,
+        type_name,
+        type_params,
+        methods,
+    }
+}
+
+/// Lower an AST type node to a `NameRef` (unresolved — resolved later by name resolution).
+fn path_from_ast_type(ty_node: &ast::PathType, _ctx: &mut LowerCtx) -> NameRef {
+    ty_node
+        .path()
+        .map(|p| NameRef::unresolved(path_last_segment(Some(p))))
+        .unwrap_or_else(|| NameRef::unresolved(""))
 }

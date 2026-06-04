@@ -124,6 +124,9 @@ impl TypeChecker {
                         .define(f.name.clone(), fn_ty, f.id, Mutability::Immutable);
                 }
                 Item::StructDef(_) | Item::EnumDef(_) => {}
+                Item::TraitDef(_) | Item::ImplDef(_) => {
+                    // Traits/impls not yet in type checker — will be added in traits phase 2.
+                }
             }
         }
     }

@@ -23,7 +23,7 @@ pub fn resolve(ctx: &mut crate::lower::LowerCtx) {
     for def in &ctx.defs {
         if matches!(
             def.kind,
-            DefKind::Fn | DefKind::Struct | DefKind::Enum | DefKind::Variant
+            DefKind::Fn | DefKind::Struct | DefKind::Enum | DefKind::Trait | DefKind::Variant
         ) {
             if top_level.contains_key(&def.name) {
                 ctx.diagnostics.push(HirDiagnostic::DuplicateDefinition {
@@ -86,6 +86,76 @@ fn resolve_item_names(
                 }
             }
         }
+        Item::TraitDef(t) => resolve_trait_def(t, top_level, diagnostics),
+        Item::ImplDef(impl_def) => resolve_impl_def(impl_def, top_level, diagnostics),
+    }
+}
+
+fn resolve_trait_def(
+    t: &mut TraitDef,
+    top_level: &HashMap<String, (DefId, DefKind)>,
+    diagnostics: &mut Vec<HirDiagnostic>,
+) {
+    let mut scope = Scope::new_child(top_level);
+    for tp in &t.type_params {
+        scope.define(tp.name.clone(), tp.id, DefKind::TypeParam);
+    }
+    for method in &mut t.methods {
+        resolve_method_sig(
+            &mut method.params,
+            &mut method.return_type,
+            &scope,
+            method.body.as_mut(),
+            diagnostics,
+        );
+    }
+}
+
+fn resolve_impl_def(
+    impl_def: &mut ImplDef,
+    top_level: &HashMap<String, (DefId, DefKind)>,
+    diagnostics: &mut Vec<HirDiagnostic>,
+) {
+    if let Some(trait_nr) = &mut impl_def.trait_name {
+        resolve_name_ref(trait_nr, top_level, diagnostics);
+    }
+    resolve_name_ref(&mut impl_def.type_name, top_level, diagnostics);
+    let mut scope = Scope::new_child(top_level);
+    for tp in &impl_def.type_params {
+        scope.define(tp.name.clone(), tp.id, DefKind::TypeParam);
+    }
+    for method in &mut impl_def.methods {
+        resolve_method_sig(
+            &mut method.params,
+            &mut method.return_type,
+            &scope,
+            Some(&mut method.body),
+            diagnostics,
+        );
+    }
+}
+
+/// Resolve param types, register param names, resolve return type,
+/// and optionally resolve a body with the param scope.
+fn resolve_method_sig(
+    params: &mut [Param],
+    return_type: &mut Option<HirTy>,
+    scope: &Scope,
+    body: Option<&mut Block>,
+    diagnostics: &mut Vec<HirDiagnostic>,
+) {
+    let mut mscope = Scope::new_child(&scope.bindings);
+    for param in params.iter_mut() {
+        if let Some(ty) = &mut param.ty {
+            resolve_ty_names(ty, &mscope.bindings);
+        }
+        mscope.define(param.name.clone(), param.id, DefKind::Param);
+    }
+    if let Some(ret) = return_type {
+        resolve_ty_names(ret, &mscope.bindings);
+    }
+    if let Some(body) = body {
+        resolve_block_names(body, &mscope, diagnostics);
     }
 }
 
