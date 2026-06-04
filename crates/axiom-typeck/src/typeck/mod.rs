@@ -19,6 +19,7 @@ mod control;
 mod helpers;
 mod infer;
 mod stmt;
+mod unify;
 
 use crate::error::TypeDiagnostic;
 use crate::thir::{Thir, TypeMap};
@@ -55,6 +56,10 @@ struct TypeChecker {
     /// Stack of break-type collectors, one per enclosing loop.
     /// Each entry collects the types of `break value` expressions within that loop.
     loop_break_types: Vec<Vec<crate::types::Ty>>,
+    /// Type parameters of the function currently being collected or checked.
+    /// Set before resolving param/return types, cleared after.
+    /// Empty = not inside a generic function.
+    current_type_params: Vec<(String, HirId)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -162,6 +167,7 @@ impl TypeChecker {
             env: TypeEnv::new(),
             mutability: HashMap::new(),
             loop_break_types: Vec::new(),
+            current_type_params: Vec::new(),
         }
     }
 
@@ -175,6 +181,12 @@ impl TypeChecker {
     }
 
     fn check_fn_body(&mut self, f: &FnDef) {
+        // Set type param scope so resolve_hir_ty can resolve T, U, etc.
+        self.current_type_params = f
+            .type_params
+            .iter()
+            .map(|tp| (tp.name.clone(), tp.id))
+            .collect();
         self.env.push_scope();
         for param in &f.params {
             let param_type = param
@@ -223,6 +235,7 @@ impl TypeChecker {
         });
         self.types.insert(f.id, fn_ty);
         self.env.pop_scope();
+        self.current_type_params.clear();
     }
 }
 

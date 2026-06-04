@@ -2,7 +2,7 @@
 //! into the type environment.
 
 use super::{EnumInfo, FieldInfo, Mutability, StructInfo, TypeChecker, VariantInfo};
-use crate::types::{EnumTy, FnTy, StructTy, Ty};
+use crate::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 use axiom_hir::*;
 
 impl TypeChecker {
@@ -102,6 +102,12 @@ impl TypeChecker {
         for item in &self.hir.items {
             match item {
                 Item::FnDef(f) => {
+                    // Set type param scope so resolve_hir_ty can resolve T, U, etc.
+                    self.current_type_params = f
+                        .type_params
+                        .iter()
+                        .map(|tp| (tp.name.clone(), tp.id))
+                        .collect();
                     let param_types: Vec<Ty> = f
                         .params
                         .iter()
@@ -122,6 +128,7 @@ impl TypeChecker {
                     });
                     self.env
                         .define(f.name.clone(), fn_ty, f.id, Mutability::Immutable);
+                    self.current_type_params.clear();
                 }
                 Item::StructDef(_) | Item::EnumDef(_) => {}
                 Item::TraitDef(_) | Item::ImplDef(_) => {
@@ -170,28 +177,52 @@ impl TypeChecker {
                     return_type,
                 })
             }
-            HirTy::TypeParam(_tp) => {
-                // Phase 2: will resolve to Ty::TypeParam.
-                // For now, return Error — type params are not yet in the type env.
-                Ty::Error
-            }
-            HirTy::Instance(inst) => {
-                // Phase 2: will resolve to Ty::Instance with resolved type args.
-                // For now, resolve the base name as a non-generic type.
-                let text = match &inst.name {
-                    NameRef::Resolved(r) => &r.text,
-                    NameRef::Unresolved(u) => &u.text,
-                };
-                match text.as_str() {
-                    "Int" => Ty::Int,
-                    "Float" => Ty::Float,
-                    "Bool" => Ty::Bool,
-                    "String" => Ty::String,
-                    "Unit" => Ty::Unit,
-                    _ => Ty::Error,
+            HirTy::TypeParam(tp) => {
+                // Look up in the current type param scope (set by collect_fn_sigs
+                // or check_fn_body).
+                if let Some((index, (_, def_id))) = self
+                    .current_type_params
+                    .iter()
+                    .enumerate()
+                    .find(|(_, (name, _))| *name == tp.name)
+                {
+                    Ty::TypeParam(TypeParamId {
+                        name: tp.name.clone(),
+                        index,
+                        def_id: *def_id,
+                    })
+                } else {
+                    Ty::Error
                 }
             }
+            HirTy::Instance(inst) => self.resolve_instance(inst),
             HirTy::Error => Ty::Error,
         }
+    }
+
+    fn resolve_instance(&self, inst: &axiom_hir::InstanceTy) -> Ty {
+        let text = match &inst.name {
+            NameRef::Resolved(r) => &r.text,
+            NameRef::Unresolved(u) => &u.text,
+        };
+        // Builtins don't take type args — resolve to the base type.
+        match text.as_str() {
+            "Int" => return Ty::Int,
+            "Float" => return Ty::Float,
+            "Bool" => return Ty::Bool,
+            "String" => return Ty::String,
+            "Unit" => return Ty::Unit,
+            _ => {}
+        }
+        let args: Vec<Ty> = inst
+            .args
+            .iter()
+            .map(|arg| self.resolve_hir_ty(arg))
+            .collect();
+        Ty::Instance(InstanceTy {
+            name: text.to_string(),
+            def_id: HirId(0), // No generic struct instantiation yet.
+            args,
+        })
     }
 }

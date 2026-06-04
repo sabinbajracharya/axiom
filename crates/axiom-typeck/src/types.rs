@@ -1,19 +1,24 @@
-//! The type universe for v0 (M2). Nominal, no generics, no traits.
+//! The type universe for the Axiom type checker.
 //! Every expression in the THIR carries one of these.
 //!
 //! Per `docs/typeck-testing.md` §3.2: the type checker's output assigns a `Ty`
 //! to every expression and statement node. `Ty::Error` signals a type error
 //! (always paired with a diagnostic — never silently propagated).
+//!
+//! Phase 2 adds `Ty::TypeParam` (for generic function signatures) and
+//! `Ty::Instance` (for parameterized types like `Pair<Int, String>`).
 
 use axiom_hir::DefId;
 use std::fmt;
 
 // ── The type universe ─────────────────────────────────────────────────────────
 
-/// The types that expressions can produce in v0.
+/// The types that expressions can produce.
 ///
-/// Nominal (no structural typing for structs/enums), no generics, no traits.
-/// `Ty::Error` is sticky in subexpressions — one error per root cause.
+/// Nominal (no structural typing for structs/enums). `Ty::Error` is sticky
+/// in subexpressions — one error per root cause.
+///
+/// Phase 2 adds `TypeParam` and `Instance` for generics support.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Ty {
     Int,
@@ -25,6 +30,10 @@ pub enum Ty {
     Enum(EnumTy),
     Fn(FnTy),
     Tuple(Vec<Ty>),
+    /// A type parameter in a generic function signature (e.g., `T` in `fn id<T>(x: T) -> T`).
+    TypeParam(TypeParamId),
+    /// A parameterized type (e.g., `Pair<Int, String>`, `Option<Float>`).
+    Instance(InstanceTy),
     Error,
 }
 
@@ -47,6 +56,27 @@ pub struct EnumTy {
 pub struct FnTy {
     pub params: Vec<Ty>,
     pub return_type: Box<Ty>,
+}
+
+/// Identity of a type parameter in a generic function/struct/enum.
+/// Two `TypeParamId`s are equal iff they refer to the same declaration site.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeParamId {
+    /// The parameter's name (e.g., "T", "U").
+    pub name: String,
+    /// 0-based index in the type parameter list.
+    pub index: usize,
+    /// HirId of the type parameter definition site.
+    pub def_id: DefId,
+}
+
+/// A parameterized type: a named type applied to concrete type arguments.
+/// Example: `Pair<Int, String>` → `InstanceTy { name: "Pair", args: [Int, String] }`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InstanceTy {
+    pub name: String,
+    pub def_id: DefId,
+    pub args: Vec<Ty>,
 }
 
 // ── Display ───────────────────────────────────────────────────────────────────
@@ -76,6 +106,17 @@ impl fmt::Display for Ty {
                             .join(", ")
                     )
                 }
+            }
+            Ty::TypeParam(tp) => write!(f, "{}", tp.name),
+            Ty::Instance(inst) => {
+                write!(f, "{}<", inst.name)?;
+                for (i, arg) in inst.args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", arg)?;
+                }
+                write!(f, ">")
             }
             Ty::Error => write!(f, "///error///"),
         }
@@ -110,6 +151,8 @@ pub fn label(ty: &Ty) -> &'static str {
         Ty::Enum(_) => "Enum",
         Ty::Fn(_) => "Fn",
         Ty::Tuple(_) => "Tuple",
+        Ty::TypeParam(_) => "TypeParam",
+        Ty::Instance(_) => "Instance",
         Ty::Error => "Error",
     }
 }

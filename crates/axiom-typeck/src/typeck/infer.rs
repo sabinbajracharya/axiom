@@ -1,5 +1,6 @@
 //! Leaf expression type inference: literals, paths, binary/unary ops, calls, fields, indexing.
 
+use super::unify::Substitution;
 use super::{helpers, TypeChecker};
 use crate::error::TypeDiagnostic;
 use crate::types::{FnTy, Ty};
@@ -246,7 +247,25 @@ impl TypeChecker {
                 found: arg_types.len(),
                 span: self.span_for(call.id),
             });
+            *fn_ty.return_type.clone()
+        } else if Self::contains_type_param(&Ty::Fn(fn_ty.clone())) {
+            // Generic call: unify arguments with parameter types, then
+            // substitute type params in the return type.
+            let mut subst = Substitution::new();
+            for (arg_ty, param_ty) in arg_types.iter().zip(fn_ty.params.iter()) {
+                if !helpers::is_error(arg_ty) && !helpers::is_error(param_ty) {
+                    if let Err(found) = self.unify(arg_ty, param_ty, &mut subst) {
+                        self.emit(TypeDiagnostic::TypeMismatch {
+                            expected: param_ty.to_string(),
+                            found: found.to_string(),
+                            span: self.span_for(call.id),
+                        });
+                    }
+                }
+            }
+            Self::substitute(&fn_ty.return_type, &subst)
         } else {
+            // Non-generic call: structural equality check.
             for (i, (arg_ty, param_ty)) in arg_types.iter().zip(fn_ty.params.iter()).enumerate() {
                 if !helpers::is_error(arg_ty) && !helpers::is_error(param_ty) && arg_ty != param_ty
                 {
@@ -258,8 +277,8 @@ impl TypeChecker {
                     });
                 }
             }
+            *fn_ty.return_type.clone()
         }
-        *fn_ty.return_type.clone()
     }
 
     fn infer_method_call(&mut self, mc: &MethodCallExpr) -> Ty {
