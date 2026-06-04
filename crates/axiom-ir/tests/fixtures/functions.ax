@@ -1,0 +1,7 @@
+fn add(let a: Int, let b: Int) -> Int {
+    a + b
+}
+
+fn main() {
+    val result = add(1, 2)
+}

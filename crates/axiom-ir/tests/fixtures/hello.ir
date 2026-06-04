@@ -1,0 +1,7 @@
+fn main() -> fn() -> Unit {
+  entry:
+  %0 = Const String("Hello, Axiom!")
+  %1 = Call print [%0]
+  Return Unit
+}
+

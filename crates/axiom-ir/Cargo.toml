@@ -1,0 +1,22 @@
+[package]
+name = "axiom-ir"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+axiom-hir = { path = "../axiom-hir" }
+axiom-typeck = { path = "../axiom-typeck" }
+axiom-lexer = { path = "../axiom-lexer" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+axiom-parser = { path = "../axiom-parser" }
+
+[[example]]
+name = "ir"
+path = "examples/ir.rs"
