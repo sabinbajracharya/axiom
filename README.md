@@ -33,8 +33,8 @@ register-IR interpreter backend targets WASM (dual-backend).
 ## A taste of Axiom
 
 > ⚠️ Illustrative — the syntax below follows [`DESIGN_SPEC.md`](DESIGN_SPEC.md),
-> but only the lexer and parser exist today; none of this *runs* yet. Shown to
-> convey the intended feel.
+> but only the front-end and type checker exist today; none of this *runs* yet.
+> What's missing is the back-end (IR generation, codegen) and the memory model.
 
 **Structs, traits, and methods** — receivers declare a borrowing convention
 (`let`/`inout`/`sink`), the same machinery as parameters; no `&self`/`&mut self`:
@@ -125,10 +125,10 @@ fn fetch_all(let urls: List<String>) -> List<Response>!NetError {
 
 ## Status
 
-**Phase: early compiler front-end.** The design is settled and the first two
-pipeline stages are built test-first, lossless, and total (never panic, never
-drop source). The memory model — the language's load-bearing bet — has passed
-its de-risking spike.
+**Phase: early compiler front-end + naive type checker.** The design is settled
+and the first four pipeline stages are built test-first, lossless, and total
+(never panic, never drop source). The memory model — the language's
+load-bearing bet — has passed its de-risking spike.
 
 | Stage | Component | Status |
 |---|---|---|
@@ -136,8 +136,8 @@ its de-risking spike.
 | Memory-model spike | [`docs/spike-0-findings.md`](docs/spike-0-findings.md) — Path A de-risk | ✅ **Preliminary GREEN** (23/23 scenarios matched intent; named follow-ups remain) |
 | Lex | [`crates/axiom-lexer`](crates/axiom-lexer) — source → lossless, tiling token stream | ✅ Done (snapshot + invariant + fuzz tested) |
 | Parse | [`crates/axiom-parser`](crates/axiom-parser) — tokens → lossless CST (rust-analyzer-shaped green/red tree) | ✅ Done; total recovery, recovery-set-aware |
-| Typed AST / name resolution | — | ⬜ Not started |
-| Type checking | — | ⬜ Not started |
+| Name resolution (HIR) | [`crates/axiom-hir`](crates/axiom-hir) — CST → desugared, ID-keyed HIR with name resolution | ✅ Done (M1); golden + diagnostic snapshot tested |
+| Type checking (THIR) | [`crates/axiom-typeck`](crates/axiom-typeck) — HIR → THIR via bidirectional type checker | ✅ Done (M2); golden + diagnostic + invariant tested |
 | Ownership pass + Perceus | — | ⬜ Not started (the v1 identity) |
 | IR + Cranelift codegen | — | ⬜ Not started |
 | `forge`, LSP | — | ⬜ Not started |
@@ -149,11 +149,12 @@ exclusivity rule proves too costly in practice.
 ### What's next
 
 Per [`DESIGN_SPEC.md` §14](DESIGN_SPEC.md), the **v0** milestone is an
-end-to-end pipeline `lex → parse → typecheck → IR → Cranelift` with *naive*
-memory (no exclusivity) — to prove the pipeline runs end to end. Lex and parse
-are done; the immediate frontier is the **typed AST + name resolution**, then a
-minimal type checker. The real memory model (ownership pass + Perceus), generics,
-and full error handling land in **v1**, where the language identity arrives.
+end-to-end pipeline `lex → parse → resolve → typecheck → IR → Cranelift` with
+*naive* memory (no exclusivity) — to prove the pipeline runs end to end. The
+front-end (lex → parse → HIR → typecheck) is complete. The next frontier is
+**M3: IR generation** from THIR, then a minimal Cranelift backend. The real
+memory model (ownership pass + Perceus), generics, and full error handling land
+in **v1**, where the language identity arrives.
 
 ---
 
@@ -169,16 +170,34 @@ and full error handling land in **v1**, where the language identity arrives.
 ├── Cargo.toml            # Workspace + centralized [workspace.lints] policy
 ├── crates/
 │   ├── axiom-lexer/      # Stage 1: lossless, total tokenizer
-│   └── axiom-parser/     # Stage 2: lossless CST + error recovery
+│   ├── axiom-parser/     # Stage 2: lossless CST + error recovery
+│   ├── axiom-hir/        # Stage 3: CST → desugared HIR + name resolution
+│   ├── axiom-typeck/     # Stage 4: HIR → THIR (bidirectional type checker)
+│   └── axiom-cli/        # Compiler driver (`axiom check` today; `run`/`build` later)
 ├── docs/
-│   ├── lexer-testing.md  # Test/debug tooling spec for the lexer
-│   ├── parser-testing.md # Test/debug tooling spec for the parser
-│   └── spike-0-findings.md  # Memory-model spike result + Path A/B decision
+│   ├── lexer-testing.md    # Test/debug tooling spec for the lexer
+│   ├── parser-testing.md   # Test/debug tooling spec for the parser
+│   ├── hir-testing.md      # Test/debug tooling spec for the HIR lowerer
+│   ├── typeck-testing.md   # Test/debug tooling spec for the type checker
+│   ├── spike-0-findings.md # Memory-model spike result + Path A/B decision
+│   └── v0-roadmap.md       # v0 milestone plan (M1–M5)
 └── scripts/              # check.sh and friends (the PostToolUse enforcement hook)
 ```
 
 Each crate carries its own `README.md` with a per-file responsibility table —
 start there when diving into a stage.
+
+### Test harness
+
+**162 tests** across 5 crates. Each pipeline stage has its own testing spec
+(`docs/*-testing.md`) with a 6-layer test stack:
+
+1. **Unit tests** — Rust-side logic in `#[cfg(test)]` modules
+2. **Golden snapshots** — `.ax` → `.hir`/`.cst`/`.thir`/`.stderr` files, checked in, regenerated with `UPDATE_SNAPSHOTS=1`
+3. **Diagnostic snapshots** — error `.ax` files paired with `.stderr` expected-output
+4. **Drift guards** — coverage invariants that fail the build if any AST/HIR node or diagnostic variant is untested
+5. **Round-trip / tiling invariants** — lossless reconstruction assertions (lex, parse)
+6. **Fuzz targets** — arbitrary input, assert invariants hold
 
 ---
 
@@ -199,10 +218,11 @@ cargo clippy --all-targets -- -D warnings        # lint — warnings are errors
 cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
-Try a stage directly:
+Try it:
 
 ```bash
-cargo run -p axiom-lexer --example lex -- path/to/file.ax     # dump tokens
+cargo run -p axiom-cli -- check path/to/file.ax     # lex → parse → resolve → typecheck
+cargo run -p axiom-lexer --example lex -- path/to/file.ax     # dump tokens (lexer only)
 ```
 
 ---
@@ -215,10 +235,10 @@ cargo run -p axiom-lexer --example lex -- path/to/file.ax     # dump tokens
   Perceus, not a borrow checker.
 - **No** `async`/`await` (colorless concurrency), **no** algebraic effects, **no**
   inheritance, **no** exceptions, **no** lifetimes in the language surface.
-- **Front-end is lossless and total.** Lexer and parser reconstruct their input
-  byte-for-byte and never fail — malformed input yields error tokens/nodes plus a
-  diagnostics list, never a panic. This is what makes fuzzing assert real
-  invariants on *every* input.
+- **Front-end is lossless and total.** Lexer, parser, and HIR lowerer reconstruct
+  their input byte-for-byte and never fail — malformed input yields error
+  tokens/nodes plus a diagnostics list, never a panic. This is what makes fuzzing
+  assert real invariants on *every* input.
 - **Simple, non-expert-readable Rust.** Enums + exhaustive `match` over clever
   abstractions; `Result` + `?` for errors; `unsafe` quarantined to the (future)
   codegen/FFI crate only. Mechanically enforced — see
