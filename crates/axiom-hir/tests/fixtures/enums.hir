@@ -1,0 +1,5 @@
+EnumDef(0) name=Shape vis=private variants=[
+  Variant(1) name=Circle(Float→<unresolved>)
+  Variant(2) name=Rect(Float→<unresolved>, Float→<unresolved>)
+  Variant(3) name=Empty
+]

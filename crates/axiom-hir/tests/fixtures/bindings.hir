@@ -1,0 +1,5 @@
+FnDef(0) name=main vis=private params=[] return=_ {
+  ValStmt(4) Ident(2) x→2: _ = Lit(3) Int(1)
+  VarStmt(7) Ident(5) y→5: _ = Lit(6) Int(2)
+  ValStmt(12) Ident(8) sum→8: _ = Bin(9) +(Path(10) x→2, Path(11) y→5)
+}

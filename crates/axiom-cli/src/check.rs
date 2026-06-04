@@ -1,32 +1,59 @@
-//! The `check` subcommand's pure core: source → ([CST dump], rendered
-//! diagnostics). Reuses `axiom_parser::parse` + `serialize` + `ParseError::render`
-//! verbatim — `check` adds no analysis of its own at M0, it just surfaces what
-//! lex+parse already produce. Kept side-effect-free so it is trivially testable;
-//! `lib.rs` owns the stdout/stderr/exit-code wiring.
+//! The `check` subcommand's pure core: source → (CST dump, HIR dump, rendered
+//! diagnostics). Runs lex + parse + HIR lowering + name resolution, producing
+//! both the CST and HIR canonical dumps plus all diagnostics (parse + HIR).
+//!
+//! Kept side-effect-free so it is trivially testable; `lib.rs` owns the
+//! stdout/stderr/exit-code wiring.
 
-use axiom_parser::{parse, serialize};
+use axiom_hir::{lower, serialize as hir_serialize, HirDiagnostic};
+use axiom_parser::ast::AstNode;
+use axiom_parser::{parse, serialize as cst_serialize};
 
 /// The outcome of checking one source string.
 pub struct CheckReport {
     /// The canonical CST dump (the parser's `serialize`), always present.
     pub tree_dump: String,
-    /// Human-rendered diagnostics (`line:col: message`); empty means clean.
+    /// The canonical HIR dump (resolved names → def IDs), always present.
+    pub hir_dump: String,
+    /// Human-rendered diagnostics (`line:col: message`); combines parse + HIR
+    /// diagnostics. Empty means clean.
     pub diagnostics: Vec<String>,
 }
 
 impl CheckReport {
-    /// Did the source lex + parse with no diagnostics?
+    /// Did the source parse and lower with no diagnostics?
     pub fn is_clean(&self) -> bool {
         self.diagnostics.is_empty()
     }
 }
 
-/// Lex + parse `source`, returning the CST dump and any rendered diagnostics.
+/// Lex + parse + lower `source`, returning the CST dump, HIR dump, and
+/// any rendered diagnostics (parse errors + HIR diagnostics).
 pub fn check_source(source: &str) -> CheckReport {
     let result = parse(source);
-    let diagnostics = result.errors.iter().map(|e| e.render(source)).collect();
+    let mut diagnostics: Vec<String> = result.errors.iter().map(|e| e.render(source)).collect();
+    let tree_dump = cst_serialize(&result.tree);
+
+    let root = match axiom_parser::ast::SourceFile::cast(result.tree) {
+        Some(r) => r,
+        None => {
+            diagnostics.push("error: parse result is not a SourceFile root".to_string());
+            return CheckReport {
+                tree_dump,
+                hir_dump: String::new(),
+                diagnostics,
+            };
+        }
+    };
+    let hir = lower(&root, source);
+    for diag in &hir.diagnostics {
+        diagnostics.push(HirDiagnostic::render(diag, source));
+    }
+    let hir_dump = hir_serialize(&hir);
+
     CheckReport {
-        tree_dump: serialize(&result.tree),
+        tree_dump,
+        hir_dump,
         diagnostics,
     }
 }
@@ -41,15 +68,14 @@ mod tests {
         assert!(report.is_clean(), "diagnostics: {:?}", report.diagnostics);
         assert!(report.tree_dump.contains("SourceFile"));
         assert!(report.tree_dump.contains("FnDef"));
+        assert!(report.hir_dump.contains("FnDef"));
+        assert!(report.hir_dump.contains("name=main"));
     }
 
     #[test]
     fn test_check_reports_diagnostics_for_garbage() {
         let report = check_source("fn @ } )) val");
         assert!(!report.is_clean());
-        // Parsing is total *and* lossless even on garbage: a well-formed root is
-        // still produced and the input tokens survive into the tree (here, the
-        // leading `fn` keyword) rather than being dropped.
         assert!(report.tree_dump.starts_with("SourceFile @"));
         assert!(report.tree_dump.contains("KwFn"));
     }
@@ -59,5 +85,21 @@ mod tests {
         let report = check_source("");
         assert!(report.is_clean());
         assert!(report.tree_dump.contains("SourceFile"));
+    }
+
+    #[test]
+    fn test_check_hir_dump_includes_fn_def() {
+        let report = check_source("fn main() { val x = 1 + 2 }");
+        assert!(report.is_clean(), "diagnostics: {:?}", report.diagnostics);
+        assert!(report.hir_dump.contains("FnDef"));
+        assert!(report.hir_dump.contains("name=main"));
+    }
+
+    #[test]
+    fn test_check_unresolved_name_in_hir() {
+        let report = check_source("fn main() { val x = unknown_var }");
+        assert!(report.is_clean(), "parse errors: {:?}", report.diagnostics);
+        assert!(report.hir_dump.contains("unknown_var"));
+        assert!(report.hir_dump.contains("unresolved"));
     }
 }

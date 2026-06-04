@@ -13,5 +13,6 @@ name = "axiom"
 path = "src/main.rs"
 
 [dependencies]
+axiom-hir = { path = "../axiom-hir" }
 axiom-parser = { path = "../axiom-parser" }
 thiserror = { workspace = true }

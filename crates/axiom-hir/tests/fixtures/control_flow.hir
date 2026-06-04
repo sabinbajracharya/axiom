@@ -1,0 +1,10 @@
+FnDef(0) name=run vis=private params=[] return=_ {
+  ExprStmt(2) Loop(3) Block(4) {
+    ValStmt(7) Ident(5) x→5: _ = Lit(6) Int(1)
+  }
+  ValStmt(17) Ident(8) g→8: _ = If(9) Path(10) hot→<unresolved> Block(11) {
+    ExprStmt(12) Lit(13) Int(1)
+  } else Block(14) {
+    ExprStmt(15) Lit(16) Int(2)
+  }
+}

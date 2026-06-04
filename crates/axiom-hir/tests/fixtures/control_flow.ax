@@ -1,0 +1,6 @@
+fn run() {
+    loop {
+        val x = 1
+    }
+    val g = if hot { 1 } else { 2 }
+}

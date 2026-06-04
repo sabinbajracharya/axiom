@@ -1,0 +1,4 @@
+FnDef(0) name=run vis=private params=[] return=_ {
+  ValStmt(4) Ident(2) xs→2: _ = Call(3) List→<unresolved>()
+  ValStmt(9) Ident(5) y→5: _ = Path(7) xs→2.Method(6) map(Lit(8) Int(1))
+}

@@ -1,0 +1,3 @@
+FnDef(0) name=origin vis=private params=[] return=Point→<unresolved> {
+  ExprStmt(2) StructLit(3) Point→<unresolved> { x: Lit(4) Float(0), y: Lit(5) Float(0) }
+}

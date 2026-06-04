@@ -1,0 +1,1 @@
+StructDef(0) name=Point vis=private fields=[private x: Float→<unresolved>, private y: Float→<unresolved>]

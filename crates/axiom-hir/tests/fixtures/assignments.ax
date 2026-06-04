@@ -1,0 +1,4 @@
+fn update(inout p: Point) {
+    p.x = p.x + 1.0
+    p.y = 2.0
+}

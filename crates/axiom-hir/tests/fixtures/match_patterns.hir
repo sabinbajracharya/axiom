@@ -1,0 +1,7 @@
+FnDef(0) name=describe vis=private params=[let s: Shape→<unresolved>] return=Float→<unresolved> {
+  ExprStmt(3) Match(4) Path(5) s→1 {
+    Circle→<unresolved>(Ident(7) r→7) => Bin(8) *(Path(9) r→7, Path(10) r→7)
+    Rect→<unresolved>(Ident(12) w→12, Ident(13) h→13) => Bin(14) *(Path(15) w→12, Path(16) h→13)
+    Wild(17) => Lit(18) Float(0)
+  }
+}

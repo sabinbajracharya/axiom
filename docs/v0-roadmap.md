@@ -134,7 +134,7 @@ crate's lints on (13 unit + 3 integration tests; full `fmt`/`clippy -D warnings`
 
 ---
 
-## M1 — HIR + name resolution *(deliverable: name-resolved tree + resolution diagnostics)*
+## M1 — HIR + name resolution ✅ *(delivered: name-resolved tree + resolution diagnostics + drift guard)*
 
 **Goal:** turn the lossless CST/AST views into a desugared, ID-keyed **HIR** where every
 identifier resolves to a binding or item def.
@@ -145,9 +145,22 @@ identifier resolves to a binding or item def.
 - **Two-pass resolution:** (1) collect item defs (fns, structs, enums, variants, fields) into a
   symbol table; (2) resolve bodies against lexical scopes (block scoping, shadowing per
   `shadowing.ax`, params, `match`-arm bindings). Minimal `mod`/`use` handling for the subset.
-- Diagnostics (one `thiserror` enum): unresolved name, duplicate definition, arity placeholder.
-- **Drift guard:** test asserting every AST node kind the parser can produce is handled by the
-  lowerer (mirror `test_ast_every_node_kind_covered`).
+  Builtins (`print`, `println`, type names) resolve to a reserved `HirId` range starting at
+  1,000,000.
+- Diagnostics (one `thiserror` enum): unresolved name, duplicate definition, arity placeholder,
+  not-yet-supported. Resolved names show `→<DefId>` in the dump; unresolved show `→<unresolved>`.
+- **Drift guard:** `test_lowerer_handles_every_ast_node_kind` — exhaustive check that every
+  AST node kind the parser can produce is handled by the lowerer (items, stmts, exprs, patterns,
+  types), either lowered to real HIR or emitted as `NotYetSupported`.
+- **Parsing is total:** every input produces an HIR + diagnostics list. No panics on
+  user-reachable paths; `expect`/`unwrap` banned by workspace lints.
+- **Wire into CLI:** `axiom check <file>` now runs lex→parse→HIR, printing both CST and HIR
+  dumps plus any diagnostics (parse or HIR).
+- **Testing:** `docs/hir-testing.md` written first; golden snapshot tests over
+  `tests/fixtures/*.ax` → `.hir`; diagnostic snapshot tests over
+  `tests/fixtures/errors/*.ax` → `.stderr`; drift guard test; 9 inline unit tests. All pass
+  with `UPDATE_SNAPSHOTS=1` support.
+- **Per-folder README.md** for axiom-hir.
 
 **Verify + debug harness:** `axiom_hir::serialize` canonical HIR dump (resolved names →
 def IDs); **`examples/hir.rs`** debug CLI (`cargo run -p axiom-hir --example hir -- file.ax`).

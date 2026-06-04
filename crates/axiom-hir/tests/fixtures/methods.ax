@@ -1,0 +1,4 @@
+fn run() {
+    val xs = List()
+    val y = xs.map(1)
+}
