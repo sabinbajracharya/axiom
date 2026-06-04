@@ -40,15 +40,21 @@ fixture for the guard case.
 ---
 
 ### 3. §3.2 Built-in collections not reflected in type system
-- [ ] **Status:** OPEN
+- [ ] **Status:** IN PROGRESS — v0 migration plan created
 
 §3.2 specifies `List<T>`, `Map<K,V>`, `Set<T>`, `Option<T>`, `Result<T,E>` as
-built-in types. But the type system (`Ty` enum) has no `List`, `Map`, `Set`,
-`Option`, or `Result` constructors. There's no way to express `List<Int>` in the
-current type universe.
+built-in types. Collections were implemented as compiler built-ins (v0 stepping
+stone). The plan is to migrate them to library types backed by user-defined
+structs in v0 — not v2 as originally scoped.
 
-**Resolution needed:** Tag these as `[Deferred — v1]` in §3.2, or add a
-`Ty::Builtin(name, args)` form to the M3 scope.
+**Resolution:** See `docs/struct-v0-plan.md` for the 7-step plan. Steps:
+1. `HeapBuffer<T>` IR primitive
+2. `Deinit` auto-impl for user-defined structs
+3. Subscript declarations (`yield`)
+4. Generic struct method resolution
+5. Migrate `List<T>` to library type
+6. Migrate `Map<K,V>` to library type
+7. Cleanup built-in collection infrastructure
 
 ---
 

@@ -327,9 +327,10 @@ val s: Set<Int> = {1, 2, 3}                   // desugars to Set::from_array(...
 
 ## 7. Migration path (built-in → library)
 
-### 7.1 v0: Built-in `List<T>` and `Map<K,V>` ✅
+### 7.1 v0 (initial): Built-in `List<T>` and `Map<K,V>` ✅
 
-With generics and traits now implemented, collections are compiler built-ins:
+With generics and traits now implemented, collections are compiler built-ins
+(stepping stone — see §7.3 for migration to library types in v0):
 - `Ty::Instance(InstanceTy { name: "List", args: [T] })` — uses existing Instance type path.
 - `Ty::Instance(InstanceTy { name: "Map", args: [K, V] })` — same pattern.
 - HIR: `Expr::ListLit` variant for `[1, 2, 3]` literals (lowered from parser's `ListLitExpr`).
@@ -348,16 +349,17 @@ Once generics (§3.6) and traits (§3.5) are implemented:
 - Implement `DynamicBuffer` primitive.
 - Implement subscript declarations with `yield`.
 
-### 7.3 v2: Migrate `List<T>` to library type
+### 7.3 v0 (target): Migrate `List<T>` to library type
 
-- Rewrite `List<T>` as a library struct backed by `DynamicBuffer`.
-- Remove `Ty::Builtin("List", ...)` from the compiler.
-- `List<T>` becomes `Ty::Nominal(def_id_for_List, [element_ty])`.
+- Rewrite `List<T>` as a library struct backed by `HeapBuffer<T>`.
+- Remove `builtin_types` registry entry for "List" from the compiler.
+- `List<T>` becomes `Ty::Struct(StructTy { name: "List", def_id, fields: [...] })`.
 - Map, Set, OrderedMap, OrderedSet are library types from day one (never built-in).
+- See `docs/struct-v0-plan.md` for the full migration plan.
 
 ### 7.4 The migration is mechanical
 
-The v0 built-in is designed to be **structurally identical** to the v2 library type:
+The v0 built-in is designed to be **structurally identical** to the library type:
 - Same layout (ptr + len + cap, flat elements, refcount header).
 - Same subscript behavior (yield-based projections, disjoint storage rule).
 - Same element lifecycle (forward-order destruction, push/pop semantics).
@@ -599,8 +601,8 @@ When this design is implemented, update `DESIGN_SPEC.md`:
 
 4. **§13.4:** Add `DynamicBuffer` to the IR value representation.
 
-5. **§14 roadmap:** Add `DynamicBuffer` primitive to v1 scope; `List<T>` library migration
-   to v2 scope; `Map<K,V>`/`Set<T>` library types to v1 scope.
+5. **§14 roadmap:** `HeapBuffer<T>` primitive, `List<T>` library migration, and
+   `Map<K,V>`/`Set<T>` library types all in v0 scope (see `docs/struct-v0-plan.md`).
 
 ---
 

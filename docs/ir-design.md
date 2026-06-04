@@ -172,6 +172,14 @@ pub enum IrInstr {
     },
     /// r = [elem1, elem2, ...]
     ListNew { dst: Reg, elements: Vec<Reg> },
+    /// r = heap_alloc(count) — allocate buffer for `count` elements, return pointer.
+    HeapAlloc { dst: Reg, count: Reg },
+    /// heap_free(ptr) — free a heap-allocated buffer.
+    HeapFree { ptr: Reg },
+    /// r = heap_get(ptr, index) — read element at index from buffer.
+    HeapGet { dst: Reg, ptr: Reg, index: Reg },
+    /// heap_set(ptr, index, value) — write value at index in buffer.
+    HeapSet { ptr: Reg, index: Reg, value: Reg },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -269,6 +277,10 @@ zero or more `IrInstr`s into the current block.
 | `Index(base, idx)` | lower base → `%b`, lower idx → `%i`, `Index { dst: %n, %b, %i }` | `%n` |
 | `StructLit(T, fields)` | lower each field value → `%f_i`, `StructNew { dst: %n, T, [(name, %f_i), ...] }` | `%n` |
 | `ListLit(elems)` | lower each elem → `%e_i`, `ListNew { dst: %n, [%e_0, ...] }` | `%n` |
+| `HeapAlloc(count)` | lower count → `%c`, `HeapAlloc { dst: %n, %c }` | `%n` (pointer) |
+| `HeapFree(ptr)` | lower ptr → `%p`, `HeapFree { ptr: %p }` | — |
+| `HeapGet(ptr, idx)` | lower ptr → `%p`, lower idx → `%i`, `HeapGet { dst: %n, %p, %i }` | `%n` |
+| `HeapSet(ptr, idx, val)` | lower ptr/idx/val → `%p,%i,%v`, `HeapSet { %p, %i, %v }` | — |
 | `If(cond, then, else)` | see §3.4 | merge block's value |
 | `Match(scrut, arms)` | see §3.5 | merge block's value |
 | `Loop(kind)` | see §3.6 | loop's break value |
