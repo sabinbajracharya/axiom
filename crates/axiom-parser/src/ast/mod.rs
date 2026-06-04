@@ -81,7 +81,7 @@ pub(crate) fn first_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
 }
 
 /// First child node whose kind is in the pattern family.
-pub(crate) fn child_pat_node(parent: &SyntaxNode) -> Option<SyntaxNode> {
+pub fn child_pat_node(parent: &SyntaxNode) -> Option<SyntaxNode> {
     parent.child_nodes().into_iter().find(|n| is_pat(n.kind()))
 }
 
@@ -110,7 +110,7 @@ pub(crate) fn child_expr_nodes(parent: &SyntaxNode) -> Vec<SyntaxNode> {
         .collect()
 }
 
-pub(crate) fn is_pat(kind: SyntaxKind) -> bool {
+pub fn is_pat(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::WildcardPat
@@ -125,7 +125,7 @@ pub(crate) fn is_pat(kind: SyntaxKind) -> bool {
     )
 }
 
-pub(crate) fn is_type_kind(kind: SyntaxKind) -> bool {
+pub fn is_type_kind(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::PathType
@@ -136,7 +136,7 @@ pub(crate) fn is_type_kind(kind: SyntaxKind) -> bool {
     )
 }
 
-pub(crate) fn is_expr_kind(kind: SyntaxKind) -> bool {
+pub fn is_expr_kind(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::BlockExpr

@@ -11,6 +11,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "axiom-hir"
+version = "0.0.0"
+dependencies = [
+ "axiom-lexer",
+ "axiom-parser",
+ "thiserror",
+]
+
+[[package]]
 name = "axiom-lexer"
 version = "0.0.0"
 dependencies = [

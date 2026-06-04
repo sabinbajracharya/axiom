@@ -1,0 +1,42 @@
+//! Type lowering: CST type nodes → HIR `HirTy`.
+
+use super::path_last_segment;
+use super::LowerCtx;
+use crate::hir::*;
+use crate::HirDiagnostic;
+use axiom_parser::ast::{self, AstNode};
+use axiom_parser::SyntaxKind;
+
+pub(super) fn lower_ty(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> HirTy {
+    if let Some(pt) = ast::PathType::cast(node.clone()) {
+        let nr = pt
+            .path()
+            .map(|p| NameRef::unresolved(path_last_segment(Some(p))))
+            .unwrap_or_else(|| NameRef::unresolved(""));
+        let name_text = match &nr {
+            NameRef::Resolved(r) => r.text.clone(),
+            NameRef::Unresolved(u) => u.text.clone(),
+        };
+        if name_text == "()" {
+            HirTy::Unit
+        } else {
+            HirTy::Named(nr)
+        }
+    } else if let Some(_unit) = ast::UnitType::cast(node.clone()) {
+        HirTy::Unit
+    } else if let Some(_eu) = ast::ErrorUnionType::cast(node.clone()) {
+        ctx.diag(HirDiagnostic::NotYetSupported {
+            feature: "error union type".to_string(),
+            span: ctx.span_of(node),
+        });
+        HirTy::Error
+    } else if node.kind() == SyntaxKind::Error {
+        HirTy::Error
+    } else {
+        ctx.diag(HirDiagnostic::NotYetSupported {
+            feature: format!("type kind {:?}", node.kind()),
+            span: ctx.span_of(node),
+        });
+        HirTy::Error
+    }
+}
