@@ -132,6 +132,29 @@ pub enum TypeDiagnostic {
         found: String,
         span: Span,
     },
+
+    #[error(
+        "missing required method `{method}` in impl of trait `{trait_name}` for `{type_name}`"
+    )]
+    MissingTraitMethod {
+        trait_name: String,
+        type_name: String,
+        method: String,
+        span: Span,
+    },
+
+    #[error("unknown method `{method}` on type `{ty}`")]
+    UnknownMethod {
+        method: String,
+        ty: String,
+        span: Span,
+    },
+
+    #[error("trait `{name}` not found")]
+    TraitNotFound { name: String, span: Span },
+
+    #[error("type `{name}` not found for impl")]
+    TypeNotFoundForImpl { name: String, span: Span },
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -159,7 +182,11 @@ impl TypeDiagnostic {
             | TypeDiagnostic::ReturnTypeMismatch { span, .. }
             | TypeDiagnostic::IfWithoutElseNotUnit { span, .. }
             | TypeDiagnostic::NotYetSupported { span, .. }
-            | TypeDiagnostic::BreakTypeMismatch { span, .. } => *span,
+            | TypeDiagnostic::BreakTypeMismatch { span, .. }
+            | TypeDiagnostic::MissingTraitMethod { span, .. }
+            | TypeDiagnostic::UnknownMethod { span, .. }
+            | TypeDiagnostic::TraitNotFound { span, .. }
+            | TypeDiagnostic::TypeNotFoundForImpl { span, .. } => *span,
         }
     }
 
@@ -198,6 +225,10 @@ impl TypeDiagnostic {
             TypeDiagnostic::IfWithoutElseNotUnit { .. } => "if_without_else_not_unit",
             TypeDiagnostic::NotYetSupported { .. } => "not_yet_supported",
             TypeDiagnostic::BreakTypeMismatch { .. } => "break_type_mismatch",
+            TypeDiagnostic::MissingTraitMethod { .. } => "missing_trait_method",
+            TypeDiagnostic::UnknownMethod { .. } => "unknown_method",
+            TypeDiagnostic::TraitNotFound { .. } => "trait_not_found",
+            TypeDiagnostic::TypeNotFoundForImpl { .. } => "type_not_found_for_impl",
         }
     }
 }

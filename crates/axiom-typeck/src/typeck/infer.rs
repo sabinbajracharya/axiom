@@ -52,7 +52,14 @@ impl TypeChecker {
     fn infer_path(&mut self, name_ref: &NameRef, expr_id: HirId) -> Ty {
         let ty = match name_ref {
             NameRef::Resolved(r) => {
-                if let Some(info) = self.env.lookup(&r.text) {
+                // `Self` resolves to the implementing type inside impl blocks.
+                if r.text == "Self" {
+                    if let Some(ref self_ty) = self.current_self_type {
+                        self_ty.clone()
+                    } else {
+                        Ty::Error
+                    }
+                } else if let Some(info) = self.env.lookup(&r.text) {
                     match &info.ty {
                         Ty::Fn(fn_ty) if fn_ty.params.is_empty() => *fn_ty.return_type.clone(),
                         other => other.clone(),
@@ -70,7 +77,18 @@ impl TypeChecker {
                     }
                 }
             }
-            NameRef::Unresolved(_) => Ty::Error,
+            NameRef::Unresolved(u) => {
+                // `Self` may be unresolved by name resolution — handle it here.
+                if u.text == "Self" {
+                    if let Some(ref self_ty) = self.current_self_type {
+                        self_ty.clone()
+                    } else {
+                        Ty::Error
+                    }
+                } else {
+                    Ty::Error
+                }
+            }
         };
         self.types.insert(expr_id, ty.clone());
         ty
@@ -282,16 +300,123 @@ impl TypeChecker {
     }
 
     fn infer_method_call(&mut self, mc: &MethodCallExpr) -> Ty {
-        let _receiver_ty = self.infer_expr(&mc.receiver);
-        for arg in &mc.args {
-            self.infer_expr(arg);
+        let receiver_ty = self.infer_expr(&mc.receiver);
+        let arg_types: Vec<Ty> = mc.args.iter().map(|a| self.infer_expr(a)).collect();
+
+        let ty = if helpers::is_error(&receiver_ty) {
+            Ty::Error
+        } else {
+            // Extract the type name from the receiver for impl table lookup.
+            let receiver_name = match &receiver_ty {
+                Ty::Struct(s) => Some(s.name.clone()),
+                Ty::Enum(e) => Some(e.name.clone()),
+                _ => None,
+            };
+
+            match receiver_name {
+                Some(name) => {
+                    // Search impl table: inherent impls first, then trait impls.
+                    let method_info = self.find_impl_method(&name, &mc.method);
+                    match method_info {
+                        Some((fn_def, _impl_info)) => {
+                            self.check_method_call(mc, &fn_def, &arg_types)
+                        }
+                        None => {
+                            self.emit(TypeDiagnostic::UnknownMethod {
+                                method: mc.method.clone(),
+                                ty: receiver_ty.to_string(),
+                                span: self.span_for(mc.id),
+                            });
+                            Ty::Error
+                        }
+                    }
+                }
+                None => {
+                    self.emit(TypeDiagnostic::UnknownMethod {
+                        method: mc.method.clone(),
+                        ty: receiver_ty.to_string(),
+                        span: self.span_for(mc.id),
+                    });
+                    Ty::Error
+                }
+            }
+        };
+        self.types.insert(mc.id, ty.clone());
+        ty
+    }
+
+    /// Find an impl method matching the given type name and method name.
+    /// Searches inherent impls first, then trait impls.
+    fn find_impl_method(
+        &self,
+        type_name: &str,
+        method_name: &str,
+    ) -> Option<(FnDef, &super::ImplInfo)> {
+        // First pass: inherent impls (no trait_name).
+        for info in &self.impl_table {
+            if info.trait_name.is_none() && info.type_name == type_name {
+                for m in &info.methods {
+                    if m.name == method_name {
+                        return Some((m.clone(), info));
+                    }
+                }
+            }
         }
-        self.emit(TypeDiagnostic::NotYetSupported {
-            feature: "method calls".to_string(),
-            span: self.span_for(mc.id),
-        });
-        self.types.insert(mc.id, Ty::Error);
-        Ty::Error
+        // Second pass: trait impls.
+        for info in &self.impl_table {
+            if info.trait_name.is_some() && info.type_name == type_name {
+                for m in &info.methods {
+                    if m.name == method_name {
+                        return Some((m.clone(), info));
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Check a method call against a resolved FnDef: arity, arg types, return type.
+    fn check_method_call(&mut self, mc: &MethodCallExpr, fn_def: &FnDef, arg_types: &[Ty]) -> Ty {
+        // Resolve the method's parameter types (excluding `self` if present).
+        let param_types: Vec<Ty> = fn_def
+            .params
+            .iter()
+            .filter(|p| p.name != "self")
+            .map(|p| {
+                p.ty.as_ref()
+                    .map(|t| self.resolve_hir_ty(t))
+                    .unwrap_or(Ty::Error)
+            })
+            .collect();
+        let return_type = fn_def
+            .return_type
+            .as_ref()
+            .map(|t| self.resolve_hir_ty(t))
+            .unwrap_or(Ty::Unit);
+
+        // Arity check.
+        if param_types.len() != arg_types.len() {
+            self.emit(TypeDiagnostic::CallArityMismatch {
+                name: mc.method.clone(),
+                expected: param_types.len(),
+                found: arg_types.len(),
+                span: self.span_for(mc.id),
+            });
+            return return_type;
+        }
+
+        // Argument type check.
+        for (arg_ty, param_ty) in arg_types.iter().zip(param_types.iter()) {
+            if !helpers::is_error(arg_ty) && !helpers::is_error(param_ty) && arg_ty != param_ty {
+                self.emit(TypeDiagnostic::TypeMismatch {
+                    expected: param_ty.to_string(),
+                    found: arg_ty.to_string(),
+                    span: self.span_for(mc.id),
+                });
+            }
+        }
+
+        return_type
     }
 
     fn infer_field(&mut self, field: &FieldExpr) -> Ty {

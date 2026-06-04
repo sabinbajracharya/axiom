@@ -60,6 +60,15 @@ struct TypeChecker {
     /// Set before resolving param/return types, cleared after.
     /// Empty = not inside a generic function.
     current_type_params: Vec<(String, HirId)>,
+    /// Registry of trait definitions, keyed by trait name.
+    /// Populated during collect_pass.
+    trait_registry: HashMap<String, TraitInfo>,
+    /// All impl blocks, collected during collect_pass.
+    /// Used for method dispatch and completeness checking.
+    impl_table: Vec<ImplInfo>,
+    /// The `Self` type inside an impl block's method body.
+    /// `None` when not inside an impl method.
+    current_self_type: Option<crate::types::Ty>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -106,6 +115,35 @@ struct VariantInfo {
     name: String,
     def_id: DefId,
     payload: Vec<crate::types::Ty>,
+}
+
+/// A trait definition, stored in the registry for completeness checking and method dispatch.
+/// `def_id` and `default_methods` are used by bound checking (generics phase 2+) and
+/// default method inheritance — they are part of the trait infrastructure.
+#[derive(Clone)]
+#[allow(dead_code)]
+struct TraitInfo {
+    name: String,
+    def_id: HirId,
+    required_methods: Vec<TraitMethodInfo>,
+    default_methods: Vec<TraitMethodInfo>,
+}
+
+/// Signature of a trait method (used for completeness checking and bound verification).
+#[derive(Clone)]
+#[allow(dead_code)]
+struct TraitMethodInfo {
+    name: String,
+    params: Vec<crate::types::Ty>,
+    return_type: crate::types::Ty,
+}
+
+/// An impl block, stored for method dispatch.
+struct ImplInfo {
+    /// `None` for inherent impls (`impl Circle { ... }`).
+    trait_name: Option<String>,
+    type_name: String,
+    methods: Vec<FnDef>,
 }
 
 impl TypeEnv {
@@ -168,15 +206,43 @@ impl TypeChecker {
             mutability: HashMap::new(),
             loop_break_types: Vec::new(),
             current_type_params: Vec::new(),
+            trait_registry: HashMap::new(),
+            impl_table: Vec::new(),
+            current_self_type: None,
         }
     }
 
     fn check_pass(&mut self) {
         // Clone required: check_fn_body borrows self mutably while iterating.
         for item in self.hir.items.clone() {
-            if let Item::FnDef(f) = item {
-                self.check_fn_body(&f);
+            match item {
+                Item::FnDef(f) => {
+                    self.check_fn_body(&f);
+                }
+                Item::ImplDef(impl_def) => {
+                    // Resolve the Self type for this impl block.
+                    let self_ty = self.resolve_impl_self_type(&impl_def);
+                    self.current_self_type = Some(self_ty);
+                    for method in &impl_def.methods {
+                        self.check_fn_body(method);
+                    }
+                    self.current_self_type = None;
+                }
+                _ => {}
             }
+        }
+    }
+
+    /// Resolve the `Self` type for an impl block (the type being implemented).
+    fn resolve_impl_self_type(&self, impl_def: &ImplDef) -> crate::types::Ty {
+        let text = match &impl_def.type_name {
+            NameRef::Resolved(r) => &r.text,
+            NameRef::Unresolved(u) => &u.text,
+        };
+        if let Some(info) = self.env.lookup(text) {
+            info.ty.clone()
+        } else {
+            crate::types::Ty::Error
         }
     }
 
