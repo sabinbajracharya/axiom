@@ -160,5 +160,10 @@ fn all_diagnostic_variants(s: axiom_lexer::Span) -> Vec<axiom_typeck::TypeDiagno
             feature: "X".into(),
             span: s,
         },
+        TypeDiagnostic::BreakTypeMismatch {
+            expected: "Int".into(),
+            found: "String".into(),
+            span: s,
+        },
     ]
 }

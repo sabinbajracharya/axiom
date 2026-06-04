@@ -26,7 +26,14 @@ fn test_typecker_handles_every_hir_expr_kind() {
         "StructLit",
         "Assign",
     ];
-    let stmt_kinds = ["ValStmt", "VarStmt", "ExprStmt", "ReturnStmt"];
+    let stmt_kinds = [
+        "ValStmt",
+        "VarStmt",
+        "ExprStmt",
+        "ReturnStmt",
+        "BreakStmt",
+        "ContinueStmt",
+    ];
     let pattern_kinds = [
         "Wildcard",
         "Ident",
@@ -44,7 +51,7 @@ fn test_typecker_handles_every_hir_expr_kind() {
     );
     assert_eq!(
         stmt_kinds.len(),
-        4,
+        6,
         "Stmt kinds count changed — update typeck.rs"
     );
     assert_eq!(
@@ -83,10 +90,11 @@ fn test_every_error_type_has_diagnostic_kind() {
         "return_type_mismatch",
         "if_without_else_not_unit",
         "not_yet_supported",
+        "break_type_mismatch",
     ];
     assert_eq!(
         diagnostic_kinds.len(),
-        20,
+        21,
         "diagnostic kinds count changed — update this test"
     );
 }

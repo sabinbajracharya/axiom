@@ -140,67 +140,64 @@ fn serialize_block(block: &Block, depth: usize, thir: &Thir, out: &mut String) {
     }
 }
 
+fn stmt_type_annotation(id: axiom_hir::HirId, thir: &Thir) -> String {
+    thir.types
+        .get(&id)
+        .map(|t| format!(" : {t}"))
+        .unwrap_or_default()
+}
+
 fn serialize_stmt(stmt: &Stmt, depth: usize, thir: &Thir, out: &mut String) {
     match stmt {
         Stmt::ValStmt(s) => {
-            let stmt_type = thir
-                .types
-                .get(&s.id)
-                .map(|t| format!(" : {t}"))
-                .unwrap_or_default();
+            let ty = stmt_type_annotation(s.id, thir);
             indent(out, depth);
-            out.push_str(&format!("ValStmt({})", s.id));
-            out.push_str(&stmt_type);
-            out.push('\n');
-            // Pattern.
+            out.push_str(&format!("ValStmt({}){ty}\n", s.id));
             serialize_pattern_inline(&s.pattern, thir, out);
             out.push('\n');
-            // Value.
             serialize_expr(&s.value, depth + 1, thir, out);
             out.push('\n');
         }
         Stmt::VarStmt(s) => {
-            let stmt_type = thir
-                .types
-                .get(&s.id)
-                .map(|t| format!(" : {t}"))
-                .unwrap_or_default();
+            let ty = stmt_type_annotation(s.id, thir);
             indent(out, depth);
-            out.push_str(&format!("VarStmt({})", s.id));
-            out.push_str(&stmt_type);
-            out.push('\n');
+            out.push_str(&format!("VarStmt({}){ty}\n", s.id));
             serialize_pattern_inline(&s.pattern, thir, out);
             out.push('\n');
             serialize_expr(&s.value, depth + 1, thir, out);
             out.push('\n');
         }
         Stmt::ExprStmt(s) => {
-            let stmt_type = thir
-                .types
-                .get(&s.id)
-                .map(|t| format!(" : {t}"))
-                .unwrap_or_default();
+            let ty = stmt_type_annotation(s.id, thir);
             indent(out, depth);
-            out.push_str(&format!("ExprStmt({})", s.id));
-            out.push_str(&stmt_type);
-            out.push('\n');
+            out.push_str(&format!("ExprStmt({}){ty}\n", s.id));
             serialize_expr(&s.expr, depth + 1, thir, out);
             out.push('\n');
         }
         Stmt::ReturnStmt(s) => {
-            let stmt_type = thir
-                .types
-                .get(&s.id)
-                .map(|t| format!(" : {t}"))
-                .unwrap_or_default();
+            let ty = stmt_type_annotation(s.id, thir);
             indent(out, depth);
-            out.push_str(&format!("ReturnStmt({})", s.id));
-            out.push_str(&stmt_type);
+            out.push_str(&format!("ReturnStmt({}){ty}", s.id));
             if let Some(v) = &s.value {
                 out.push(' ');
                 serialize_expr(v, depth + 1, thir, out);
             }
             out.push('\n');
+        }
+        Stmt::BreakStmt(s) => {
+            let ty = stmt_type_annotation(s.id, thir);
+            indent(out, depth);
+            out.push_str(&format!("BreakStmt({}){ty}", s.id));
+            if let Some(v) = &s.value {
+                out.push(' ');
+                serialize_expr(v, depth + 1, thir, out);
+            }
+            out.push('\n');
+        }
+        Stmt::ContinueStmt(s) => {
+            let ty = stmt_type_annotation(s.id, thir);
+            indent(out, depth);
+            out.push_str(&format!("ContinueStmt({}){ty}\n", s.id));
         }
     }
 }

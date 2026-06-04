@@ -237,10 +237,12 @@ impl TypeChecker {
     }
 
     pub(super) fn infer_loop(&mut self, loop_expr: &LoopExpr) -> Ty {
-        let ty = match &loop_expr.kind {
+        // Push a break-type collector for this loop.
+        self.loop_break_types.push(Vec::new());
+
+        match &loop_expr.kind {
             LoopKind::Infinite(body) => {
                 self.infer_block(body, &None);
-                Ty::Unit
             }
             LoopKind::Conditional { condition, body } => {
                 let cond_ty = self.infer_expr(condition);
@@ -251,7 +253,6 @@ impl TypeChecker {
                     });
                 }
                 self.infer_block(body, &None);
-                Ty::Unit
             }
             LoopKind::Iterator {
                 binding,
@@ -276,11 +277,36 @@ impl TypeChecker {
                     Mutability::Immutable,
                 );
                 self.infer_block(body, &None);
-                Ty::Unit
             }
         };
+
+        // Pop the collector and compute the loop type from break values.
+        let break_types = self.loop_break_types.pop().unwrap_or_default();
+        let ty = self.unify_break_types(&break_types, loop_expr.id);
         self.types.insert(loop_expr.id, ty.clone());
         ty
+    }
+
+    /// Unify the types from all `break value` expressions in a loop.
+    /// - Empty (no breaks with values) → Unit
+    /// - All match → that type
+    /// - Mismatch → emit diagnostic, return Error
+    fn unify_break_types(&mut self, types: &[Ty], loop_id: HirId) -> Ty {
+        if types.is_empty() {
+            return Ty::Unit;
+        }
+        let first = &types[0];
+        for ty in types.iter().skip(1) {
+            if !helpers::is_error(ty) && !helpers::is_error(first) && *ty != *first {
+                self.emit(TypeDiagnostic::BreakTypeMismatch {
+                    expected: first.to_string(),
+                    found: ty.to_string(),
+                    span: self.span_for(loop_id),
+                });
+                return Ty::Error;
+            }
+        }
+        first.clone()
     }
 
     pub(super) fn infer_struct_lit(&mut self, sl: &StructLitExpr) -> Ty {

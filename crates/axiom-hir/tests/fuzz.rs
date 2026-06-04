@@ -127,6 +127,22 @@ fn check_stmt_ids(stmt: &axiom_hir::Stmt, seen: &mut HashSet<axiom_hir::HirId>) 
                 true
             }
         }
+        axiom_hir::Stmt::BreakStmt(s) => {
+            if !seen.insert(s.id) {
+                return false;
+            }
+            if let Some(v) = &s.value {
+                check_expr_ids(v, seen)
+            } else {
+                true
+            }
+        }
+        axiom_hir::Stmt::ContinueStmt(s) => {
+            if !seen.insert(s.id) {
+                return false;
+            }
+            true
+        }
     }
 }
 

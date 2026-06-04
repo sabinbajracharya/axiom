@@ -83,6 +83,12 @@ fn check_stmt(stmt: &Stmt, diagnosed: &[String], errors: &mut Vec<CoverageError>
                 check_expr(v, diagnosed, errors);
             }
         }
+        Stmt::BreakStmt(s) => {
+            if let Some(v) = &s.value {
+                check_expr(v, diagnosed, errors);
+            }
+        }
+        Stmt::ContinueStmt(_) => {}
     }
 }
 

@@ -1,0 +1,6 @@
+FnDef(0) name=main vis=private params=[] return=() : () -> Unit
+  Block(1) stmts=[0] tail=Some : Unit
+    Loop(3) : Unit
+      Block(4) stmts=[0] tail=Some : Unit
+        Block(6) : Unit
+          ContinueStmt(7) : Unit

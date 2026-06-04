@@ -166,6 +166,8 @@ pub enum Stmt {
     VarStmt(VarStmt),
     ExprStmt(ExprStmt),
     ReturnStmt(ReturnStmt),
+    BreakStmt(BreakStmt),
+    ContinueStmt(ContinueStmt),
 }
 
 impl Stmt {
@@ -175,6 +177,8 @@ impl Stmt {
             Stmt::VarStmt(s) => s.id,
             Stmt::ExprStmt(s) => s.id,
             Stmt::ReturnStmt(s) => s.id,
+            Stmt::BreakStmt(s) => s.id,
+            Stmt::ContinueStmt(s) => s.id,
         }
     }
 }
@@ -205,6 +209,17 @@ pub struct ExprStmt {
 pub struct ReturnStmt {
     pub id: HirId,
     pub value: Option<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BreakStmt {
+    pub id: HirId,
+    pub value: Option<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ContinueStmt {
+    pub id: HirId,
 }
 
 // ── Expressions ───────────────────────────────────────────────────────────────

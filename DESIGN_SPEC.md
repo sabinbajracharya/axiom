@@ -432,7 +432,7 @@ loop { ... }                 // infinite (break to exit)
 loop if cond { ... }         // pre-condition loop (replaces while)
 loop x in iterable { ... }   // iterator loop (replaces for-each)
 ```
-`break`/`continue` control flow; **labeled loops** for nesting: `'outer: loop { ... break 'outer ... }`. `break value` from `loop {}` makes it an expression yielding `value`.
+`break`/`continue` control flow; **labeled loops** for nesting: `'outer: loop { ... break 'outer ... }`. `break value` from `loop {}` makes it an expression yielding `value`. Loop type is inferred from `break` values: no break-with-value → `Unit`; all breaks yield the same type → that type; mismatched break types → compile error. [Decided — v0]
 
 > *On the "three forms of one keyword" critique:* this is intentional and we judge it *not* a violation of the singular idiom — there is exactly **one** way to write each *kind* of loop (no `while` vs `loop-if` choice, no C-`for` vs `for-each` choice). The forms are disjoint, not overlapping.
 

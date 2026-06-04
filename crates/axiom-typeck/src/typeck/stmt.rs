@@ -14,6 +14,8 @@ impl TypeChecker {
             Stmt::VarStmt(s) => self.type_var_stmt(s),
             Stmt::ExprStmt(s) => self.type_expr_stmt(s),
             Stmt::ReturnStmt(s) => self.type_return_stmt(s),
+            Stmt::BreakStmt(s) => self.type_break_stmt(s),
+            Stmt::ContinueStmt(s) => self.type_continue_stmt(s),
         }
     }
 
@@ -69,6 +71,27 @@ impl TypeChecker {
     fn type_return_stmt(&mut self, s: &ReturnStmt) {
         if let Some(v) = &s.value {
             self.infer_expr(v);
+        }
+        self.types.insert(s.id, Ty::Unit);
+    }
+
+    fn type_break_stmt(&mut self, s: &BreakStmt) {
+        let value_ty = if let Some(v) = &s.value {
+            self.infer_expr(v)
+        } else {
+            Ty::Unit
+        };
+        // Record break type for loop type inference.
+        if let Some(collector) = self.loop_break_types.last_mut() {
+            collector.push(value_ty);
+        }
+        self.types.insert(s.id, Ty::Unit);
+    }
+
+    fn type_continue_stmt(&mut self, s: &ContinueStmt) {
+        // Continue is equivalent to break with no value (Unit).
+        if let Some(collector) = self.loop_break_types.last_mut() {
+            collector.push(Ty::Unit);
         }
         self.types.insert(s.id, Ty::Unit);
     }

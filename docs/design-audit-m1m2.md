@@ -12,15 +12,14 @@ Each item below has a checkbox. After fixing, commit and check the box.
 ## MUST-FIX (design contradictions or missing specs)
 
 ### 1. §7.1 `break value` contradicts loop typing rules
-- [ ] **Status:** OPEN
+- [x] **Status:** DONE — implemented in v0
 
-§7.1 says "`break value` makes loop an expression." But the type checker forces
-all loop bodies to `Unit` and loops always produce `Ty::Unit`. `break` and
-`continue` are `NotYetSupported` in M2. The design doesn't say whether
-`break value` is v0 or v1.
-
-**Resolution needed:** Tag `break value` as `[v1]` in §7.1, or update the type
-checker design to type loops based on break values.
+§7.1 says "`break value` makes loop an expression." The type checker now infers
+loop types from break values via a `loop_break_types` stack. `break`/`continue`
+are properly lowered from AST → HIR → type checker. Loop type rules:
+no break-with-value → `Unit`; all breaks yield the same type → that type;
+mismatched break types → `BreakTypeMismatch` diagnostic. Spec updated with
+`[Decided — v0]` tag.
 
 ---
 

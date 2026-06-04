@@ -125,6 +125,13 @@ pub enum TypeDiagnostic {
 
     #[error("`{feature}` is not yet supported in type checking")]
     NotYetSupported { feature: String, span: Span },
+
+    #[error("break type mismatch: expected `{expected}`, found `{found}`")]
+    BreakTypeMismatch {
+        expected: String,
+        found: String,
+        span: Span,
+    },
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -151,7 +158,8 @@ impl TypeDiagnostic {
             | TypeDiagnostic::AssignToImmutable { span, .. }
             | TypeDiagnostic::ReturnTypeMismatch { span, .. }
             | TypeDiagnostic::IfWithoutElseNotUnit { span, .. }
-            | TypeDiagnostic::NotYetSupported { span, .. } => *span,
+            | TypeDiagnostic::NotYetSupported { span, .. }
+            | TypeDiagnostic::BreakTypeMismatch { span, .. } => *span,
         }
     }
 
@@ -189,6 +197,7 @@ impl TypeDiagnostic {
             TypeDiagnostic::ReturnTypeMismatch { .. } => "return_type_mismatch",
             TypeDiagnostic::IfWithoutElseNotUnit { .. } => "if_without_else_not_unit",
             TypeDiagnostic::NotYetSupported { .. } => "not_yet_supported",
+            TypeDiagnostic::BreakTypeMismatch { .. } => "break_type_mismatch",
         }
     }
 }

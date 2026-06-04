@@ -117,6 +117,19 @@ fn serialize_stmt(stmt: &Stmt, depth: usize, out: &mut String) {
             }
             out.push('\n');
         }
+        Stmt::BreakStmt(s) => {
+            indent(out, depth);
+            out.push_str(&format!("BreakStmt({})", s.id));
+            if let Some(v) = &s.value {
+                out.push(' ');
+                serialize_expr(v, depth, out);
+            }
+            out.push('\n');
+        }
+        Stmt::ContinueStmt(s) => {
+            indent(out, depth);
+            out.push_str(&format!("ContinueStmt({})\n", s.id));
+        }
     }
 }
 

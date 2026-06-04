@@ -91,6 +91,12 @@ fn resolve_stmt_names(stmt: &mut Stmt, scope: &mut Scope, diagnostics: &mut Vec<
                 resolve_expr_names(v, scope, diagnostics);
             }
         }
+        Stmt::BreakStmt(s) => {
+            if let Some(v) = &mut s.value {
+                resolve_expr_names(v, scope, diagnostics);
+            }
+        }
+        Stmt::ContinueStmt(_) => {}
     }
 }
 

@@ -52,6 +52,9 @@ struct TypeChecker {
     env: TypeEnv,
     /// Tracks which HirIds correspond to mutable bindings (var, not val).
     mutability: HashMap<HirId, Mutability>,
+    /// Stack of break-type collectors, one per enclosing loop.
+    /// Each entry collects the types of `break value` expressions within that loop.
+    loop_break_types: Vec<Vec<crate::types::Ty>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -158,6 +161,7 @@ impl TypeChecker {
             diagnostics: Vec::new(),
             env: TypeEnv::new(),
             mutability: HashMap::new(),
+            loop_break_types: Vec::new(),
         }
     }
 

@@ -122,6 +122,15 @@ fn collect_stmt_ids(stmt: &axiom_hir::Stmt, ids: &mut Vec<(HirId, String)>) {
                 collect_expr_ids(v, ids);
             }
         }
+        axiom_hir::Stmt::BreakStmt(s) => {
+            ids.push((s.id, "BreakStmt".to_string()));
+            if let Some(v) = &s.value {
+                collect_expr_ids(v, ids);
+            }
+        }
+        axiom_hir::Stmt::ContinueStmt(s) => {
+            ids.push((s.id, "ContinueStmt".to_string()));
+        }
     }
 }
 

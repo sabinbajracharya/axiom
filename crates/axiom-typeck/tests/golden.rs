@@ -224,3 +224,39 @@ fn test_golden_bindings() {
 }",
     );
 }
+
+#[test]
+fn test_golden_break_value() {
+    check_golden(
+        "break_value",
+        "fn main() {
+    val x = loop {
+        break 42
+    }
+}",
+    );
+}
+
+#[test]
+fn test_golden_break_no_value() {
+    check_golden(
+        "break_no_value",
+        "fn main() {
+    loop {
+        break
+    }
+}",
+    );
+}
+
+#[test]
+fn test_golden_continue() {
+    check_golden(
+        "continue",
+        "fn main() {
+    loop {
+        continue
+    }
+}",
+    );
+}

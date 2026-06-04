@@ -57,11 +57,16 @@ pub(super) fn lower_expr(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx) ->
     if let Some(e) = ast::ReturnStmt::cast(node.clone()) {
         return lower_return_as_expr(&e, ctx);
     }
-    if ast::BreakStmt::cast(node.clone()).is_some() {
-        return unsupported_expr(ctx, "break expression", node);
+    if let Some(e) = ast::BreakStmt::cast(node.clone()) {
+        return lower_break_expr(&e, ctx);
     }
     if ast::ContinueStmt::cast(node.clone()).is_some() {
-        return unsupported_expr(ctx, "continue expression", node);
+        let id = ctx.alloc_id();
+        return Expr::Block(Block {
+            id,
+            stmts: vec![Stmt::ContinueStmt(ContinueStmt { id: ctx.alloc_id() })],
+            tail: None,
+        });
     }
     unsupported_expr(ctx, &format!("expression kind {:?}", node.kind()), node)
 }
@@ -421,6 +426,19 @@ fn lower_return_as_expr(e: &ast::ReturnStmt, ctx: &mut LowerCtx) -> Expr {
     Expr::Block(Block {
         id,
         stmts: vec![Stmt::ReturnStmt(ReturnStmt {
+            id: ctx.alloc_id(),
+            value,
+        })],
+        tail: None,
+    })
+}
+
+fn lower_break_expr(e: &ast::BreakStmt, ctx: &mut LowerCtx) -> Expr {
+    let id = ctx.alloc_id();
+    let value = e.value().map(|v| lower_expr(&v, ctx));
+    Expr::Block(Block {
+        id,
+        stmts: vec![Stmt::BreakStmt(BreakStmt {
             id: ctx.alloc_id(),
             value,
         })],
