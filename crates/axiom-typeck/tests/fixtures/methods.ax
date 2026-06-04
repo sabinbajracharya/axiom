@@ -1,0 +1,5 @@
+struct Wrapper { value: Int }
+fn main() {
+    val w = Wrapper { value: 42 }
+    w.value
+}

@@ -1,0 +1,15 @@
+FnDef(0) name=main vis=private params=[] return=() : () -> Unit
+  Block(1) stmts=[4] tail=None : Unit
+    ValStmt(4) : Unit
+Ident(2) x→2 : Int
+      Lit(3) Int(1) : Int
+    VarStmt(7) : Unit
+Ident(5) y→5 : Int
+      Lit(6) Int(2) : Int
+    ExprStmt(8) : Unit
+      Assign(9) =  : Unity→5 =       Lit(10) Int(3) : Int
+    ValStmt(15) : Unit
+Ident(11) z→11 : Int
+      Bin(12) op=+ : Int
+        Path(13) x→2 : Int
+        Path(14) y→5 : Int

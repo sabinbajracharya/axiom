@@ -1,0 +1,6 @@
+fn main() {
+    val x = 1
+    var y = 2
+    y = 3
+    val z: Int = x + y
+}

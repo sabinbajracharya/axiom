@@ -1,0 +1,8 @@
+enum Color { Red, Green, Blue }
+fn paint(c: Color) -> Float {
+    match c {
+        Red => 1.0
+        Green => 2.0
+        Blue => 3.0
+    }
+}

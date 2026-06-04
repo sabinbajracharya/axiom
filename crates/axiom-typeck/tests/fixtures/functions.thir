@@ -1,0 +1,23 @@
+FnDef(0) name=add vis=private params=[let a: Int, let b: Int] return=Int→<unresolved> : (Int, Int) -> Int
+  Block(3) stmts=[1] tail=None : Unit
+    ExprStmt(4) : Unit
+      Bin(5) op=+ : Int
+        Path(6) a→1 : Int
+        Path(7) b→2 : Int
+FnDef(8) name=greet vis=private params=[let name: String] return=String→<unresolved> : (String) -> String
+  Block(10) stmts=[1] tail=None : Unit
+    ExprStmt(11) : Unit
+      Path(12) name→9 : String
+FnDef(13) name=main vis=private params=[] return=() : () -> Unit
+  Block(14) stmts=[2] tail=None : Unit
+    ValStmt(19) : Unit
+Ident(15) x→15 : Int
+      Call(16) callee=add→0 : Int
+        Lit(17) Int(1) : Int
+        Lit(18) Int(2) : Int
+
+    ValStmt(24) : Unit
+Ident(20) y→20 : Int
+      Call(21) callee=add→0 : Int
+        Path(22) x→15 : Int
+        Lit(23) Int(3) : Int

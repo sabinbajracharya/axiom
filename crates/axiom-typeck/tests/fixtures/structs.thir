@@ -1,0 +1,17 @@
+StructDef(0) name=Point vis=private fields=[private x: Float→<unresolved>, private y: Float→<unresolved>]
+FnDef(3) name=main vis=private params=[] return=() : () -> Unit
+  Block(4) stmts=[3] tail=None : Unit
+    ValStmt(9) : Unit
+Ident(5) p→5 : Point
+      StructLit(6) Point→0 : Point
+        x:         Lit(7) Float(1) : Float
+        y:         Lit(8) Float(2) : Float
+
+    ValStmt(13) : Unit
+Ident(10) px→10 : Float
+      Field(11) x : Float
+        Path(12) p→5 : Point
+    ValStmt(17) : Unit
+Ident(14) py→14 : Float
+      Field(15) y : Float
+        Path(16) p→5 : Point

@@ -1,0 +1,6 @@
+fn main() {
+    val a: Int = 1
+    val b: Float = 2.0
+    val c: Bool = true
+    val d: String = "hello"
+}

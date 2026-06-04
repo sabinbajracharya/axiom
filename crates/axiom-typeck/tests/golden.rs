@@ -67,3 +67,114 @@ fn test_golden_simple_enum() {
 fn test_golden_type_mismatch() {
     check_golden("type_mismatch", "fn main() { val x: Int = 3.14 }");
 }
+
+#[test]
+fn test_golden_control_flow() {
+    check_golden(
+        "control_flow",
+        "fn main() {
+    val x = 1
+    if x == 1 {
+        val y = 2
+    }
+    val z = if x == 0 { 10 } else { 20 }
+    loop {
+        val done = true
+    }
+}",
+    );
+}
+
+#[test]
+fn test_golden_structs() {
+    check_golden(
+        "structs",
+        "struct Point { x: Float, y: Float }
+fn main() {
+    val p = Point { x: 1.0, y: 2.0 }
+    val px = p.x
+    val py = p.y
+}",
+    );
+}
+
+#[test]
+fn test_golden_enums() {
+    check_golden(
+        "enums",
+        "enum Shape { Circle(Float), Rect(Float, Float), Empty }
+fn describe(s: Shape) -> Float {
+    match s {
+        Circle(r) => 3.14 * r * r
+        Rect(w, h) => w * h
+        Empty => 0.0
+    }
+}",
+    );
+}
+
+#[test]
+fn test_golden_match_patterns() {
+    check_golden(
+        "match_patterns",
+        "enum Color { Red, Green, Blue }
+fn paint(c: Color) -> Float {
+    match c {
+        Red => 1.0
+        Green => 2.0
+        Blue => 3.0
+    }
+}",
+    );
+}
+
+#[test]
+fn test_golden_functions() {
+    check_golden(
+        "functions",
+        "fn add(a: Int, b: Int) -> Int { a + b }
+fn greet(name: String) -> String { name }
+fn main() {
+    val x = add(1, 2)
+    val y = add(x, 3)
+}",
+    );
+}
+
+#[test]
+fn test_golden_assignments() {
+    check_golden(
+        "assignments",
+        "fn main() {
+    val x = 1
+    var y = 2
+    y = 3
+    val z: Int = x + y
+}",
+    );
+}
+
+#[test]
+fn test_golden_methods() {
+    check_golden(
+        "methods",
+        "struct Wrapper { value: Int }
+fn main() {
+    val w = Wrapper { value: 42 }
+    w.value
+}",
+    );
+}
+
+#[test]
+fn test_golden_bindings() {
+    check_golden(
+        "bindings",
+        "fn main() {
+    val a: Int = 1
+    val b: Float = 2.0
+    val c: Bool = true
+    val d: String = \"hello\"
+}",
+    );
+}

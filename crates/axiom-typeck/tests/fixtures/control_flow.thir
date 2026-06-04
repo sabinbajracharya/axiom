@@ -1,0 +1,36 @@
+FnDef(0) name=main vis=private params=[] return=() : () -> Unit
+  Block(1) stmts=[4] tail=None : Unit
+    ValStmt(4) : Unit
+Ident(2) x→2 : Int
+      Lit(3) Int(1) : Int
+    ExprStmt(5) : Unit
+      If(6) : Unit
+        Bin(7) op=== : Bool
+          Path(8) x→2 : Int
+          Lit(9) Int(1) : Int
+        Block(10) { : Unit
+          ValStmt(13) : Unit
+Ident(11) y→11 : Int
+            Lit(12) Int(2) : Int
+        }
+    ValStmt(25) : Unit
+Ident(14) z→14 : Unit
+      If(15) : Unit
+        Bin(16) op=== : Bool
+          Path(17) x→2 : Int
+          Lit(18) Int(0) : Int
+        Block(19) { : Unit
+          ExprStmt(20) : Unit
+            Lit(21) Int(10) : Int
+        }        else
+          Block(22) : Unit
+            ExprStmt(23) : Unit
+              Lit(24) Int(20) : Int
+
+
+    ExprStmt(26) : Unit
+      Loop(27) : Unit
+        Block(28) stmts=[1] tail=None : Unit
+          ValStmt(31) : Unit
+Ident(29) done→29 : Bool
+            Lit(30) Bool(true) : Bool

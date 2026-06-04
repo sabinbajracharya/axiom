@@ -1,0 +1,14 @@
+FnDef(0) name=main vis=private params=[] return=() : () -> Unit
+  Block(1) stmts=[4] tail=None : Unit
+    ValStmt(4) : Unit
+Ident(2) a→2 : Int
+      Lit(3) Int(1) : Int
+    ValStmt(7) : Unit
+Ident(5) b→5 : Float
+      Lit(6) Float(2) : Float
+    ValStmt(10) : Unit
+Ident(8) c→8 : Bool
+      Lit(9) Bool(true) : Bool
+    ValStmt(13) : Unit
+Ident(11) d→11 : String
+      Lit(12) String("hello") : String
