@@ -57,9 +57,10 @@ struct TypeChecker {
     /// Each entry collects the types of `break value` expressions within that loop.
     loop_break_types: Vec<Vec<crate::types::Ty>>,
     /// Type parameters of the function currently being collected or checked.
+    /// Each entry is (name, def_id, bound_trait_names).
     /// Set before resolving param/return types, cleared after.
     /// Empty = not inside a generic function.
-    current_type_params: Vec<(String, HirId)>,
+    current_type_params: Vec<(String, HirId, Vec<String>)>,
     /// Registry of trait definitions, keyed by trait name.
     /// Populated during collect_pass.
     trait_registry: HashMap<String, TraitInfo>,
@@ -69,6 +70,10 @@ struct TypeChecker {
     /// The `Self` type inside an impl block's method body.
     /// `None` when not inside an impl method.
     current_self_type: Option<crate::types::Ty>,
+    /// Trait bounds for each type parameter, keyed by the type param's HirId.
+    /// Populated during collect_pass for all generic functions.
+    /// Used by bound checking to find the bounds for a callee's type params.
+    type_param_bounds: HashMap<HirId, Vec<String>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,6 +214,7 @@ impl TypeChecker {
             trait_registry: HashMap::new(),
             impl_table: Vec::new(),
             current_self_type: None,
+            type_param_bounds: HashMap::new(),
         }
     }
 
@@ -251,7 +257,14 @@ impl TypeChecker {
         self.current_type_params = f
             .type_params
             .iter()
-            .map(|tp| (tp.name.clone(), tp.id))
+            .map(|tp| {
+                let bounds = tp
+                    .bounds
+                    .iter()
+                    .map(|b| collect::name_text(&b.name))
+                    .collect();
+                (tp.name.clone(), tp.id, bounds)
+            })
             .collect();
         self.env.push_scope();
         for param in &f.params {

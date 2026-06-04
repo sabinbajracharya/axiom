@@ -281,6 +281,8 @@ impl TypeChecker {
                     }
                 }
             }
+            // Check that each substituted type satisfies its trait bounds.
+            self.check_type_bounds(&subst, self.span_for(call.id));
             Self::substitute(&fn_ty.return_type, &subst)
         } else {
             // Non-generic call: structural equality check.
@@ -296,6 +298,56 @@ impl TypeChecker {
                 }
             }
             *fn_ty.return_type.clone()
+        }
+    }
+
+    /// Check that each concrete type in `subst` satisfies the trait bounds
+    /// declared on its type parameter. Emits `UnsatisfiedBound` for each
+    /// missing impl.
+    fn check_type_bounds(
+        &mut self,
+        subst: &std::collections::HashMap<crate::types::TypeParamId, Ty>,
+        span: axiom_lexer::Span,
+    ) {
+        for (tp_id, concrete_ty) in subst {
+            // Find bounds for this type param from the global registry.
+            let bounds: Vec<String> = self
+                .type_param_bounds
+                .get(&tp_id.def_id)
+                .cloned()
+                .unwrap_or_default();
+
+            let type_name = match Self::type_name_from_ty(concrete_ty) {
+                Some(n) => n,
+                None => continue, // Can't look up bounds for anonymous types.
+            };
+
+            for bound in &bounds {
+                let has_impl = self.impl_table.iter().any(|info| {
+                    info.trait_name.as_deref() == Some(bound) && info.type_name == type_name
+                });
+                if !has_impl {
+                    self.emit(TypeDiagnostic::UnsatisfiedBound {
+                        type_name: type_name.clone(),
+                        bound: bound.clone(),
+                        param: tp_id.name.clone(),
+                        span,
+                    });
+                }
+            }
+        }
+    }
+
+    /// Extract the type name string used in the impl table from a `Ty`.
+    fn type_name_from_ty(ty: &Ty) -> Option<String> {
+        match ty {
+            Ty::Struct(s) => Some(s.name.clone()),
+            Ty::Enum(e) => Some(e.name.clone()),
+            Ty::Int => Some("Int".to_string()),
+            Ty::Float => Some("Float".to_string()),
+            Ty::Bool => Some("Bool".to_string()),
+            Ty::String => Some("String".to_string()),
+            _ => None,
         }
     }
 

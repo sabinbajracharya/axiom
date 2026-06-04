@@ -767,10 +767,10 @@ Generate random trait bound scenarios. Assert:
 
 | Test | What it verifies | Status |
 |---|---|---|
-| `test_bound_satisfied` | `T: Ord, T=Int, Int: Ord` → pass | ⬚ Deferred — needs trait impl resolution |
-| `test_bound_unsatisfied` | `T: Ord, T=Foo, Foo: !Ord` → error | ⬚ Deferred — needs trait impl resolution |
-| `test_multiple_bounds_all_satisfied` | `T: Hashable + Equatable, T=String` → pass |
-| `test_multiple_bounds_one_missing` | `T: Hashable + Equatable, T=Foo` where only `Hashable` → error |
+| `test_bound_satisfied` | `T: Ord, impl Ord for Foo, Foo satisfies Ord` → pass | ✅ |
+| `test_bound_unsatisfied` | `T: Ord, no impl Ord for Foo` → `unsatisfied_bound` error | ✅ |
+| `test_multiple_bounds_all_satisfied` | `T: Hashable + Equatable, both impls exist` → pass | ✅ |
+| `test_multiple_bounds_one_missing` | `T: Hashable + Equatable, only Hashable exists` → error | ✅ |
 
 #### Monomorphization
 
@@ -790,14 +790,15 @@ Generate random trait bound scenarios. Assert:
 1. **Parser:** type params on fn/struct/enum decl, type args in annotations, turbofish. ✅ **Done** — `opt_generic_params`, `generic_arg_list` already in parser grammar.
 2. **HIR:** `HirTypeParam`, `InstanceTy`, `TypeParam`/`Instance` variants on `HirTy`, `type_params` on items. ✅ **Done** — commit `44651e8`.
 3. **Name resolution:** type param scoping, type arg resolution, `resolve_ty_names`. ✅ **Done** — commit `44651e8`.
-4. **Type checker:** `TypeParam` variant in `Ty`, unification with type params, bound checking. ✅ **Done** — commit `3306305`. `Ty::TypeParam`/`Ty::Instance` added; `resolve_hir_ty` resolves type params via `current_type_params` scope; `unify.rs` implements unification + substitution; `check_call_args` uses unification for generic callees; 10 integration tests + 7 unit tests. Bound checking deferred to traits phase 2.
-5. **Monomorphizer:** instantiation table, specialization, worklist. ⬚ Not started.
-6. **IR:** generic function representation, monomorphized instances. ⬚ Not started.
-7. **THIR dump:** show type params, type args, monomorphized instances. ⬚ Not started.
-8. **Tests:** golden snapshots, coverage invariants, fuzz, unit tests. ⬚ Partial — golden fixture `generics.ax`, 7 unit tests for HIR layer; typeck/mono tests not yet.
+4. **Type checker:** `TypeParam` variant in `Ty`, unification with type params, bound checking. ✅ **Done** — commit `3306305`. `Ty::TypeParam`/`Ty::Instance` added; `resolve_hir_ty` resolves type params via `current_type_params` scope; `unify.rs` implements unification + substitution; `check_call_args` uses unification for generic callees; 10 integration tests + 7 unit tests. Bound checking completed in generics+traits integration phase.
+5. **Bound checking:** verify trait bounds on type params at call sites. ✅ **Done** — `type_param_bounds` registry stores bounds by HirId during collection; `check_type_bounds` verifies after unification; `UnsatisfiedBound` diagnostic; 10 integration tests.
+6. **Monomorphizer:** instantiation table, specialization, worklist. ⬚ Not started.
+7. **IR:** generic function representation, monomorphized instances. ⬚ Not started.
+8. **THIR dump:** show type params, type args, monomorphized instances. ⬚ Not started.
+9. **Tests:** golden snapshots, coverage invariants, fuzz, unit tests. ⬚ Partial — golden fixture `generics.ax`, 7 unit tests for HIR layer; typeck/mono tests not yet.
 
-Steps 1-4 are the "generic type checking" milestone. Steps 5-6 are the "monomorphization"
-milestone. Step 7-8 run in parallel with everything.
+Steps 1-5 are the "generic type checking" milestone. Steps 6-7 are the "monomorphization"
+milestone. Steps 8-9 run in parallel with everything.
 
 ---
 

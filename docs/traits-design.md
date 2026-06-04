@@ -598,13 +598,13 @@ Assert:
 
 #### Type checker — bound checking
 
-| Test | What it verifies |
-|---|---|
-| `test_bound_satisfied` | `T: Ord, T=Int, impl Ord for Int exists` → OK |
-| `test_bound_unsatisfied` | `T: Ord, T=Foo, no impl Ord for Foo` → error |
-| `test_multiple_bounds_pass` | `T: A + B, both impls exist` → OK |
-| `test_multiple_bounds_one_fail` | `T: A + B, only A exists` → error |
-| `test_bound_on_struct_field` | `struct List<T: Deinit>` — bound checked at instantiation |
+| Test | What it verifies | Status |
+|---|---|---|
+| `test_bound_satisfied` | `T: Ord, impl Ord for Foo exists` → OK | ✅ |
+| `test_bound_unsatisfied` | `T: Ord, no impl Ord for Foo` → `unsatisfied_bound` | ✅ |
+| `test_multiple_bounds_pass` | `T: A + B, both impls exist` → OK | ✅ |
+| `test_multiple_bounds_one_fail` | `T: A + B, only A exists` → error | ✅ |
+| `test_bound_on_struct_field` | `struct List<T: Deinit>` — bound checked at instantiation | ⬚ Deferred — needs generic struct instantiation |
 
 #### Type checker — method dispatch
 
@@ -629,15 +629,16 @@ Assert:
 1. ✅ **Parser:** trait declarations, impl blocks, trait bounds. *(Already existed — `trait_def`, `impl_block` in grammar/item.rs, `TraitDef`, `ImplBlock` AST views, `TraitItemList`, `AssocItemList`.)*
 2. ✅ **HIR:** `TraitDef`, `ImplDef`, `TraitMethod`. *(Added to `hir/items.rs`; `Item::TraitDef`, `Item::ImplDef` variants; `DefKind::Trait`.)*
 3. ✅ **Name resolution:** trait scoping, impl registration, method resolution. *(Traits registered in top-level scope; impl trait/type names resolved; method signatures + bodies resolved with param scope. `self` receiver lowered from `SelfParam`.)*
-4. ✅ **Done** — commit `ff55d02`. Trait registry + impl table populated in collect pass; `infer_method_call` resolves methods via impl table (inherent before trait); `Self` resolves to implementing type in impl method bodies; completeness check emits `MissingTraitMethod`; 12 integration tests. Bound checking deferred to generics+traits phase 3.
-5. **Monomorphization:** trait method calls become direct calls.
-6. **Built-in traits:** `Deinit` (auto-impl for all types), `Equatable`/`Hashable`/`Ord`
+4. ✅ **Done** — commit `ff55d02`. Trait registry + impl table populated in collect pass; `infer_method_call` resolves methods via impl table (inherent before trait); `Self` resolves to implementing type in impl method bodies; completeness check emits `MissingTraitMethod`; 12 integration tests.
+5. ✅ **Bound checking:** verify trait bounds on generic type params at call sites. `type_param_bounds` registry stores bounds by HirId during collection; `check_type_bounds` verifies after unification; `UnsatisfiedBound` diagnostic; 10 integration tests.
+6. **Monomorphization:** trait method calls become direct calls.
+7. **Built-in traits:** `Deinit` (auto-impl for all types), `Equatable`/`Hashable`/`Ord`
    (auto-impl for primitives).
-7. **THIR dump:** show trait decls, impl blocks, method dispatch.
-8. **Tests:** golden snapshots, coverage invariants, fuzz, unit tests.
+8. **THIR dump:** show trait decls, impl blocks, method dispatch.
+9. **Tests:** golden snapshots, coverage invariants, fuzz, unit tests.
 
-Steps 1-4 are the "trait type checking" milestone. Step 5 integrates with the generics
-monomorphizer. Step 6 enables the collection type design.
+Steps 1-5 are the "trait type checking" milestone. Step 6 integrates with the generics
+monomorphizer. Step 7 enables the collection type design.
 
 ---
 

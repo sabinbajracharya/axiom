@@ -155,6 +155,17 @@ pub enum TypeDiagnostic {
 
     #[error("type `{name}` not found for impl")]
     TypeNotFoundForImpl { name: String, span: Span },
+
+    #[error(
+        "type `{type_name}` does not satisfy bound `{bound}` \
+         required by type parameter `{param}`"
+    )]
+    UnsatisfiedBound {
+        type_name: String,
+        bound: String,
+        param: String,
+        span: Span,
+    },
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -186,7 +197,8 @@ impl TypeDiagnostic {
             | TypeDiagnostic::MissingTraitMethod { span, .. }
             | TypeDiagnostic::UnknownMethod { span, .. }
             | TypeDiagnostic::TraitNotFound { span, .. }
-            | TypeDiagnostic::TypeNotFoundForImpl { span, .. } => *span,
+            | TypeDiagnostic::TypeNotFoundForImpl { span, .. }
+            | TypeDiagnostic::UnsatisfiedBound { span, .. } => *span,
         }
     }
 
@@ -229,6 +241,7 @@ impl TypeDiagnostic {
             TypeDiagnostic::UnknownMethod { .. } => "unknown_method",
             TypeDiagnostic::TraitNotFound { .. } => "trait_not_found",
             TypeDiagnostic::TypeNotFoundForImpl { .. } => "type_not_found_for_impl",
+            TypeDiagnostic::UnsatisfiedBound { .. } => "unsatisfied_bound",
         }
     }
 }

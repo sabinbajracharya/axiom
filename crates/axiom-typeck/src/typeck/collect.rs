@@ -112,8 +112,15 @@ impl TypeChecker {
                     self.current_type_params = f
                         .type_params
                         .iter()
-                        .map(|tp| (tp.name.clone(), tp.id))
+                        .map(|tp| {
+                            let bounds = tp.bounds.iter().map(|b| name_text(&b.name)).collect();
+                            (tp.name.clone(), tp.id, bounds)
+                        })
                         .collect();
+                    // Store bounds by type param HirId for bound checking at call sites.
+                    for (_, tp_id, bounds) in &self.current_type_params {
+                        self.type_param_bounds.insert(*tp_id, bounds.clone());
+                    }
                     let param_types: Vec<Ty> = f
                         .params
                         .iter()
@@ -156,7 +163,10 @@ impl TypeChecker {
                     self.current_type_params = trait_def
                         .type_params
                         .iter()
-                        .map(|tp| (tp.name.clone(), tp.id))
+                        .map(|tp| {
+                            let bounds = tp.bounds.iter().map(|b| name_text(&b.name)).collect();
+                            (tp.name.clone(), tp.id, bounds)
+                        })
                         .collect();
 
                     let params: Vec<Ty> = method
@@ -280,11 +290,11 @@ impl TypeChecker {
             HirTy::TypeParam(tp) => {
                 // Look up in the current type param scope (set by collect_fn_sigs
                 // or check_fn_body).
-                if let Some((index, (_, def_id))) = self
+                if let Some((index, (_, def_id, _bounds))) = self
                     .current_type_params
                     .iter()
                     .enumerate()
-                    .find(|(_, (name, _))| *name == tp.name)
+                    .find(|(_, (name, _, _))| *name == tp.name)
                 {
                     Ty::TypeParam(TypeParamId {
                         name: tp.name.clone(),
@@ -359,7 +369,7 @@ impl TypeChecker {
 }
 
 /// Extract the text from a `NameRef` (resolved or unresolved).
-fn name_text(nr: &NameRef) -> String {
+pub(super) fn name_text(nr: &NameRef) -> String {
     match nr {
         NameRef::Resolved(r) => r.text.clone(),
         NameRef::Unresolved(u) => u.text.clone(),
