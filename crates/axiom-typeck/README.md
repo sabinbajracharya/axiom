@@ -36,7 +36,13 @@ Thir → axiom_typeck::check_all → coverage invariant check
 | `src/types.rs` | The type universe: `Ty`, `StructTy`, `EnumTy`, `FnTy`, Display impls | `Ty`, `label()` |
 | `src/error.rs` | Type-check diagnostics (`thiserror` enum) + render | `TypeDiagnostic` |
 | `src/thir.rs` | THIR wrapper (HIR + TypeMap + diagnostics) | `Thir`, `TypeMap` |
-| `src/typeck.rs` | The type checker: `TypeChecker` struct, `TypeEnv`, two passes | `check()`, bidirectional typing |
+| `src/typeck/` | The type checker module folder | — |
+| `src/typeck/mod.rs` | Entry point: `TypeChecker` struct, `TypeEnv`, two passes, inline tests | `check()`, bidirectional typing |
+| `src/typeck/collect.rs` | Pass 1: collect fn signatures, struct/enum defs | `collect_pass` |
+| `src/typeck/infer.rs` | Expression type rules: literals, paths, binary/unary ops, calls, fields | `infer_expr`, `check_expr` |
+| `src/typeck/control.rs` | Control-flow type rules: blocks, if/else, match, loop, struct lit, assign | `infer_block`, `infer_if`, `infer_match` |
+| `src/typeck/stmt.rs` | Statement typing and pattern binding | `type_stmt`, `define_pattern_bindings` |
+| `src/typeck/helpers.rs` | Small pure helpers: `is_error`, `is_numeric`, `infer_lit`, `call_name` | — |
 | `src/exhaustiveness.rs` | Match exhaustiveness checking for enums | `check_match_exhaustiveness` |
 | `src/serialize.rs` | Canonical THIR dump (pure function) | `serialize` |
 | `src/coverage.rs` | Coverage invariant checks | `check_all`, `TypeckCoverageError` |
