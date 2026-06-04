@@ -88,6 +88,19 @@ fn resolve_item_names(
         }
         Item::TraitDef(t) => resolve_trait_def(t, top_level, diagnostics),
         Item::ImplDef(impl_def) => resolve_impl_def(impl_def, top_level, diagnostics),
+        Item::SubscriptDef(s) => {
+            let mut scope = Scope::new_child(top_level);
+            for param in &mut s.params {
+                if let Some(ty) = &mut param.ty {
+                    resolve_ty_names(ty, &scope.bindings);
+                }
+                scope.define(param.name.clone(), param.id, DefKind::Param);
+            }
+            if let Some(ret) = &mut s.return_type {
+                resolve_ty_names(ret, &scope.bindings);
+            }
+            resolve_block_names(&mut s.body, &scope, diagnostics);
+        }
     }
 }
 
@@ -251,6 +264,9 @@ fn resolve_stmt_names(stmt: &mut Stmt, scope: &mut Scope, diagnostics: &mut Vec<
             }
         }
         Stmt::ContinueStmt(_) => {}
+        Stmt::YieldStmt(s) => {
+            resolve_expr_names(&mut s.value, scope, diagnostics);
+        }
     }
 }
 

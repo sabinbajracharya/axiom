@@ -13,7 +13,7 @@ use crate::syntax_kind::SyntaxKind as K;
 /// plus the binding/cleanup keywords that only ever begin a statement. This is
 /// the resync target for block recovery — a token here begins the *next*
 /// statement, so garbage is skipped up to it (see `block`).
-const STMT_ONLY_START: &[K] = &[K::KwVal, K::KwVar, K::KwErrdefer];
+const STMT_ONLY_START: &[K] = &[K::KwVal, K::KwVar, K::KwErrdefer, K::KwYield];
 
 /// Whether the current token can begin a statement (so the block loop should try
 /// to parse one rather than treating it as garbage).
@@ -62,6 +62,7 @@ fn stmt(p: &mut Parser) {
     match p.current() {
         K::KwVal | K::KwVar => let_stmt(p),
         K::KwErrdefer => errdefer_stmt(p),
+        K::KwYield => yield_stmt(p),
         _ => expr_stmt(p),
     }
 }
@@ -89,6 +90,15 @@ fn errdefer_stmt(p: &mut Parser) {
     expr(p);
     p.eat(K::Semicolon);
     m.complete(p, K::ErrdeferStmt);
+}
+
+/// `yield expr` — subscript body value producer.
+fn yield_stmt(p: &mut Parser) {
+    let m = p.start();
+    p.bump(); // yield
+    expr(p);
+    p.eat(K::Semicolon);
+    m.complete(p, K::YieldStmt);
 }
 
 fn expr_stmt(p: &mut Parser) {

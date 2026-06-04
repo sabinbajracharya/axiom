@@ -53,6 +53,8 @@ fn lower_stmt(child: axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> Option<Stm
             span: ctx.span_of(&child),
         });
         None
+    } else if kind == SyntaxKind::YieldStmt {
+        lower_yield_stmt(child, ctx)
     } else if kind == SyntaxKind::Error {
         None
     } else if ast::is_expr_kind(kind) || kind == SyntaxKind::ExprStmt {
@@ -94,6 +96,16 @@ fn lower_return_stmt(child: axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> Opt
     let stmt_id = ctx.alloc_id();
     let value = ret_stmt.value().map(|v| lower_expr(&v, ctx));
     Some(Stmt::ReturnStmt(ReturnStmt { id: stmt_id, value }))
+}
+
+fn lower_yield_stmt(child: axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> Option<Stmt> {
+    let yield_stmt = ast::YieldStmt::cast(child)?;
+    let stmt_id = ctx.alloc_id();
+    let value = yield_stmt
+        .value()
+        .map(|v| lower_expr(&v, ctx))
+        .unwrap_or_else(|| unit_expr(ctx));
+    Some(Stmt::YieldStmt(YieldStmt { id: stmt_id, value }))
 }
 
 fn lower_expr_stmt(child: axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> Option<Stmt> {

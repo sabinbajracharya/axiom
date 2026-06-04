@@ -284,3 +284,22 @@ fn main() { eq_test(Foo {}) }",
         thir.diagnostics
     );
 }
+
+// ── Subscript declarations ───────────────────────────────────────────────────
+
+#[test]
+fn test_subscript_on_struct() {
+    // A struct with a subscript definition can be indexed.
+    let thir = check_source(
+        "struct Box { v: Int }
+impl Box {
+    subscript(let self, i: Int) -> Int { yield self.v }
+}
+fn main() { val b = Box { v: 7 }; val x = b[0] }",
+    );
+    assert!(
+        thir.diagnostics.is_empty(),
+        "expected no diagnostics for subscript, got: {:?}",
+        thir.diagnostics
+    );
+}

@@ -92,6 +92,7 @@ fn serialize_item(item: &Item, depth: usize, thir: &Thir, out: &mut String) {
         Item::EnumDef(e) => serialize_enum_def(e, depth, thir, out),
         Item::TraitDef(t) => serialize_trait_def(t, depth, thir, out),
         Item::ImplDef(i) => serialize_impl_def(i, depth, thir, out),
+        Item::SubscriptDef(_) => {}
     }
 }
 
@@ -358,6 +359,13 @@ pub(super) fn serialize_stmt(stmt: &Stmt, depth: usize, thir: &Thir, out: &mut S
             let ty = stmt_type_annotation(s.id, thir);
             indent(out, depth);
             out.push_str(&format!("ContinueStmt({}){ty}\n", s.id));
+        }
+        Stmt::YieldStmt(s) => {
+            let ty = stmt_type_annotation(s.id, thir);
+            indent(out, depth);
+            out.push_str(&format!("YieldStmt({}){ty} ", s.id));
+            serialize_expr(&s.value, depth, thir, out);
+            out.push('\n');
         }
     }
 }

@@ -17,6 +17,7 @@ fn can_cast_item(kind: SyntaxKind) -> bool {
         || UseDecl::can_cast(kind)
         || ConstDef::can_cast(kind)
         || ErrorSetDef::can_cast(kind)
+        || SubscriptDef::can_cast(kind)
 }
 
 fn can_cast_item_part(kind: SyntaxKind) -> bool {
@@ -49,6 +50,7 @@ fn can_cast_stmt(kind: SyntaxKind) -> bool {
         || BreakStmt::can_cast(kind)
         || ContinueStmt::can_cast(kind)
         || ErrdeferStmt::can_cast(kind)
+        || YieldStmt::can_cast(kind)
 }
 
 fn can_cast_expr(kind: SyntaxKind) -> bool {

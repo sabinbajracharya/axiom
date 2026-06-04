@@ -35,6 +35,7 @@ impl<'a> Monomorphizer<'a> {
                 }
             }
             Stmt::ContinueStmt(_) => {}
+            Stmt::YieldStmt(s) => self.collect_from_expr(&s.value),
         }
     }
 
@@ -131,6 +132,7 @@ impl<'a> Monomorphizer<'a> {
                 }
             }
             Stmt::ContinueStmt(_) => {}
+            Stmt::YieldStmt(s) => self.collect_from_expr_with_subst(&s.value, subst),
         }
     }
 

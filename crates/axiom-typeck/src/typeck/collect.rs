@@ -101,6 +101,7 @@ impl TypeChecker {
                     trait_name: Some("Deinit".to_string()),
                     type_name: s.name.clone(),
                     methods: vec![],
+                    subscripts: vec![],
                 });
             }
         }
@@ -191,6 +192,7 @@ impl TypeChecker {
                 Item::TraitDef(_) | Item::ImplDef(_) => {
                     // Handled by collect_trait_defs / collect_impl_defs.
                 }
+                Item::SubscriptDef(_) => {}
             }
         }
     }
@@ -318,6 +320,7 @@ impl TypeChecker {
                     trait_name,
                     type_name: type_name_text,
                     methods: impl_def.methods.clone(),
+                    subscripts: impl_def.subscripts.clone(),
                 });
             }
         }

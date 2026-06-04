@@ -115,6 +115,7 @@ pub enum Stmt {
     ReturnStmt(ReturnStmt),
     BreakStmt(BreakStmt),
     ContinueStmt(ContinueStmt),
+    YieldStmt(YieldStmt),
 }
 
 impl Stmt {
@@ -126,6 +127,7 @@ impl Stmt {
             Stmt::ReturnStmt(s) => s.id,
             Stmt::BreakStmt(s) => s.id,
             Stmt::ContinueStmt(s) => s.id,
+            Stmt::YieldStmt(s) => s.id,
         }
     }
 }
@@ -167,6 +169,12 @@ pub struct BreakStmt {
 #[derive(Debug, Clone)]
 pub struct ContinueStmt {
     pub id: HirId,
+}
+
+#[derive(Debug, Clone)]
+pub struct YieldStmt {
+    pub id: HirId,
+    pub value: Expr,
 }
 
 // ── Expressions ───────────────────────────────────────────────────────────────

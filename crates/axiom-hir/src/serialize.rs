@@ -27,6 +27,7 @@ fn serialize_item(item: &Item, depth: usize, out: &mut String) {
         Item::EnumDef(e) => serialize_enum_def(e, depth, out),
         Item::TraitDef(t) => serialize_trait_def(t, depth, out),
         Item::ImplDef(i) => serialize_impl_def(i, depth, out),
+        Item::SubscriptDef(s) => serialize_subscript_def(s, depth, out),
     }
 }
 
@@ -143,8 +144,23 @@ fn serialize_impl_def(i: &ImplDef, depth: usize, out: &mut String) {
     for method in &i.methods {
         serialize_fn_def(method, depth + 1, out);
     }
+    for sub in &i.subscripts {
+        serialize_subscript_def(sub, depth + 1, out);
+    }
     indent(out, depth);
     out.push_str("]\n");
+}
+
+fn serialize_subscript_def(s: &SubscriptDef, depth: usize, out: &mut String) {
+    indent(out, depth);
+    out.push_str(&format!("SubscriptDef({}) ", s.id));
+    let params: Vec<String> = s.params.iter().map(|p| p.name.clone()).collect();
+    out.push_str(&format!("({})", params.join(", ")));
+    if let Some(ret) = &s.return_type {
+        out.push_str(&format!(" -> {}", fmt_ty(ret)));
+    }
+    out.push_str(" body\n");
+    serialize_block(&s.body, depth + 1, out);
 }
 
 fn fmt_name_ref(nr: &NameRef) -> String {
@@ -224,6 +240,12 @@ fn serialize_stmt(stmt: &Stmt, depth: usize, out: &mut String) {
         Stmt::ContinueStmt(s) => {
             indent(out, depth);
             out.push_str(&format!("ContinueStmt({})\n", s.id));
+        }
+        Stmt::YieldStmt(s) => {
+            indent(out, depth);
+            out.push_str(&format!("YieldStmt({}) ", s.id));
+            serialize_expr(&s.value, depth, out);
+            out.push('\n');
         }
     }
 }

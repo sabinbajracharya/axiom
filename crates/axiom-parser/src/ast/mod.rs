@@ -165,6 +165,7 @@ pub fn is_expr_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::ReturnStmt
             | SyntaxKind::BreakStmt
             | SyntaxKind::ContinueStmt
+            | SyntaxKind::YieldStmt
     )
 }
 

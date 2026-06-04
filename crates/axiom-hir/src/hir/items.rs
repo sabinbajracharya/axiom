@@ -11,6 +11,7 @@ pub enum Item {
     EnumDef(EnumDef),
     TraitDef(TraitDef),
     ImplDef(ImplDef),
+    SubscriptDef(SubscriptDef),
 }
 
 #[derive(Debug, Clone)]
@@ -92,4 +93,15 @@ pub struct ImplDef {
     pub type_name: NameRef,
     pub type_params: Vec<HirTypeParam>,
     pub methods: Vec<FnDef>,
+    pub subscripts: Vec<SubscriptDef>,
+}
+
+/// A subscript declaration: `subscript(params) -> RetType { body }`.
+/// No name — identified by parameter signature. Lives inside an impl block.
+#[derive(Debug, Clone)]
+pub struct SubscriptDef {
+    pub id: HirId,
+    pub params: Vec<Param>,
+    pub return_type: Option<HirTy>,
+    pub body: Block,
 }

@@ -16,6 +16,7 @@ impl TypeChecker {
             Stmt::ReturnStmt(s) => self.type_return_stmt(s),
             Stmt::BreakStmt(s) => self.type_break_stmt(s),
             Stmt::ContinueStmt(s) => self.type_continue_stmt(s),
+            Stmt::YieldStmt(s) => self.type_yield_stmt(s),
         }
     }
 
@@ -94,6 +95,11 @@ impl TypeChecker {
             collector.push(Ty::Unit);
         }
         self.types.insert(s.id, Ty::Unit);
+    }
+
+    pub(super) fn type_yield_stmt(&mut self, s: &YieldStmt) {
+        let value_ty = self.infer_expr(&s.value);
+        self.types.insert(s.id, value_ty);
     }
 
     // ── Pattern binding ──────────────────────────────────────────────────

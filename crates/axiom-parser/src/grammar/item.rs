@@ -269,10 +269,10 @@ fn impl_block(p: &mut Parser, m: Marker) {
     m.complete(p, K::ImplBlock);
 }
 
-/// `{ method* }` shared by traits and impls. Each method may carry `pub`. A
-/// member begins with `fn` or `pub`; anything else is garbage to resync past.
+/// `{ method* }` shared by traits and impls. Each member may carry `pub`. A
+/// member begins with `fn`, `subscript`, or `pub`; anything else is garbage.
 fn at_member_start(p: &Parser) -> bool {
-    p.at(K::KwFn) || p.at(K::KwPub)
+    p.at(K::KwFn) || p.at(K::KwSubscript) || p.at(K::KwPub)
 }
 
 fn member_list(p: &mut Parser, kind: K) {
@@ -284,21 +284,40 @@ fn member_list(p: &mut Parser, kind: K) {
             opt_visibility(p);
             if p.at(K::KwFn) {
                 fn_def(p, im);
+            } else if p.at(K::KwSubscript) {
+                subscript_def(p, im);
             } else {
-                // `pub` not followed by `fn`: flag and drop the stray token.
-                p.error("expected a method");
+                // `pub` not followed by `fn` or `subscript`: flag and drop.
+                p.error("expected a method or subscript");
                 im.complete(p, K::Error);
                 if !p.at_end() {
                     p.bump();
                 }
             }
-        } else if !p.recover_to("expected a method", at_member_start) {
+        } else if !p.recover_to("expected a method or subscript", at_member_start) {
             // A claimed closer / end — let the owner have it.
             break;
         }
     }
     p.expect(K::RBrace);
     m.complete(p, kind);
+}
+
+/// `subscript(params) -> RetType { body }`. No name — identified by signature.
+fn subscript_def(p: &mut Parser, m: Marker) {
+    p.bump(); // subscript
+    param_list(p);
+    if p.eat(K::Arrow) {
+        let r = p.start();
+        ty(p);
+        r.complete(p, K::RetType);
+    }
+    if p.at(K::LBrace) {
+        block(p);
+    } else {
+        p.eat(K::Semicolon);
+    }
+    m.complete(p, K::SubscriptDef);
 }
 
 // ── modules / use / error sets / const ───────────────────────────────────────

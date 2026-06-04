@@ -42,6 +42,8 @@ const KEYWORDS: &[(&str, Keyword)] = &[
     ("as", Keyword::As),
     ("in", Keyword::In),
     ("is", Keyword::Is),
+    ("subscript", Keyword::Subscript),
+    ("yield", Keyword::Yield),
 ];
 
 /// Recognize an identifier-shaped slice as a keyword, if it is one.
@@ -113,6 +115,8 @@ pub fn keyword_label(kw: Keyword) -> &'static str {
         Keyword::As => "KwAs",
         Keyword::In => "KwIn",
         Keyword::Is => "KwIs",
+        Keyword::Subscript => "KwSubscript",
+        Keyword::Yield => "KwYield",
     }
 }
 

@@ -33,6 +33,7 @@ impl BlockExpr {
                     SyntaxKind::LetStmt
                         | SyntaxKind::ExprStmt
                         | SyntaxKind::ErrdeferStmt
+                        | SyntaxKind::YieldStmt
                         | SyntaxKind::Error
                 )
             })

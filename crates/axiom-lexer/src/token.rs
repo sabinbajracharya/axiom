@@ -51,6 +51,8 @@ pub enum Keyword {
     As,
     In,
     Is,
+    Subscript,
+    Yield,
 }
 
 impl Keyword {
@@ -91,6 +93,8 @@ impl Keyword {
         Keyword::As,
         Keyword::In,
         Keyword::Is,
+        Keyword::Subscript,
+        Keyword::Yield,
     ];
 }
 

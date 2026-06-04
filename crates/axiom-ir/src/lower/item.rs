@@ -11,7 +11,11 @@ use super::LowerCtx;
 pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
     match item {
         Item::FnDef(f) => lower_fn_def(f, ctx),
-        Item::StructDef(_) | Item::EnumDef(_) | Item::TraitDef(_) | Item::ImplDef(_) => {}
+        Item::StructDef(_)
+        | Item::EnumDef(_)
+        | Item::TraitDef(_)
+        | Item::ImplDef(_)
+        | Item::SubscriptDef(_) => {}
     }
 }
 

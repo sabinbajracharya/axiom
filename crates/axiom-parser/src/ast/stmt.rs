@@ -159,3 +159,27 @@ impl ErrdeferStmt {
         child_expr_node(&self.0)
     }
 }
+
+pub struct YieldStmt(SyntaxNode);
+
+impl AstNode for YieldStmt {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::YieldStmt
+    }
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(node.kind()) {
+            Some(Self(node))
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.0
+    }
+}
+
+impl YieldStmt {
+    pub fn value(&self) -> Option<SyntaxNode> {
+        child_expr_node(&self.0)
+    }
+}

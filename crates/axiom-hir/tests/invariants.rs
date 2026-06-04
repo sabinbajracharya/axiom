@@ -19,6 +19,7 @@ fn is_stmt_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::BreakStmt
             | SyntaxKind::ContinueStmt
             | SyntaxKind::ErrdeferStmt
+            | SyntaxKind::YieldStmt
     )
 }
 
@@ -34,6 +35,7 @@ fn is_item_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::UseDecl
             | SyntaxKind::ConstDef
             | SyntaxKind::ErrorSetDef
+            | SyntaxKind::SubscriptDef
     )
 }
 
@@ -49,6 +51,7 @@ fn handles_item(kind: SyntaxKind) -> bool {
             | SyntaxKind::UseDecl
             | SyntaxKind::ConstDef
             | SyntaxKind::ErrorSetDef
+            | SyntaxKind::SubscriptDef
     )
 }
 
@@ -61,6 +64,7 @@ fn handles_stmt(kind: SyntaxKind) -> bool {
             | SyntaxKind::BreakStmt
             | SyntaxKind::ContinueStmt
             | SyntaxKind::ErrdeferStmt
+            | SyntaxKind::YieldStmt
     )
 }
 
@@ -93,6 +97,7 @@ fn handles_expr(kind: SyntaxKind) -> bool {
             | SyntaxKind::ScopeExpr
             | SyntaxKind::SpawnExpr
             | SyntaxKind::ListLitExpr
+            | SyntaxKind::YieldStmt
     )
 }
 

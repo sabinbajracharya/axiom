@@ -334,3 +334,33 @@ impl ErrorSetDef {
         child_node(&self.0)
     }
 }
+
+pub struct SubscriptDef(SyntaxNode);
+
+impl AstNode for SubscriptDef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::SubscriptDef
+    }
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(node.kind()) {
+            Some(Self(node))
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.0
+    }
+}
+
+impl SubscriptDef {
+    pub fn param_list(&self) -> Option<ParamList> {
+        child_node(&self.0)
+    }
+    pub fn ret_type(&self) -> Option<RetType> {
+        child_node(&self.0)
+    }
+    pub fn body(&self) -> Option<BlockExpr> {
+        child_node(&self.0)
+    }
+}

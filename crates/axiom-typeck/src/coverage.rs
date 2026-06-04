@@ -102,6 +102,9 @@ fn collect_item_ids(item: &axiom_hir::Item, ids: &mut Vec<(HirId, String)>) {
                 collect_item_ids(&axiom_hir::Item::FnDef(method.clone()), ids);
             }
         }
+        axiom_hir::Item::SubscriptDef(s) => {
+            ids.push((s.id, "SubscriptDef".to_string()));
+        }
     }
 }
 
@@ -145,6 +148,10 @@ fn collect_stmt_ids(stmt: &axiom_hir::Stmt, ids: &mut Vec<(HirId, String)>) {
         }
         axiom_hir::Stmt::ContinueStmt(s) => {
             ids.push((s.id, "ContinueStmt".to_string()));
+        }
+        axiom_hir::Stmt::YieldStmt(s) => {
+            ids.push((s.id, "YieldStmt".to_string()));
+            collect_expr_ids(&s.value, ids);
         }
     }
 }

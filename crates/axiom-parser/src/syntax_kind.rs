@@ -184,6 +184,8 @@ syntax_kinds! {
         KwAs,
         KwIn,
         KwIs,
+        KwSubscript,
+        KwYield,
     }
     nodes {
         // root
@@ -219,6 +221,8 @@ syntax_kinds! {
         ErrorVariant,
         AssocItemList,
         TraitItemList,
+        SubscriptDef,
+        YieldStmt,
         // statements
         LetStmt,
         ExprStmt,
@@ -360,6 +364,8 @@ fn keyword_kind(kw: Keyword) -> SyntaxKind {
         Keyword::As => SyntaxKind::KwAs,
         Keyword::In => SyntaxKind::KwIn,
         Keyword::Is => SyntaxKind::KwIs,
+        Keyword::Subscript => SyntaxKind::KwSubscript,
+        Keyword::Yield => SyntaxKind::KwYield,
     }
 }
 

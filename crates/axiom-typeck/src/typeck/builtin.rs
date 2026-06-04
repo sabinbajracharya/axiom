@@ -186,6 +186,7 @@ impl TypeChecker {
             trait_name: None,
             type_name: "List".to_string(),
             methods,
+            subscripts: vec![],
         });
     }
 
@@ -243,6 +244,7 @@ impl TypeChecker {
             trait_name: None,
             type_name: "Map".to_string(),
             methods,
+            subscripts: vec![],
         });
     }
 
@@ -253,6 +255,7 @@ impl TypeChecker {
                 trait_name: Some("Deinit".to_string()),
                 type_name: type_name.to_string(),
                 methods: vec![],
+                subscripts: vec![],
             });
         }
 
@@ -262,6 +265,7 @@ impl TypeChecker {
                     trait_name: Some(trait_name.to_string()),
                     type_name: type_name.to_string(),
                     methods: vec![],
+                    subscripts: vec![],
                 });
             }
         }

@@ -84,6 +84,20 @@ impl TypeChecker {
         None
     }
 
+    /// Find a subscript definition for the given type. Searches inherent impls
+    /// first, then trait impls. Returns the first subscript found (v0: at most
+    /// one subscript per type).
+    fn find_impl_subscript(&self, type_name: &str) -> Option<&SubscriptDef> {
+        for info in &self.impl_table {
+            if info.type_name == type_name {
+                if let Some(sub) = info.subscripts.first() {
+                    return Some(sub);
+                }
+            }
+        }
+        None
+    }
+
     /// Check a method call against a resolved FnDef: arity, arg types, return type.
     /// `receiver_ty` is used to substitute type arguments for generic methods on
     /// Instance types (e.g., `List<Int>.push(42)` substitutes `T → Int`).
@@ -196,14 +210,31 @@ impl TypeChecker {
 
     pub(super) fn infer_index(&mut self, index: &IndexExpr) -> Ty {
         let base_ty = self.infer_expr(&index.base);
-        let index_ty = self.infer_expr(&index.index);
-        let ty = match (&base_ty, &index_ty) {
-            (Ty::Instance(inst), Ty::Int) if inst.name == "List" => {
-                // List<T>[Int] → T
+        let _index_ty = self.infer_expr(&index.index);
+
+        // Extract the type name for subscript lookup.
+        let type_name = Self::type_name_from_ty(&base_ty);
+
+        // Try subscript lookup first (library-defined indexing).
+        if let Some(ref name) = type_name {
+            if let Some(sub) = self.find_impl_subscript(name) {
+                let ty = sub
+                    .return_type
+                    .as_ref()
+                    .map(|t| self.resolve_hir_ty(t))
+                    .unwrap_or(Ty::Unit);
+                self.types.insert(index.id, ty.clone());
+                return ty;
+            }
+        }
+
+        // Fall back to hardcoded List/Map indexing (still built-in for v0).
+        // Will be removed when List/Map migrate to library types (Steps 5-6).
+        let ty = match (&base_ty, &type_name) {
+            (Ty::Instance(inst), _) if inst.name == "List" => {
                 inst.args.first().cloned().unwrap_or(Ty::Error)
             }
             (Ty::Instance(inst), _) if inst.name == "Map" => {
-                // Map<K, V>[K] → V
                 if let (Some(_key_ty), Some(val_ty)) = (inst.args.first(), inst.args.get(1)) {
                     val_ty.clone()
                 } else {

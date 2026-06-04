@@ -499,6 +499,9 @@ impl AssocItemList {
     pub fn methods(&self) -> Vec<FnDef> {
         child_nodes_of(&self.0)
     }
+    pub fn subscripts(&self) -> Vec<SubscriptDef> {
+        child_nodes_of(&self.0)
+    }
 }
 
 pub struct TraitItemList(SyntaxNode);

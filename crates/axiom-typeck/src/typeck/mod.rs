@@ -156,6 +156,7 @@ struct ImplInfo {
     trait_name: Option<String>,
     type_name: String,
     methods: Vec<FnDef>,
+    subscripts: Vec<SubscriptDef>,
 }
 
 impl TypeEnv {
@@ -240,6 +241,9 @@ impl TypeChecker {
                     for method in &impl_def.methods {
                         self.check_fn_body(method);
                     }
+                    for sub in &impl_def.subscripts {
+                        self.check_subscript_body(sub);
+                    }
                     self.current_self_type = None;
                 }
                 _ => {}
@@ -323,6 +327,65 @@ impl TypeChecker {
         self.types.insert(f.id, fn_ty);
         self.env.pop_scope();
         self.current_type_params.clear();
+    }
+
+    fn check_subscript_body(&mut self, sub: &SubscriptDef) {
+        self.current_type_params.clear();
+        self.env.push_scope();
+        // Register parameters. The first `self` param uses the impl's Self type.
+        for param in &sub.params {
+            let param_type = if param.name == "self" {
+                self.current_self_type
+                    .clone()
+                    .unwrap_or(crate::types::Ty::Error)
+            } else {
+                param
+                    .ty
+                    .as_ref()
+                    .map(|t| self.resolve_hir_ty(t))
+                    .unwrap_or(crate::types::Ty::Error)
+            };
+            let mutability = Mutability::Immutable;
+            self.env
+                .define(param.name.clone(), param_type.clone(), param.id, mutability);
+            self.types.insert(param.id, param_type);
+            self.mutability.insert(param.id, mutability);
+        }
+        let return_type = sub
+            .return_type
+            .as_ref()
+            .map(|t| self.resolve_hir_ty(t))
+            .unwrap_or(crate::types::Ty::Unit);
+
+        // Type-check the body. For subscripts, yield statements set the
+        // effective body type. Walk stmts to find yield types.
+        for stmt in &sub.body.stmts {
+            self.type_stmt(stmt);
+        }
+        // The body type is the yield type (recorded by type_yield_stmt).
+        // Find the last yield statement's type as the body result.
+        let body_type = sub
+            .body
+            .stmts
+            .iter()
+            .rev()
+            .find_map(|stmt| match stmt {
+                Stmt::YieldStmt(s) => self.types.get(&s.id).cloned(),
+                _ => None,
+            })
+            .unwrap_or(crate::types::Ty::Unit);
+
+        if !helpers::is_error(&body_type)
+            && !helpers::is_error(&return_type)
+            && body_type != return_type
+        {
+            self.emit(TypeDiagnostic::ReturnTypeMismatch {
+                expected: return_type.to_string(),
+                found: body_type.to_string(),
+                span: self.span_for(sub.id),
+            });
+        }
+        self.env.pop_scope();
     }
 }
 

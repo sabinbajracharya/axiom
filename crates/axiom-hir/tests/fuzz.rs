@@ -38,6 +38,7 @@ fn check_item_ids(item: &axiom_hir::Item, seen: &mut HashSet<axiom_hir::HirId>) 
         axiom_hir::Item::EnumDef(e) => e.id,
         axiom_hir::Item::TraitDef(t) => t.id,
         axiom_hir::Item::ImplDef(i) => i.id,
+        axiom_hir::Item::SubscriptDef(s) => s.id,
     };
     if !seen.insert(id) {
         return false;
@@ -75,6 +76,17 @@ fn check_item_ids(item: &axiom_hir::Item, seen: &mut HashSet<axiom_hir::HirId>) 
                 }
             }
             true
+        }
+        axiom_hir::Item::SubscriptDef(s) => {
+            for param in &s.params {
+                if !check_type_ids(&param.ty, seen) {
+                    return false;
+                }
+            }
+            if !check_type_ids(&s.return_type, seen) {
+                return false;
+            }
+            check_block_ids(&s.body, seen)
         }
     }
 }
@@ -147,32 +159,30 @@ fn check_stmt_ids(stmt: &axiom_hir::Stmt, seen: &mut HashSet<axiom_hir::HirId>) 
             }
             check_expr_ids(&s.expr, seen)
         }
-        axiom_hir::Stmt::ReturnStmt(s) => {
+        axiom_hir::Stmt::ReturnStmt(s) => check_opt_expr_id(s.id, &s.value, seen),
+        axiom_hir::Stmt::BreakStmt(s) => check_opt_expr_id(s.id, &s.value, seen),
+        axiom_hir::Stmt::ContinueStmt(s) => seen.insert(s.id),
+        axiom_hir::Stmt::YieldStmt(s) => {
             if !seen.insert(s.id) {
                 return false;
             }
-            if let Some(v) = &s.value {
-                check_expr_ids(v, seen)
-            } else {
-                true
-            }
+            check_expr_ids(&s.value, seen)
         }
-        axiom_hir::Stmt::BreakStmt(s) => {
-            if !seen.insert(s.id) {
-                return false;
-            }
-            if let Some(v) = &s.value {
-                check_expr_ids(v, seen)
-            } else {
-                true
-            }
-        }
-        axiom_hir::Stmt::ContinueStmt(s) => {
-            if !seen.insert(s.id) {
-                return false;
-            }
-            true
-        }
+    }
+}
+
+fn check_opt_expr_id(
+    id: axiom_hir::HirId,
+    value: &Option<axiom_hir::Expr>,
+    seen: &mut HashSet<axiom_hir::HirId>,
+) -> bool {
+    if !seen.insert(id) {
+        return false;
+    }
+    if let Some(v) = value {
+        check_expr_ids(v, seen)
+    } else {
+        true
     }
 }
 

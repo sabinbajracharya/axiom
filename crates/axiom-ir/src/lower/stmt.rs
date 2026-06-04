@@ -30,6 +30,10 @@ pub(super) fn lower_stmt(stmt: &Stmt, ctx: &mut FnLowerCtx) {
         Stmt::ContinueStmt(_) => {
             ctx.terminate(crate::ir::Terminator::Continue);
         }
+        Stmt::YieldStmt(s) => {
+            // For v0, yield evaluates its expression (same as expr stmt).
+            lower_expr(&s.value, ctx);
+        }
     }
 }
 

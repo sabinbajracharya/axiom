@@ -357,12 +357,19 @@ fn lower_impl_block(i: &ast::ImplBlock, ctx: &mut LowerCtx) -> ImplDef {
         (None, NameRef::unresolved(""))
     };
 
-    let methods = i
-        .assoc_item_list()
+    let assoc = i.assoc_item_list();
+    let methods = assoc
+        .as_ref()
         .map(|il| il.methods())
         .unwrap_or_default()
         .into_iter()
         .map(|m| lower_fn_no_register(&m, ctx))
+        .collect();
+    let subscripts = assoc
+        .map(|il| il.subscripts())
+        .unwrap_or_default()
+        .into_iter()
+        .map(|s| lower_subscript_def(&s, ctx))
         .collect();
 
     ImplDef {
@@ -371,6 +378,27 @@ fn lower_impl_block(i: &ast::ImplBlock, ctx: &mut LowerCtx) -> ImplDef {
         type_name,
         type_params,
         methods,
+        subscripts,
+    }
+}
+
+fn lower_subscript_def(s: &ast::SubscriptDef, ctx: &mut LowerCtx) -> SubscriptDef {
+    let id = ctx.alloc_id();
+    let params = lower_params(s.param_list(), ctx);
+    let return_type = s.ret_type().and_then(|r| r.ty().map(|t| lower_ty(&t, ctx)));
+    let body = s
+        .body()
+        .map(|b| lower_block(&b, ctx))
+        .unwrap_or_else(|| Block {
+            id: ctx.alloc_id(),
+            stmts: vec![],
+            tail: None,
+        });
+    SubscriptDef {
+        id,
+        params,
+        return_type,
+        body,
     }
 }
 
