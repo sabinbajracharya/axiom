@@ -137,7 +137,7 @@ library file. Remove `builtin_types` registry entry for "List".
 
 ---
 
-### Step 6: Migrate `Map<K,V>` to library type
+### Step 6: Migrate `Map<K,V>` to library type ✅
 
 Same as Step 5 but for `Map<K,V>`. Requires `Hashable` + `Equatable` trait bounds.
 
@@ -147,6 +147,8 @@ Same as Step 5 but for `Map<K,V>`. Requires `Hashable` + `Equatable` trait bound
 - `crates/axiom-typeck/tests/collections.rs` — update tests
 
 **Exit gate:** `val m: Map<String, Int> = ["a": 1]` works with library Map.
+
+**Implemented:** `stdlib/collections/map.ax` defines `struct Map<K: Hashable + Equatable, V: Deinit>` and `impl` stubs using `todo()`. Hardcoded `get`/`has`/`count`/`is_empty` removed from `builtin.rs`; only `set` remains as native intrinsic. stdlib.rs updated to include map.ax.
 
 ---
 

@@ -1,0 +1,29 @@
+struct Map<K: Hashable + Equatable, V: Deinit> {
+    _placeholder: Int,
+}
+
+impl<K: Hashable + Equatable, V: Deinit> Map<K, V> {
+    fn new() -> Map<K, V> {
+        todo()
+    }
+
+    fn get(self, key: K) -> V {
+        todo()
+    }
+
+    fn has(self, key: K) -> Bool {
+        todo()
+    }
+
+    fn count(self) -> Int {
+        todo()
+    }
+
+    fn is_empty(self) -> Bool {
+        todo()
+    }
+
+    subscript(key: K) -> V {
+        todo()
+    }
+}

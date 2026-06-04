@@ -190,38 +190,20 @@ impl TypeChecker {
             name: axiom_hir::NameRef::unresolved("Map"),
             args: vec![k_ty.clone(), v_ty.clone()],
         });
-        let int_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Int"));
-        let bool_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Bool"));
         let tps = vec![k_tp, v_tp];
 
-        let self_let = self_param(CallingConvention::Let, map_ty.clone());
-        let key_let = named_param(HirId(203), CallingConvention::Let, "key", k_ty.clone());
-        let methods = vec![
-            make_fn(
-                "set",
-                tps.clone(),
-                vec![
-                    self_param(CallingConvention::Inout, map_ty.clone()),
-                    named_param(HirId(203), CallingConvention::Sink, "key", k_ty),
-                    named_param(HirId(204), CallingConvention::Sink, "value", v_ty.clone()),
-                ],
-                None,
-            ),
-            make_fn(
-                "get",
-                tps.clone(),
-                vec![self_let.clone(), key_let.clone()],
-                Some(v_ty),
-            ),
-            make_fn(
-                "has",
-                tps.clone(),
-                vec![self_let.clone(), key_let],
-                Some(bool_ty.clone()),
-            ),
-            make_fn("count", tps.clone(), vec![self_let.clone()], Some(int_ty)),
-            make_fn("is_empty", tps, vec![self_let], Some(bool_ty)),
-        ];
+        // Only `set` remains as a compiler intrinsic. The other Map methods
+        // (get, has, count, is_empty, subscript) are defined in stdlib/collections/map.ax.
+        let methods = vec![make_fn(
+            "set",
+            tps,
+            vec![
+                self_param(CallingConvention::Inout, map_ty),
+                named_param(HirId(203), CallingConvention::Sink, "key", k_ty),
+                named_param(HirId(204), CallingConvention::Sink, "value", v_ty),
+            ],
+            None,
+        )];
 
         self.impl_table.push(ImplInfo {
             trait_name: None,
@@ -376,10 +358,8 @@ mod tests {
             .find(|i| i.trait_name.is_none() && i.type_name == "Map")
             .unwrap();
         let names: Vec<_> = map_impl.methods.iter().map(|m| m.name.as_str()).collect();
-        assert!(names.contains(&"set"));
-        assert!(names.contains(&"get"));
-        assert!(names.contains(&"has"));
-        assert!(names.contains(&"count"));
-        assert!(names.contains(&"is_empty"));
+        // Only `set` remains as compiler intrinsic. get/has/count/is_empty
+        // are now defined in stdlib/collections/map.ax.
+        assert_eq!(names, vec!["set"]);
     }
 }
