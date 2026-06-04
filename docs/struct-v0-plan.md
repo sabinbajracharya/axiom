@@ -100,16 +100,23 @@ and defer `inout` projections.
 
 ---
 
-### Step 4: Generic struct method resolution
+### ✅ Step 4: Generic struct method resolution
 
 `impl<T> List<T> { fn push(inout self, sink element: T) }` needs to work — when calling
 `my_list.push(42)`, the type checker must substitute `T = Int` in the method signature.
 
-**Files to touch:**
-- `crates/axiom-typeck/src/typeck/methods.rs` — extend `find_impl_method` to match on `Instance` types (name + args), substitute type params in method signature
-- `crates/axiom-typeck/src/typeck/collect.rs` — collect `impl<T>` blocks and register methods with type param placeholders
-
 **Exit gate:** `impl<T> Foo<T> { fn get(let self) -> T }` resolves correctly on `Foo<Int>`.
+
+**Implementation (commit `6f9f739`):**
+- `ImplInfo` now stores `type_params` and `type_param_bounds` from HIR
+- `resolve_impl_self_type` constructs `Ty::Instance` with `TypeParam` args for generic impls
+- `find_impl_method`/`find_impl_subscript` build substitution via `unify_instances`
+- `check_method_call` accepts merged impl+fn substitution
+- `check_pass` sets impl type params before checking method bodies
+- `check_fn_body` extends/restores (not replaces) type param scope
+- Extracted `extend_type_params` and `register_params` helpers
+- Tests extracted to `typeck/tests.rs` (file-size cap)
+- Bonus: trait impls now correctly resolve `self` type
 
 ---
 
