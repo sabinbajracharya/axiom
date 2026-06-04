@@ -117,14 +117,17 @@ section says `[Decided — v1]` explicitly. hir-testing.md correctly lists
 ---
 
 ### 9. Name resolution scope rules underspecified in DESIGN_SPEC
-- [ ] **Status:** DEFERRED
+- [x] **Status:** DONE
 
-Scoping rules are only in hir-testing.md (§4.2), not in the design spec itself.
-The spec should have a section defining block scoping, shadowing rules, pattern
-bindings in match arms, and forward references.
+Scoping rules were only in hir-testing.md (§4.2), not in the design spec itself.
 
-**Resolution needed:** Add §8.x or §3.x with scoping rules, or cross-reference
-hir-testing.md from the spec.
+**Resolution:** Added §5.4 Name Resolution [Decided] to DESIGN_SPEC.md. Covers
+two-pass resolution (collect definitions, then resolve bodies), lexical scoping
+rules (same-scope shadowing disallowed, nested allowed, function params, match-arm
+bindings, val/var scope, module-level forward references), resolution guarantee
+(every NameRef resolved or diagnosed), and qualified path syntax (`.`, `::`, `use`).
+hir-testing.md §4 now serves as the implementation-level detail while §5.4 is the
+language-level spec.
 
 ---
 

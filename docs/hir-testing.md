@@ -293,6 +293,10 @@ pub enum HirTy {
 
 ## 4. The lowering pipeline (CST/AST → HIR)
 
+> **Spec reference:** The language-level name resolution rules live in
+> DESIGN_SPEC.md §5.4. This section documents the implementation-level details
+> (data structures, coverage invariants, diagnostic variants).
+
 ### 4.1 Two-pass resolution
 
 **Pass 1 — Collect definitions:** Walk all top-level items and collect their names

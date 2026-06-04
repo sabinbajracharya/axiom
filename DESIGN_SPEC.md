@@ -372,6 +372,29 @@ Shadowing in the **same scope** is **disallowed** (singular idiom — `val x = .
 ### 5.3 Constants [Decided]
 `const NAME: T = <compile-time-constant-expr>` for module-level compile-time constants (distinct from `val`, which is a runtime immutable binding).
 
+### 5.4 Name Resolution [Decided]
+
+Name resolution is a **two-pass** process applied during HIR lowering:
+
+**Pass 1 — Collect definitions.** Walk all top-level items and collect their names into a symbol table. Duplicate-definition detection happens here — two `fn`s (or two items of any kind) with the same name in the same module scope produce a `DuplicateDefinition` diagnostic.
+
+**Pass 2 — Resolve bodies.** Walk expressions and statements, resolving every `NameRef` against the symbol table and the lexical scope chain. Every `NameRef` in the resulting HIR is either **resolved** (carries a `DefId` pointing at the definition) or **unresolved** (produces an `UnresolvedName` diagnostic). There is **no silently unresolved name**.
+
+**Lexical scoping rules:**
+
+- **Same-scope shadowing is disallowed.** `val x = 1; val x = 2` in the same block is an error. (§5.2)
+- **Nested-scope shadowing is allowed.** A `val x` in an inner block can shadow an outer `x`.
+- **Function parameters** form the innermost scope of a function body.
+- **Match-arm bindings** are scoped to their arm's body expression.
+- **`val` / `var` bindings** are in scope from the point of declaration to the end of their enclosing block.
+- **Module-level items** (`fn`, `struct`, `trait`, `const`, `use`) are visible throughout their module regardless of declaration order (collected in pass 1 before pass 2 resolves bodies).
+
+**Qualified paths:**
+
+- `.` for field and method access: `obj.field`, `obj.method(args)`
+- `::` for associated functions and module paths: `Type::assoc_fn(args)`, `std::io::print(args)`
+- `use` imports bring names into the current module's scope with optional `as` aliasing (§10.2).
+
 ---
 
 ## 6. Error Handling
