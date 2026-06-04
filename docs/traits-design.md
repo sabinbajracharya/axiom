@@ -629,8 +629,7 @@ Assert:
 1. ✅ **Parser:** trait declarations, impl blocks, trait bounds. *(Already existed — `trait_def`, `impl_block` in grammar/item.rs, `TraitDef`, `ImplBlock` AST views, `TraitItemList`, `AssocItemList`.)*
 2. ✅ **HIR:** `TraitDef`, `ImplDef`, `TraitMethod`. *(Added to `hir/items.rs`; `Item::TraitDef`, `Item::ImplDef` variants; `DefKind::Trait`.)*
 3. ✅ **Name resolution:** trait scoping, impl registration, method resolution. *(Traits registered in top-level scope; impl trait/type names resolved; method signatures + bodies resolved with param scope. `self` receiver lowered from `SelfParam`.)*
-4. **Type checker:** impl completeness checking, signature matching, bound checking,
-   method dispatch, `Self` type.
+4. ✅ **Done** — commit `ff55d02`. Trait registry + impl table populated in collect pass; `infer_method_call` resolves methods via impl table (inherent before trait); `Self` resolves to implementing type in impl method bodies; completeness check emits `MissingTraitMethod`; 12 integration tests. Bound checking deferred to generics+traits phase 3.
 5. **Monomorphization:** trait method calls become direct calls.
 6. **Built-in traits:** `Deinit` (auto-impl for all types), `Equatable`/`Hashable`/`Ord`
    (auto-impl for primitives).
