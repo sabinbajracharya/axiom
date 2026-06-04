@@ -1,21 +1,15 @@
-//! The Axiom compiler driver (`axiom`). The first crate downstream of the
-//! parser — it owns the user-facing command surface and the `.ax` feature-test
-//! harness everything else plugs into.
+//! The Axiom compiler driver (`axiom`). Owns the user-facing command surface
+//! and the `.ax` feature-test harness.
 //!
-//! At **M1** the `check` command runs lex + parse + HIR lowering + name
-//! resolution, printing both the CST and HIR dumps. `run` (M4, the IR
-//! interpreter) and `build` (M5, the Cranelift native backend) are recognized
-//! but stubbed, so the command surface is stable before the pipeline stages
-//! behind it exist.
+//! At **M2** the `check` command runs lex + parse + HIR lowering + name
+//! resolution + type checking, printing CST, HIR, and THIR dumps. Type
+//! errors appear as `TypeDiagnostic`s alongside HIR diagnostics.
 //!
 //! ```
 //! use axiom_cli::check_source;
 //! let report = check_source("fn main() { print(\"hi\") }");
 //! assert!(report.is_clean());
 //! ```
-//!
-//! The naming: `axiom` is the compiler driver. `forge` (the package manager /
-//! build tool) is a separate v2 concern — deliberately not built here.
 
 mod check;
 pub mod cli;
@@ -75,7 +69,8 @@ pub fn run(args: &[String]) -> ExitCode {
     }
 }
 
-/// Read the file, check it, print the CST and HIR to stdout and diagnostics to stderr.
+/// Read the file, check it, print the CST, HIR, and THIR to stdout and
+/// diagnostics to stderr.
 fn run_check(path: &Path) -> ExitCode {
     let source = match std::fs::read_to_string(path) {
         Ok(text) => text,
@@ -85,7 +80,10 @@ fn run_check(path: &Path) -> ExitCode {
         }
     };
     let report = check_source(&source);
-    print!("{}\n{}", report.tree_dump, report.hir_dump);
+    print!(
+        "{}\n{}\n{}",
+        report.tree_dump, report.hir_dump, report.thir_dump
+    );
     for diagnostic in &report.diagnostics {
         eprintln!("{diagnostic}");
     }

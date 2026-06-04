@@ -4,6 +4,7 @@ members = [
     "crates/axiom-lexer",
     "crates/axiom-parser",
     "crates/axiom-hir",
+    "crates/axiom-typeck",
     "crates/axiom-cli",
 ]
 # Add crates here as they are created, e.g. members = ["crates/axiom-core"].

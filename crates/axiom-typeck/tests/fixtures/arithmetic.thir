@@ -1,0 +1,6 @@
+FnDef(0) name=add vis=private params=[let a: Int, let b: Int] return=Int→<unresolved> : (Int, Int) -> Int
+  Block(3) stmts=[1] tail=None : Unit
+    ExprStmt(4) : Unit
+      Bin(5) op=+ : Int
+        Path(6) a→1 : Int
+        Path(7) b→2 : Int

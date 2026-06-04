@@ -1,0 +1,5 @@
+FnDef(0) name=main vis=private params=[] return=() : () -> Unit
+  Block(1) stmts=[1] tail=None : Unit
+    ExprStmt(2) : Unit
+      Call(3) callee=print→1000000 : Unit
+        Lit(4) String("Hello, Axiom!") : String

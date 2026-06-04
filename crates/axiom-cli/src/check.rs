@@ -1,17 +1,18 @@
-//! The `check` subcommand's pure core: source → (CST dump, HIR dump, rendered
-//! diagnostics). Runs lex + parse + HIR lowering + name resolution, producing
-//! both the CST and HIR canonical dumps plus all diagnostics (parse + HIR).
+//! The `check` subcommand's pure core: source → (CST dump, HIR dump, THIR dump,
+//! rendered diagnostics). Runs lex + parse + HIR lowering + name resolution +
+//! type checking, producing the CST, HIR, and THIR canonical dumps plus all
+//! diagnostics (parse + HIR + type).
 //!
 //! Kept side-effect-free so it is trivially testable; `lib.rs` owns the
 //! stdout/stderr/exit-code wiring.
 //!
-//! At **M1** the `check` command runs lex + parse + HIR lowering + name
-//! resolution. Unresolved names produce `HirDiagnostic::UnresolvedName`
-//! diagnostics in the report.
+//! At **M2** the `check` command runs the full pipeline through type checking.
+//! Type errors produce `TypeDiagnostic`s in the report alongside HIR diagnostics.
 
 use axiom_hir::{lower, serialize as hir_serialize, HirDiagnostic};
 use axiom_parser::ast::AstNode;
 use axiom_parser::{parse, serialize as cst_serialize};
+use axiom_typeck::{check as typeck_check, serialize as thir_serialize, TypeDiagnostic};
 
 /// The outcome of checking one source string.
 pub struct CheckReport {
@@ -19,20 +20,22 @@ pub struct CheckReport {
     pub tree_dump: String,
     /// The canonical HIR dump (resolved names → def IDs), always present.
     pub hir_dump: String,
+    /// The canonical THIR dump (HIR + type annotations), always present.
+    pub thir_dump: String,
     /// Human-rendered diagnostics (`line:col: message`); combines parse + HIR
-    /// diagnostics. Empty means clean.
+    /// + type diagnostics. Empty means clean.
     pub diagnostics: Vec<String>,
 }
 
 impl CheckReport {
-    /// Did the source parse and lower with no diagnostics?
+    /// Did the source parse, lower, and type-check with no diagnostics?
     pub fn is_clean(&self) -> bool {
         self.diagnostics.is_empty()
     }
 }
 
-/// Lex + parse + lower `source`, returning the CST dump, HIR dump, and
-/// any rendered diagnostics (parse errors + HIR diagnostics).
+/// Lex + parse + lower + type-check `source`, returning the CST dump, HIR dump,
+/// THIR dump, and any rendered diagnostics (parse errors + HIR + type).
 pub fn check_source(source: &str) -> CheckReport {
     let result = parse(source);
     let mut diagnostics: Vec<String> = result.errors.iter().map(|e| e.render(source)).collect();
@@ -45,6 +48,7 @@ pub fn check_source(source: &str) -> CheckReport {
             return CheckReport {
                 tree_dump,
                 hir_dump: String::new(),
+                thir_dump: String::new(),
                 diagnostics,
             };
         }
@@ -55,14 +59,22 @@ pub fn check_source(source: &str) -> CheckReport {
     }
     let hir_dump = hir_serialize(&hir);
 
+    let thir = typeck_check(hir);
+    for diag in &thir.diagnostics {
+        diagnostics.push(TypeDiagnostic::render(diag, source));
+    }
+    let thir_dump = thir_serialize(&thir);
+
     CheckReport {
         tree_dump,
         hir_dump,
+        thir_dump,
         diagnostics,
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -74,6 +86,7 @@ mod tests {
         assert!(report.tree_dump.contains("FnDef"));
         assert!(report.hir_dump.contains("FnDef"));
         assert!(report.hir_dump.contains("name=main"));
+        assert!(report.thir_dump.contains("FnDef"));
     }
 
     #[test]
@@ -108,5 +121,21 @@ mod tests {
         );
         assert!(report.hir_dump.contains("unknown_var"));
         assert!(report.hir_dump.contains("unresolved"));
+    }
+
+    #[test]
+    fn test_check_thir_dump_includes_types() {
+        let report = check_source("fn main() { val x = 1 }");
+        assert!(report.thir_dump.contains("Int"));
+    }
+
+    #[test]
+    fn test_check_type_error_in_diagnostics() {
+        let report = check_source("fn main() { val x: Int = 3.14 }");
+        assert!(!report.is_clean(), "expected type mismatch diagnostic");
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|d| d.contains("type mismatch")));
     }
 }

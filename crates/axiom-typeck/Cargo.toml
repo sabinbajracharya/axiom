@@ -1,5 +1,5 @@
 [package]
-name = "axiom-cli"
+name = "axiom-typeck"
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
@@ -8,12 +8,14 @@ publish = false
 [lints]
 workspace = true
 
-[[bin]]
-name = "axiom"
-path = "src/main.rs"
-
 [dependencies]
 axiom-hir = { path = "../axiom-hir" }
-axiom-parser = { path = "../axiom-parser" }
-axiom-typeck = { path = "../axiom-typeck" }
+axiom-lexer = { path = "../axiom-lexer" }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+axiom-parser = { path = "../axiom-parser" }
+
+[[example]]
+name = "typeck"
+path = "examples/typeck.rs"

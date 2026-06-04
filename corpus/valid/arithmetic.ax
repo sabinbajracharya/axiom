@@ -7,5 +7,5 @@ fn main() {
     val x = 1 + 2
     var y = x * 3
     val ok = x < y
-    print(add(x, y))
+    val result = add(x, y)
 }

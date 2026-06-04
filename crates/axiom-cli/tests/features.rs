@@ -1,10 +1,9 @@
-//! M1 feature-test harness, end to end. Every program in `corpus/**` is run
-//! through `check` (lex + parse + HIR lower + name resolution) and asserted
-//! against its expected outcome.
+//! M2 feature-test harness, end to end. Every program in `corpus/**` is run
+//! through `check` (lex + parse + HIR lower + name resolution + type checking)
+//! and asserted against its expected outcome.
 //!
-//! - `corpus/valid/**` must lex + parse with zero *parse* errors. HIR-level
-//!   diagnostics (e.g. unresolved names for constructs M1 doesn't fully
-//!   support) are allowed — type resolution is M2's job.
+//! - `corpus/valid/**` must produce zero diagnostics (parse, HIR, and type).
+//!   As M2 adds type checking, valid corpus files must also type-check cleanly.
 //! - `corpus/errors/**` must produce at least one diagnostic (negative tests).
 
 // Integration tests legitimately panic on failure. RUST_CONVENTIONS §3.4.
@@ -40,19 +39,14 @@ fn test_every_corpus_file_matches_expected_outcome() {
                 path.display()
             );
         } else {
-            // At M1, valid corpus files must have zero *parse* errors.
-            // HIR-level diagnostics (unresolved names, etc.) are expected —
-            // full name resolution is M2's job.
-            let parse_errors: Vec<_> = report
-                .diagnostics
-                .iter()
-                .filter(|d| !d.contains("unresolved name"))
-                .collect();
+            // At M2, valid corpus files must have zero diagnostics overall
+            // (parse, HIR, or type errors).
             assert!(
-                parse_errors.is_empty(),
-                "{}: unexpected parse diagnostics:\n{}",
+                report.is_clean(),
+                "{}: unexpected diagnostics:\n{}",
                 path.display(),
-                parse_errors
+                report
+                    .diagnostics
                     .iter()
                     .map(|d| d.as_str())
                     .collect::<Vec<_>>()

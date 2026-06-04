@@ -1,0 +1,5 @@
+FnDef(0) name=main vis=private params=[] return=() : () -> Unit
+  Block(1) stmts=[1] tail=None : Unit
+    ValStmt(4) : Unit
+Ident(2) x→2 : Int
+      Lit(3) Float(3.14) : Float
