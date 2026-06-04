@@ -124,10 +124,11 @@ impl TypeChecker {
         );
     }
 
-    /// Register built-in generic types (List, Map).
+    /// Register built-in generic types (List, Map, HeapBuffer).
     pub(super) fn register_builtin_types(&mut self) {
         self.builtin_types.insert("List".to_string(), 1);
         self.builtin_types.insert("Map".to_string(), 2);
+        self.builtin_types.insert("HeapBuffer".to_string(), 1);
     }
 
     /// Register inherent methods for built-in collection types.

@@ -36,6 +36,7 @@ pub fn fmt_ty(ty: &Ty) -> String {
             let args: Vec<String> = i.args.iter().map(fmt_ty).collect();
             format!("{}<{}>", i.name, args.join(", "))
         }
+        Ty::HeapBuffer(inner) => format!("HeapBuffer<{}>", fmt_ty(inner)),
         Ty::Error => "<error>".to_string(),
     }
 }

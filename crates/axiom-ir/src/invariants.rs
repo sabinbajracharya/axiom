@@ -125,7 +125,13 @@ fn check_register_defs(func: &crate::ir::IrFunction, prefix: &str, errors: &mut 
                 | IrInstr::Copy { dst, .. }
                 | IrInstr::StructNew { dst, .. }
                 | IrInstr::EnumNew { dst, .. }
-                | IrInstr::ListNew { dst, .. } => *dst,
+                | IrInstr::ListNew { dst, .. }
+                | IrInstr::HeapAlloc { dst, .. }
+                | IrInstr::HeapGet { dst, .. } => *dst,
+                IrInstr::HeapFree { .. } | IrInstr::HeapSet { .. } => {
+                    // No destination register — skip.
+                    continue;
+                }
             };
             defined.insert(dst);
         }
@@ -150,6 +156,12 @@ fn check_register_defs(func: &crate::ir::IrFunction, prefix: &str, errors: &mut 
                 IrInstr::EnumNew { payload, .. } => payload.clone(),
                 IrInstr::ListNew { elements, .. } => elements.clone(),
                 IrInstr::Const { .. } => vec![],
+                IrInstr::HeapAlloc { count, .. } => vec![*count],
+                IrInstr::HeapFree { ptr } => vec![*ptr],
+                IrInstr::HeapGet { ptr, index, .. } => vec![*ptr, *index],
+                IrInstr::HeapSet {
+                    ptr, index, value, ..
+                } => vec![*ptr, *index, *value],
             };
             for r in used {
                 if !defined.contains(&r) {

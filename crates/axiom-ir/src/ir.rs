@@ -113,6 +113,14 @@ pub enum IrInstr {
     },
     /// r = [elem1, elem2, ...]
     ListNew { dst: Reg, elements: Vec<Reg> },
+    /// r = heap_alloc(count) — allocate a buffer for `count` elements, return pointer.
+    HeapAlloc { dst: Reg, count: Reg },
+    /// heap_free(ptr) — free a heap-allocated buffer.
+    HeapFree { ptr: Reg },
+    /// r = heap_get(ptr, index) — read element at index from buffer.
+    HeapGet { dst: Reg, ptr: Reg, index: Reg },
+    /// heap_set(ptr, index, value) — write value at index in buffer.
+    HeapSet { ptr: Reg, index: Reg, value: Reg },
 }
 
 #[derive(Debug, Clone, PartialEq)]

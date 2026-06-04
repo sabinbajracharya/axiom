@@ -87,6 +87,17 @@ fn serialize_instr(instr: &IrInstr, out: &mut String) {
         IrInstr::Copy { dst, src } => {
             format!("{} = Copy {}", fmt_reg(*dst), fmt_reg(*src))
         }
+        IrInstr::HeapAlloc { dst, count } => {
+            format!("{} = HeapAlloc {}", fmt_reg(*dst), fmt_reg(*count))
+        }
+        IrInstr::HeapGet { dst, ptr, index } => {
+            format!(
+                "{} = HeapGet {} {}",
+                fmt_reg(*dst),
+                fmt_reg(*ptr),
+                fmt_reg(*index)
+            )
+        }
         _ => serialize_instr_complex(instr),
     };
     out.push_str(&format!("{}{}\n", indent(1), line));
@@ -98,25 +109,19 @@ fn serialize_instr_complex(instr: &IrInstr) -> String {
             dst,
             function,
             args,
-        } => {
-            let a: Vec<String> = args.iter().map(|r| fmt_reg(*r)).collect();
-            format!("{} = Call {} [{}]", fmt_reg(*dst), function, a.join(", "))
-        }
+        } => format!("{} = Call {} [{}]", fmt_reg(*dst), function, fmt_regs(args)),
         IrInstr::MethodCall {
             dst,
             receiver,
             method,
             args,
-        } => {
-            let a: Vec<String> = args.iter().map(|r| fmt_reg(*r)).collect();
-            format!(
-                "{} = MethodCall {} {} [{}]",
-                fmt_reg(*dst),
-                fmt_reg(*receiver),
-                method,
-                a.join(", ")
-            )
-        }
+        } => format!(
+            "{} = MethodCall {} {} [{}]",
+            fmt_reg(*dst),
+            fmt_reg(*receiver),
+            method,
+            fmt_regs(args)
+        ),
         IrInstr::StructNew {
             dst,
             type_name,
@@ -138,14 +143,22 @@ fn serialize_instr_complex(instr: &IrInstr) -> String {
             variant,
             payload,
             ..
-        } => {
-            let p: Vec<String> = payload.iter().map(|r| fmt_reg(*r)).collect();
-            format!("{} = EnumNew {}({})", fmt_reg(*dst), variant, p.join(", "))
-        }
+        } => format!(
+            "{} = EnumNew {}({})",
+            fmt_reg(*dst),
+            variant,
+            fmt_regs(payload)
+        ),
         IrInstr::ListNew { dst, elements } => {
-            let e: Vec<String> = elements.iter().map(|r| fmt_reg(*r)).collect();
-            format!("{} = ListNew [{}]", fmt_reg(*dst), e.join(", "))
+            format!("{} = ListNew [{}]", fmt_reg(*dst), fmt_regs(elements))
         }
+        IrInstr::HeapFree { ptr } => format!("HeapFree {}", fmt_reg(*ptr)),
+        IrInstr::HeapSet { ptr, index, value } => format!(
+            "HeapSet {} {} {}",
+            fmt_reg(*ptr),
+            fmt_reg(*index),
+            fmt_reg(*value)
+        ),
         _ => unreachable!("non-complex instruction passed to serialize_instr_complex"),
     }
 }
@@ -188,6 +201,13 @@ fn serialize_terminator(term: &Terminator, out: &mut String) {
     out.push_str(&format!("{}{}\n", indent(1), line));
 }
 
+fn fmt_regs(regs: &[crate::ir::Reg]) -> String {
+    regs.iter()
+        .map(|r| fmt_reg(*r))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
 fn fmt_const(c: &IrConst) -> String {
     match c {
         IrConst::Int(v) => format!("Int({})", v),
@@ -204,9 +224,6 @@ fn fmt_pattern(p: &IrPattern) -> String {
         IrPattern::Literal(c) => fmt_const(c),
         IrPattern::Variant {
             variant, bindings, ..
-        } => {
-            let b: Vec<String> = bindings.iter().map(|r| fmt_reg(*r)).collect();
-            format!("{}({})", variant, b.join(", "))
-        }
+        } => format!("{}({})", variant, fmt_regs(bindings)),
     }
 }

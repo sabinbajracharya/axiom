@@ -72,6 +72,7 @@ pub(super) fn substitute(ty: &Ty, subst: &Substitution) -> Ty {
             def_id: i.def_id,
             args: i.args.iter().map(|t| substitute(t, subst)).collect(),
         }),
+        Ty::HeapBuffer(inner) => Ty::HeapBuffer(Box::new(substitute(inner, subst))),
         Ty::Struct(_)
         | Ty::Enum(_)
         | Ty::Int
@@ -120,6 +121,7 @@ pub(super) fn type_arg_name(ty: &Ty) -> String {
             let arg_names: Vec<String> = args.iter().map(type_arg_name).collect();
             format!("{name}_{}", arg_names.join("_"))
         }
+        Ty::HeapBuffer(inner) => format!("HeapBuffer_{}", type_arg_name(inner)),
         Ty::Error => "Error".to_string(),
     }
 }

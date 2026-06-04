@@ -34,6 +34,10 @@ pub enum Ty {
     TypeParam(TypeParamId),
     /// A parameterized type (e.g., `Pair<Int, String>`, `Option<Float>`).
     Instance(InstanceTy),
+    /// A heap-allocated, runtime-sized buffer of homogeneous elements.
+    /// Used by collection library types (List<T>, Map<K,V>) to store data.
+    /// The inner `Ty` is the element type.
+    HeapBuffer(Box<Ty>),
     Error,
 }
 
@@ -118,6 +122,7 @@ impl fmt::Display for Ty {
                 }
                 write!(f, ">")
             }
+            Ty::HeapBuffer(inner) => write!(f, "HeapBuffer<{}>", inner),
             Ty::Error => write!(f, "///error///"),
         }
     }
@@ -153,6 +158,7 @@ pub fn label(ty: &Ty) -> &'static str {
         Ty::Tuple(_) => "Tuple",
         Ty::TypeParam(_) => "TypeParam",
         Ty::Instance(_) => "Instance",
+        Ty::HeapBuffer(_) => "HeapBuffer",
         Ty::Error => "Error",
     }
 }
@@ -219,6 +225,18 @@ mod tests {
     fn test_display_tuple_nonempty() {
         let t = Ty::Tuple(vec![Ty::Int, Ty::Float]);
         assert_eq!(t.to_string(), "(Int, Float)");
+    }
+
+    #[test]
+    fn test_display_heap_buffer() {
+        let hb = Ty::HeapBuffer(Box::new(Ty::Int));
+        assert_eq!(hb.to_string(), "HeapBuffer<Int>");
+    }
+
+    #[test]
+    fn test_label_heap_buffer() {
+        let hb = Ty::HeapBuffer(Box::new(Ty::Bool));
+        assert_eq!(label(&hb), "HeapBuffer");
     }
 
     #[test]
