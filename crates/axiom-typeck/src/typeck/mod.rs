@@ -76,9 +76,6 @@ struct TypeChecker {
     /// Populated during collect_pass for all generic functions.
     /// Used by bound checking to find the bounds for a callee's type params.
     type_param_bounds: HashMap<HirId, Vec<String>>,
-    /// Built-in generic type names and their type parameter counts.
-    /// e.g., "List" → 1, "Map" → 2.
-    builtin_types: HashMap<String, usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -230,7 +227,6 @@ impl TypeChecker {
             impl_table: Vec::new(),
             current_self_type: None,
             type_param_bounds: HashMap::new(),
-            builtin_types: HashMap::new(),
         }
     }
 

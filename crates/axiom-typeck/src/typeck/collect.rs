@@ -14,7 +14,6 @@ impl TypeChecker {
     pub(super) fn collect_pass(&mut self) {
         self.register_builtin_traits();
         self.register_builtin_impls();
-        self.register_builtin_types();
         self.register_builtin_methods();
         self.collect_struct_defs();
         self.register_struct_deinit_impls();

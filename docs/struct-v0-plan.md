@@ -152,7 +152,7 @@ Same as Step 5 but for `Map<K,V>`. Requires `Hashable` + `Equatable` trait bound
 
 ---
 
-### Step 7: Cleanup — remove built-in collection infrastructure
+### Step 7: Cleanup — remove built-in collection infrastructure ✅
 
 Remove all compiler-internal collection machinery that's been replaced by library types.
 
@@ -163,6 +163,8 @@ Remove all compiler-internal collection machinery that's been replaced by librar
 - `docs/collection-type-design.md` — update §7 migration path (v0 done, not v2)
 
 **Exit gate:** No `List` or `Map` strings in the type checker source. All collection behavior comes from library code.
+
+**Implemented:** Removed `builtin_types` HashMap and `register_builtin_types` method entirely. Removed hardcoded List/Map indexing fallback from `infer_index` in methods.rs (stdlib subscript handles it now). Only `push`/`set` intrinsics and `infer_list_lit` retain List/Map strings — these are native operations that can't be expressed in library code yet.
 
 ---
 

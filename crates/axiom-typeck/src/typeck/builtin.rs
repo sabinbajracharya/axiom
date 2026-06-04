@@ -125,13 +125,6 @@ impl TypeChecker {
         );
     }
 
-    /// Register built-in generic types (List, Map, HeapBuffer).
-    pub(super) fn register_builtin_types(&mut self) {
-        self.builtin_types.insert("List".to_string(), 1);
-        self.builtin_types.insert("Map".to_string(), 2);
-        self.builtin_types.insert("HeapBuffer".to_string(), 1);
-    }
-
     /// Register inherent methods for built-in collection types.
     pub(super) fn register_builtin_methods(&mut self) {
         self.register_list_methods();
@@ -334,7 +327,6 @@ mod tests {
     #[test]
     fn test_builtin_list_methods_registered() {
         let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_types();
         checker.register_builtin_methods();
         let list_impl = checker
             .impl_table
@@ -350,7 +342,6 @@ mod tests {
     #[test]
     fn test_builtin_map_methods_registered() {
         let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_types();
         checker.register_builtin_methods();
         let map_impl = checker
             .impl_table

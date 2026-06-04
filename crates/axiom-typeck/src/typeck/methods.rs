@@ -271,31 +271,14 @@ impl TypeChecker {
             }
         }
 
-        // Fall back to hardcoded List/Map indexing (still built-in for v0).
-        // Will be removed when List/Map migrate to library types (Steps 5-6).
-        let ty = match (&base_ty, &type_name) {
-            (Ty::Instance(inst), _) if inst.name == "List" => {
-                inst.args.first().cloned().unwrap_or(Ty::Error)
-            }
-            (Ty::Instance(inst), _) if inst.name == "Map" => {
-                if let (Some(_key_ty), Some(val_ty)) = (inst.args.first(), inst.args.get(1)) {
-                    val_ty.clone()
-                } else {
-                    Ty::Error
-                }
-            }
-            _ => {
-                if !helpers::is_error(&base_ty) {
-                    self.emit(TypeDiagnostic::NotYetSupported {
-                        feature: "index expressions".to_string(),
-                        span: self.span_for(index.id),
-                    });
-                }
-                Ty::Error
-            }
-        };
-        self.types.insert(index.id, ty.clone());
-        ty
+        if !helpers::is_error(&base_ty) {
+            self.emit(TypeDiagnostic::NotYetSupported {
+                feature: "index expressions".to_string(),
+                span: self.span_for(index.id),
+            });
+        }
+        self.types.insert(index.id, Ty::Error);
+        Ty::Error
     }
 
     pub(super) fn infer_list_lit(&mut self, list: &ListLitExpr) -> Ty {
