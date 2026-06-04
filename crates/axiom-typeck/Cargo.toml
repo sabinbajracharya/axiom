@@ -11,10 +11,8 @@ workspace = true
 [dependencies]
 axiom-hir = { path = "../axiom-hir" }
 axiom-lexer = { path = "../axiom-lexer" }
-thiserror = { workspace = true }
-
-[dev-dependencies]
 axiom-parser = { path = "../axiom-parser" }
+thiserror = { workspace = true }
 
 [[example]]
 name = "typeck"

@@ -35,6 +35,12 @@ pub(super) fn builtin_fn(name: &str) -> Option<Ty> {
             params: vec![Ty::String],
             return_type: Box::new(Ty::Unit),
         })),
+        // `todo()` — stub for unimplemented functions. Returns Ty::Error which
+        // suppresses type-mismatch diagnostics (both sides checked for is_error).
+        "todo" => Some(Ty::Fn(crate::types::FnTy {
+            params: vec![],
+            return_type: Box::new(Ty::Error),
+        })),
         _ => None,
     }
 }

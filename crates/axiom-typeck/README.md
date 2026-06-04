@@ -17,6 +17,7 @@ Three properties define it:
 ## How it works (end-to-end flow)
 
 ```
+source → axiom_typeck::check_source_with_stdlib → parse(stdlib + source) → lower → check → Thir
 HIR (from axiom-hir) → axiom_typeck::check → Thir { hir, types, diagnostics }
 Thir → axiom_typeck::serialize → canonical THIR dump (String)
 Thir → axiom_typeck::check_all → coverage invariant check
@@ -28,11 +29,16 @@ Thir → axiom_typeck::check_all → coverage invariant check
 2. **Check pass:** Walk fn bodies, type-checking each expression against the
    environment. Type errors emit `TypeDiagnostic`s and assign `Ty::Error`.
 
+**Standard library:** `check_source_with_stdlib` prepends `stdlib/collections/list.ax`
+before parsing, so library types (List, etc.) are parsed and lowered as normal HIR
+rather than being compiler built-ins. Source concatenation avoids HirId collision.
+
 ## Files
 
 | File | Responsibility | Key items |
 |---|---|---|
-| `src/lib.rs` | Crate root; public API (`check`, `serialize`, `check_all`) | `check`, `serialize`, `check_all` |
+| `src/lib.rs` | Crate root; public API (`check`, `check_source_with_stdlib`, `serialize`, `check_all`) | `check`, `check_source_with_stdlib`, `serialize`, `check_all` |
+| `src/stdlib.rs` | Standard library source embedding (`include_str!`) | `with_stdlib` |
 | `src/types.rs` | The type universe: `Ty`, `StructTy`, `EnumTy`, `FnTy`, Display impls | `Ty`, `label()` |
 | `src/error.rs` | Type-check diagnostics (`thiserror` enum) + render | `TypeDiagnostic` |
 | `src/thir.rs` | THIR wrapper (HIR + TypeMap + diagnostics) | `Thir`, `TypeMap` |

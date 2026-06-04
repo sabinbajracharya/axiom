@@ -149,39 +149,19 @@ impl TypeChecker {
             name: axiom_hir::NameRef::unresolved("List"),
             args: vec![t_ty.clone()],
         });
-        let int_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Int"));
-        let bool_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Bool"));
         let tps = vec![tp];
 
-        let methods = vec![
-            make_fn(
-                "push",
-                tps.clone(),
-                vec![
-                    self_param(CallingConvention::Inout, list_ty.clone()),
-                    named_param(HirId(102), CallingConvention::Sink, "element", t_ty),
-                ],
-                None,
-            ),
-            make_fn(
-                "count",
-                tps.clone(),
-                vec![self_param(CallingConvention::Let, list_ty.clone())],
-                Some(int_ty.clone()),
-            ),
-            make_fn(
-                "is_empty",
-                tps.clone(),
-                vec![self_param(CallingConvention::Let, list_ty.clone())],
-                Some(bool_ty),
-            ),
-            make_fn(
-                "capacity",
-                tps,
-                vec![self_param(CallingConvention::Let, list_ty)],
-                Some(int_ty),
-            ),
-        ];
+        // Only `push` remains as a compiler intrinsic. The other List methods
+        // (count, is_empty, capacity, subscript) are defined in stdlib/collections/list.ax.
+        let methods = vec![make_fn(
+            "push",
+            tps,
+            vec![
+                self_param(CallingConvention::Inout, list_ty),
+                named_param(HirId(102), CallingConvention::Sink, "element", t_ty),
+            ],
+            None,
+        )];
 
         self.impl_table.push(ImplInfo {
             trait_name: None,
@@ -380,10 +360,9 @@ mod tests {
             .find(|i| i.trait_name.is_none() && i.type_name == "List")
             .unwrap();
         let names: Vec<_> = list_impl.methods.iter().map(|m| m.name.as_str()).collect();
-        assert!(names.contains(&"push"));
-        assert!(names.contains(&"count"));
-        assert!(names.contains(&"is_empty"));
-        assert!(names.contains(&"capacity"));
+        // Only `push` remains as compiler intrinsic. count/is_empty/capacity
+        // are now defined in stdlib/collections/list.ax.
+        assert_eq!(names, vec!["push"]);
     }
 
     #[test]

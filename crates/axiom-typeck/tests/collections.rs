@@ -1,16 +1,15 @@
 //! Integration tests for collection types (List<T>, Map<K, V>).
+//!
+//! Uses `check_source_with_stdlib` which prepends stdlib/collections/list.ax
+//! before parsing, so List methods (count, is_empty, etc.) resolve from the
+//! library definition rather than compiler built-ins.
 
 #![allow(clippy::unwrap_used)]
 
-use axiom_hir::lower;
-use axiom_parser::ast::AstNode;
-use axiom_typeck::{check, serialize, Thir};
+use axiom_typeck::{check_source_with_stdlib, serialize, Thir};
 
 fn check_source(source: &str) -> Thir {
-    let result = axiom_parser::parse(source);
-    let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source);
-    check(hir)
+    check_source_with_stdlib(source)
 }
 
 fn dump(thir: &Thir) -> String {

@@ -1,0 +1,25 @@
+struct List<T: Deinit> {
+    _placeholder: Int,
+}
+
+impl<T: Deinit> List<T> {
+    fn new() -> List<T> {
+        todo()
+    }
+
+    fn count(self) -> Int {
+        todo()
+    }
+
+    fn is_empty(self) -> Bool {
+        todo()
+    }
+
+    fn capacity(self) -> Int {
+        todo()
+    }
+
+    subscript(index: Int) -> T {
+        todo()
+    }
+}

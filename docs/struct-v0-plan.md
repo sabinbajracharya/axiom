@@ -120,7 +120,7 @@ and defer `inout` projections.
 
 ---
 
-### Step 5: Migrate `List<T>` to library type
+### Step 5: Migrate `List<T>` to library type ✅
 
 Rewrite `List<T>` as an Axiom struct backed by `HeapBuffer<T>`, defined in a standard
 library file. Remove `builtin_types` registry entry for "List".
@@ -132,6 +132,8 @@ library file. Remove `builtin_types` registry entry for "List".
 - `crates/axiom-typeck/tests/collections.rs` — update tests to use library List
 
 **Exit gate:** `val xs: List<Int> = [1, 2, 3]` works with `List` defined as a library struct, not a compiler built-in.
+
+**Implemented:** Source concatenation model — `stdlib/collections/list.ax` defines `struct List<T: Deinit>` and `impl` stubs using `todo()`. `check_source_with_stdlib()` prepends stdlib before parse+lower+check. Hardcoded `count`/`is_empty`/`capacity` removed from `builtin.rs`; only `push` remains as native intrinsic.
 
 ---
 
