@@ -1,4 +1,4 @@
-use io::print;
+use std::io::print;
 fn main() {
     var x = 10
     x = x + 5

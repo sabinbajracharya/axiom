@@ -1,4 +1,4 @@
-use io::println;
+use std::io::println;
 fn id<T>(x: T) -> T {
     x
 }

@@ -5,12 +5,12 @@
 [fn main] %3 = Const(Unit)
 [fn main] %4 = Const(String("{}"))
 [fn main] 
-[fn main] Call io::print(%5)
-[fn io::print] %1 = Const(Int(1))
-[fn io::print] 
+[fn main] Call std::io::print(%5)
+[fn std::io::print] %1 = Const(Int(1))
+[fn std::io::print] 
 [fn extern] write(15) => ()
 [fn output] 15
-[fn io::print] 
-[fn io::print] %4 = Const(Unit)
-[fn io::print] Return %4
+[fn std::io::print] 
+[fn std::io::print] %4 = Const(Unit)
+[fn std::io::print] Return %4
 [fn main] Return %6

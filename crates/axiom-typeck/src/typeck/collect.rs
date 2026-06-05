@@ -155,7 +155,7 @@ impl TypeChecker {
     fn collect_fn_sigs(&mut self) {
         // The prelude's `print`/`println` signatures are seeded first so they are
         // available in every compilation path — including the single-file check
-        // path, whose unit does *not* contain the `stdlib/io.ax` FnDef bodies
+        // path, whose unit does *not* contain the `stdlib/std/io.ax` FnDef bodies
         // (it resolves their names through module exports only). User or
         // in-unit definitions of the same name override these below.
         // See `docs/string-format-and-print-retire.md`.
@@ -217,12 +217,12 @@ impl TypeChecker {
     }
 
     /// Seed the prelude's function signatures (`print`/`println`) into the
-    /// environment from the bundled `stdlib/io.ax`. This makes them genuinely
+    /// environment from the bundled `stdlib/std/io.ax`. This makes them genuinely
     /// the stdlib functions — `String`-only — in every path, retiring the old
     /// hand-written generic stand-in. Signatures only: the bodies are *not*
     /// added to `hir.items`, so THIR dumps stay focused on user code.
     fn inject_prelude_sigs(&mut self) {
-        const PRELUDE_IO: &str = include_str!("../../../../stdlib/io.ax");
+        const PRELUDE_IO: &str = include_str!("../../../../stdlib/std/io.ax");
         let result = axiom_parser::parse(PRELUDE_IO);
         let Some(root) = axiom_parser::ast::SourceFile::cast(result.tree) else {
             return;

@@ -1,4 +1,4 @@
-use io::print;
+use std::io::print;
 fn describe(let x: Int) -> Float {
     match x {
         0 => 1.0,

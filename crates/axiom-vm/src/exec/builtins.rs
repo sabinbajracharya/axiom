@@ -13,7 +13,7 @@
 //!   `Value` Display impl.
 //!
 //! `print`/`println` are NOT builtins — they are real Axiom functions in
-//! `stdlib/io.ax` that call `core::platform::write`.
+//! `stdlib/std/io.ax` that call `core::platform::write`.
 
 use crate::error::VmError;
 use crate::trace::ExecutionTrace;

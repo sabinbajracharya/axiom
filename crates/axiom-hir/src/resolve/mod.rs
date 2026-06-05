@@ -47,8 +47,8 @@ pub fn build_global_exports(modules: &[(String, Vec<Def>)]) -> GlobalExports {
 /// to `NameRef::Resolved` where names are found, and emits diagnostics
 /// where they are not.
 ///
-/// When `global_exports` is provided, pub items from the `"io"` module are
-/// injected into scope at lowest priority — an implicit `use io::*` so that
+/// When `global_exports` is provided, pub items from the `"std::io"` module are
+/// injected into scope at lowest priority — an implicit `use std::io::*` so that
 /// single-file programs can call `println` without an explicit import.
 pub fn resolve(ctx: &mut crate::lower::LowerCtx, global_exports: Option<&GlobalExports>) {
     // Pass 1: top-level item defs are already collected in ctx.defs during lowering.
@@ -110,8 +110,8 @@ pub fn resolve_with_globals(
     }
 }
 
-/// Inject the implicit prelude into a module's top-level scope: the `io` module's
-/// pub items (a de-facto `use io::*`) at lowest priority — `or_insert` so a
+/// Inject the implicit prelude into a module's top-level scope: the `std::io`
+/// module's pub items (a de-facto `use std::io::*`) at lowest priority — `or_insert` so a
 /// module's own definitions and explicit `use`s always win. Shared by both the
 /// single-file (`resolve`) and multi-module (`resolve_with_globals`) paths so
 /// `print`/`println` resolve identically everywhere.
@@ -123,7 +123,7 @@ fn inject_prelude(
     let Some(exports) = global_exports else {
         return;
     };
-    let Some(io_items) = exports.get("io") else {
+    let Some(io_items) = exports.get("std::io") else {
         return;
     };
     for (name, &(def_id, kind, _vis)) in io_items {
@@ -330,7 +330,7 @@ const BUILTIN_HIR_ID_START: usize = 1_000_000;
 /// Built-in names that are always available (no module definition needed).
 /// Primitive types + `todo` (compiler-internal stub) + `format` (the one
 /// variadic formatting intrinsic — see `docs/string-format-and-print-retire.md`).
-/// `print`/`println` resolve through `stdlib/io.ax` via the module system.
+/// `print`/`println` resolve through `stdlib/std/io.ax` via the module system.
 ///
 /// `format` is given a name here so a bare `format(...)` call (which is what
 /// `string::format(...)` lowers to — the call lowerer keeps only the last path

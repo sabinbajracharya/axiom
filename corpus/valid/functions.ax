@@ -1,4 +1,4 @@
-use io::print;
+use std::io::print;
 fn add(let a: Int, let b: Int) -> Int {
     a + b
 }

@@ -148,7 +148,7 @@ impl TypeChecker {
         let tps = vec![tp];
 
         // Only `push` remains as a compiler intrinsic. The other List methods
-        // (count, is_empty, capacity, subscript) are defined in stdlib/collections/list.ax.
+        // (count, is_empty, capacity, subscript) are defined in stdlib/std/collections/list.ax.
         let methods = vec![make_fn(
             "push",
             tps,
@@ -189,7 +189,7 @@ impl TypeChecker {
         let tps = vec![k_tp, v_tp];
 
         // Only `set` remains as a compiler intrinsic. The other Map methods
-        // (get, has, count, is_empty, subscript) are defined in stdlib/collections/map.ax.
+        // (get, has, count, is_empty, subscript) are defined in stdlib/std/collections/map.ax.
         let methods = vec![make_fn(
             "set",
             tps,
@@ -374,7 +374,7 @@ mod tests {
             .unwrap();
         let names: Vec<_> = list_impl.methods.iter().map(|m| m.name.as_str()).collect();
         // Only `push` remains as compiler intrinsic. count/is_empty/capacity
-        // are now defined in stdlib/collections/list.ax.
+        // are now defined in stdlib/std/collections/list.ax.
         assert_eq!(names, vec!["push"]);
     }
 
@@ -389,7 +389,7 @@ mod tests {
             .unwrap();
         let names: Vec<_> = map_impl.methods.iter().map(|m| m.name.as_str()).collect();
         // Only `set` remains as compiler intrinsic. get/has/count/is_empty
-        // are now defined in stdlib/collections/map.ax.
+        // are now defined in stdlib/std/collections/map.ax.
         assert_eq!(names, vec!["set"]);
     }
 }

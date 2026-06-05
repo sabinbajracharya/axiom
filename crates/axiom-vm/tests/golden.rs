@@ -18,7 +18,7 @@ fn normalize(s: &str) -> String {
 fn run_with_trace(source: &str) -> String {
     // Compile the user source on top of the embedded stdlib through the one
     // unified pipeline (the same path single-file `forge run` uses). `print`/
-    // `println` resolve to the real `stdlib/io.ax` functions — there are no
+    // `println` resolve to the real `stdlib/std/io.ax` functions — there are no
     // print/println VM builtins. See `docs/stdlib-loading-unification.md`.
     let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
     // Execution fixtures must type-check cleanly. This guard is what surfaces

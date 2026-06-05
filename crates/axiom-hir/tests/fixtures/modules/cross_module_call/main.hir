@@ -1,3 +1,9 @@
+FnDef(0) name=write vis=pub params=[let fd: Int→<unresolved>, let buf: Bytes→<unresolved>] return=Int→<unresolved> {
+}
+FnDef(4) name=read vis=pub params=[let fd: Int→<unresolved>, inout buf: Bytes→<unresolved>] return=Int→<unresolved> {
+}
+FnDef(8) name=close vis=pub params=[let fd: Int→<unresolved>] return=Int→<unresolved> {
+}
 StructDef(0) name=List<T: Deinit→<unresolved>> vis=private fields=[private _placeholder: Int→<unresolved>]
 ImplDef(3) List→0<T: Deinit→<unresolved>> methods=[
   FnDef(5) name=new vis=private params=[] return=List→0<T→4> {
@@ -35,12 +41,6 @@ ImplDef(4) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Dei
   SubscriptDef(33) (key) -> V→<unresolved> body
     tail: Call(37) todo→<unresolved>()
 ]
-FnDef(0) name=write vis=pub params=[let fd: Int→<unresolved>, let buf: Bytes→<unresolved>] return=Int→<unresolved> {
-}
-FnDef(4) name=read vis=pub params=[let fd: Int→<unresolved>, inout buf: Bytes→<unresolved>] return=Int→<unresolved> {
-}
-FnDef(8) name=close vis=pub params=[let fd: Int→<unresolved>] return=Int→<unresolved> {
-}
 UseItem(0) core::platform::write
 FnDef(1) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(4) Call(5) write→0(Lit(6) Int(1), Path(8) s→2.Method(7) as_bytes())
@@ -53,7 +53,7 @@ UseItem(35) utils::greet
 FnDef(36) name=main vis=private params=[] return=_ {
   tail: Call(39) greet→42(Lit(40) String("world"))
 }
-UseItem(41) io::print
+UseItem(41) std::io::print
 FnDef(42) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
   tail: Call(46) print→1(Path(47) name→43)
 }

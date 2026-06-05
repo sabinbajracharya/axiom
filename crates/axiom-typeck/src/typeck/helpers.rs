@@ -32,7 +32,7 @@ pub(super) fn call_name(name_ref: &NameRef) -> String {
 /// names.
 ///
 /// `print`/`println` are **not** here — they are the real `String`-only
-/// functions from `stdlib/io.ax`, whose signatures the type checker seeds into
+/// functions from `stdlib/std/io.ax`, whose signatures the type checker seeds into
 /// every path's environment (`collect.rs::inject_prelude_sigs`). The variadic
 /// `format` intrinsic is handled at the call site (`infer_call`), not as a
 /// `FnTy`. Only `todo` remains a true intrinsic here.

@@ -1,4 +1,4 @@
-use io::print;
+use std::io::print;
 
 pub fn greet(name: String) { print(name) }
 
