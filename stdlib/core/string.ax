@@ -23,3 +23,9 @@ impl Ord for String {
         self < other
     }
 }
+
+impl Hashable for String {
+    fn hash(let self) -> Int {
+        self.hash_raw()
+    }
+}

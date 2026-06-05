@@ -41,3 +41,27 @@ fn test_string_ord_dispatch_runs() {
     let out = run_output(r#"fn main() { if ("apple").lt("banana") { print("str-lt-ok") } }"#);
     assert!(out.contains("str-lt-ok"), "got: {out:?}");
 }
+
+#[test]
+fn test_hashable_dispatch_runs() {
+    // hash is deterministic and equal values hash equal: Int identity, String FNV-1a.
+    let out = run_output(
+        r#"fn main() {
+    if (7).hash().eq(7) { print("int-hash-ok") }
+    if ("x").hash().eq(("x").hash()) { print("str-hash-stable") }
+}"#,
+    );
+    assert!(out.contains("int-hash-ok"), "got: {out:?}");
+    assert!(out.contains("str-hash-stable"), "got: {out:?}");
+}
+
+#[test]
+fn test_hashable_bound_satisfied() {
+    // T: Hashable is satisfied for primitives via the core impls (and its
+    // Equatable supertrait resolves through them too).
+    let out = run_output(
+        r#"fn need_hash<T: Hashable>(let x: T) {}
+fn main() { need_hash(1) need_hash("k") print("bound-ok") }"#,
+    );
+    assert!(out.contains("bound-ok"), "got: {out:?}");
+}

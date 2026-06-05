@@ -26,7 +26,16 @@ use crate::value::Value;
 /// DESIGN_SPEC §11). A `string::format(...)` call lowers to a bare `format` call
 /// (the lowerer keeps only the last path segment), so the VM matches `"format"`.
 pub fn is_builtin(name: &str) -> bool {
-    matches!(name, "String::len" | "String::as_bytes" | "format")
+    matches!(
+        name,
+        "String::len"
+            | "String::as_bytes"
+            | "format"
+            | "Int::hash_raw"
+            | "Float::hash_raw"
+            | "Bool::hash_raw"
+            | "String::hash_raw"
+    )
 }
 
 /// Call a method intrinsic.
@@ -39,10 +48,47 @@ pub fn call_builtin(
         "String::len" => builtin_string_len(args),
         "String::as_bytes" => builtin_string_as_bytes(args),
         "format" => builtin_format(args),
+        "Int::hash_raw" | "Float::hash_raw" | "Bool::hash_raw" | "String::hash_raw" => {
+            builtin_hash_raw(args)
+        }
         _ => Err(VmError::BuiltinNotFound {
             name: name.to_string(),
         }),
     }
+}
+
+/// The scalar `hash` floor primitive: a deterministic hash of a primitive value
+/// to an `Int`. Deterministic (no per-process seed) so execution traces are
+/// reproducible. Int hashes to itself, Bool to 0/1, Float to its bit pattern,
+/// String via FNV-1a over its UTF-8 bytes. Equal values hash equal, satisfying
+/// the `Hashable: Equatable` contract.
+fn builtin_hash_raw(args: Vec<Value>) -> Result<Value, VmError> {
+    let h = match args.first() {
+        Some(Value::Int(n)) => *n,
+        Some(Value::Bool(b)) => i64::from(*b),
+        Some(Value::Float(f)) => f.to_bits() as i64,
+        Some(Value::String(s)) => fnv1a(s.as_bytes()),
+        other => {
+            return Err(VmError::TypeError {
+                expected: "Int|Float|Bool|String".to_string(),
+                got: other
+                    .map(|v| v.type_name())
+                    .unwrap_or("missing")
+                    .to_string(),
+            })
+        }
+    };
+    Ok(Value::Int(h))
+}
+
+/// FNV-1a 64-bit, returned as i64. A small, stable, dependency-free byte hash.
+fn fnv1a(bytes: &[u8]) -> i64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for &b in bytes {
+        hash ^= u64::from(b);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash as i64
 }
 
 /// `format(template, args...)` — the runtime side of the `format` intrinsic.

@@ -50,6 +50,21 @@ ImplDef(61) Ord→10 for Bool→1000002 methods=[
     tail: Bin(67) <(Path(68) self→63, Path(69) other→64)
   }
 ]
+ImplDef(70) Hashable→7 for Int→1000000 methods=[
+  FnDef(71) name=hash vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(76) self→72.Method(75) hash_raw()
+  }
+]
+ImplDef(77) Hashable→7 for Float→1000001 methods=[
+  FnDef(78) name=hash vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(83) self→79.Method(82) hash_raw()
+  }
+]
+ImplDef(84) Hashable→7 for Bool→1000002 methods=[
+  FnDef(85) name=hash vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(90) self→86.Method(89) hash_raw()
+  }
+]
 ImplDef(0) Deinit→0 for String→1000003 methods=[
   FnDef(1) name=drop vis=private params=[let self: _] return=_ {
   }
@@ -62,6 +77,11 @@ ImplDef(4) Equatable→3 for String→1000003 methods=[
 ImplDef(13) Ord→10 for String→1000003 methods=[
   FnDef(14) name=lt vis=private params=[let self: _, let other: String→<unresolved>] return=Bool→<unresolved> {
     tail: Bin(19) <(Path(20) self→15, Path(21) other→16)
+  }
+]
+ImplDef(22) Hashable→7 for String→1000003 methods=[
+  FnDef(23) name=hash vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(28) self→24.Method(27) hash_raw()
   }
 ]
 TraitDef(0) name=Deinit vis=pub methods=[
@@ -121,11 +141,11 @@ FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(12) Call(13) write→0(Lit(14) Int(1), Path(16) s→10.Method(15) as_bytes())
   ExprStmt(17) Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
 }
-UseItem(65) utils::greet
-FnDef(66) name=main vis=private params=[] return=_ {
-  tail: Call(69) greet→72(Lit(70) String("world"))
+UseItem(87) utils::greet
+FnDef(88) name=main vis=private params=[] return=_ {
+  tail: Call(91) greet→94(Lit(92) String("world"))
 }
-UseItem(71) std::io::print
-FnDef(72) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
-  tail: Call(76) print→1(Path(77) name→73)
+UseItem(93) std::io::print
+FnDef(94) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
+  tail: Call(98) print→1(Path(99) name→95)
 }

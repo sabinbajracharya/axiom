@@ -1,12 +1,12 @@
-//! Built-in traits, auto-implementations, and collection types.
+//! Compiler-registered *floor* methods for built-in types.
 //!
-//! Four compiler-known traits are registered automatically:
-//!   - `Deinit`   — every type
-//!   - `Equatable` — primitives (Int, Float, Bool, String)
-//!   - `Hashable`  — primitives (requires Equatable)
-//!   - `Ord`       — primitives (requires Equatable)
-//!
-//! Built-in collection types: List<T>, Map<K, V>.
+//! The core traits (Deinit/Equatable/Hashable/Ord) and their primitive impls
+//! are now ordinary library code in `stdlib/core/*.ax`. What remains here are
+//! the irreducible floor methods the VM implements and the library forwards to:
+//!   - `String::len`, `String::as_bytes` — the String→Bytes/length floor
+//!   - `{Int,Float,Bool,String}::hash_raw` — the scalar-hash floor (Hashable)
+//!   - `List::push`, `Map::set` — collection intrinsic stand-ins (retired in
+//!     Phase D once `HeapBuffer<T>` lands)
 
 use super::{ImplInfo, TypeChecker};
 use axiom_hir::{Block, CallingConvention, FnDef, HirId, HirTy, HirTypeParam, Param, Visibility};
@@ -65,6 +65,32 @@ impl TypeChecker {
         self.register_list_methods();
         self.register_map_methods();
         self.register_string_methods();
+        self.register_hash_methods();
+    }
+
+    /// Register the `hash_raw` floor method on each primitive: `fn hash_raw(let
+    /// self) -> Int`. This is the irreducible scalar-hash primitive (like
+    /// `String::as_bytes`), dispatched in the VM. The `Hashable::hash` impls in
+    /// `core/primitives.ax` + `core/string.ax` forward to it.
+    fn register_hash_methods(&mut self) {
+        let int_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Int"));
+        for type_name in PRIMITIVE_TYPES {
+            let self_ty = HirTy::Named(axiom_hir::NameRef::unresolved(*type_name));
+            let methods = vec![make_fn(
+                "hash_raw",
+                vec![],
+                vec![self_param(CallingConvention::Let, self_ty)],
+                Some(int_ty.clone()),
+            )];
+            self.impl_table.push(ImplInfo {
+                trait_name: None,
+                type_name: type_name.to_string(),
+                methods,
+                subscripts: vec![],
+                type_params: vec![],
+                type_param_bounds: HashMap::new(),
+            });
+        }
     }
 
     fn register_list_methods(&mut self) {
@@ -179,25 +205,6 @@ impl TypeChecker {
             type_param_bounds: HashMap::new(),
         });
     }
-
-    /// Register auto-implementations for built-in traits.
-    ///
-    /// Deinit, Equatable, and Ord for the primitives now live in
-    /// `core/primitives.ax` + `core/string.ax` (collected via the normal impl
-    /// path). Only the Hashable primitive auto-impls remain here, pending the
-    /// scalar `hash` floor intrinsic (Phase B3).
-    pub(super) fn register_builtin_impls(&mut self) {
-        for type_name in PRIMITIVE_TYPES {
-            self.impl_table.push(ImplInfo {
-                trait_name: Some("Hashable".to_string()),
-                type_name: type_name.to_string(),
-                methods: vec![],
-                subscripts: vec![],
-                type_params: vec![],
-                type_param_bounds: HashMap::new(),
-            });
-        }
-    }
 }
 
 #[cfg(test)]
@@ -215,15 +222,17 @@ mod tests {
     }
 
     #[test]
-    fn test_builtin_hashable_auto_impl() {
+    fn test_hash_raw_method_registered_for_primitives() {
         let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_impls();
-        let impls: Vec<_> = checker
-            .impl_table
-            .iter()
-            .filter(|i| i.trait_name.as_deref() == Some("Hashable"))
-            .collect();
-        assert_eq!(impls.len(), 4);
+        checker.register_builtin_methods();
+        for ty in ["Int", "Float", "Bool", "String"] {
+            let has_hash = checker
+                .impl_table
+                .iter()
+                .filter(|i| i.trait_name.is_none() && i.type_name == ty)
+                .any(|i| i.methods.iter().any(|m| m.name == "hash_raw"));
+            assert!(has_hash, "missing hash_raw floor method for {ty}");
+        }
     }
 
     #[test]

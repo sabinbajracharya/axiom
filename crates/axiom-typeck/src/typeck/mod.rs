@@ -286,11 +286,11 @@ impl TypeChecker {
             NameRef::Unresolved(u) => &u.text,
         };
         if impl_def.type_params.is_empty() {
-            // Non-generic: plain lookup.
-            if let Some(info) = self.env.lookup(text) {
-                return info.ty.clone();
-            }
-            return crate::types::Ty::Error;
+            // Non-generic: resolve the type name. This handles builtin
+            // primitives (Int/Float/Bool/String/Unit — not in the env) as well
+            // as user types, so `Self` inside e.g. `impl Hashable for Int` is
+            // `Ty::Int` and intrinsic method calls on `self` qualify correctly.
+            return self.resolve_hir_ty(&HirTy::Named(impl_def.type_name.clone()));
         }
         // Generic impl: construct Instance with TypeParam args.
         // e.g., `impl<T> List<T>` → Self = Ty::Instance("List", [Ty::TypeParam(T)]).

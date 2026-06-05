@@ -13,12 +13,11 @@ use std::collections::HashMap;
 
 impl TypeChecker {
     pub(super) fn collect_pass(&mut self) {
-        // Trait *declarations* (Deinit/Equatable/Hashable/Ord) are no longer
-        // registered here — they are ordinary library traits in
-        // `stdlib/core/traits.ax`, collected via collect_trait_defs like any
-        // other trait. Only the primitive auto-impls remain compiler-side
-        // (until Phase B moves them to core/primitives.ax).
-        self.register_builtin_impls();
+        // The core trait declarations (Deinit/Equatable/Hashable/Ord) AND their
+        // primitive impls now live in `stdlib/core/*.ax`, collected via
+        // collect_trait_defs / collect_impl_defs like any other code. The
+        // compiler only registers the irreducible *floor* methods (as_bytes,
+        // len, hash_raw, and the List/Map intrinsic stand-ins).
         self.register_builtin_methods();
         self.collect_struct_defs();
         self.register_struct_deinit_impls();

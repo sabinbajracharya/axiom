@@ -62,3 +62,23 @@ impl Ord for Bool {
         self < other
     }
 }
+
+// ── Hashable (forwards to the `hash_raw` scalar floor; equal values hash
+//    equal, honoring the Hashable: Equatable contract) ──
+impl Hashable for Int {
+    fn hash(let self) -> Int {
+        self.hash_raw()
+    }
+}
+
+impl Hashable for Float {
+    fn hash(let self) -> Int {
+        self.hash_raw()
+    }
+}
+
+impl Hashable for Bool {
+    fn hash(let self) -> Int {
+        self.hash_raw()
+    }
+}
