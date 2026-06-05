@@ -1,6 +1,6 @@
 # Modules Design — Multi-File Compilation & Imports
 
-> **Status:** design phase. Not yet implemented. Binding before code is written.
+> **Status:** Phases 1–3 implemented and tested. Phase 4 (prelude) deferred pending stdlib.
 > **Decisions baked in:** module paths use `::` (§10.1), one file = one module, `pub` visibility
 > by default private (§10.3), `use` import syntax (§10.2), `core`/`std` two-tier stdlib
 > layering (§11).
@@ -193,7 +193,7 @@ Type checking passes. ✅
       global exports → resolve with cross-module context → combine HIRs → type checking
 - [x] Single IR output with all functions (qualified names already work)
 - [x] `axiom run <dir>` compiles and executes multi-file projects end-to-end
-- [ ] Golden file tests for multi-file programs
+- [x] Golden file tests for multi-file programs (4 test cases in `tests/fixtures/modules/`)
 
 **Test:** Two-file program compiles end-to-end and runs in the VM. ✅
 
@@ -206,6 +206,18 @@ Type checking passes. ✅
 - [ ] Compiler auto-imports prelude items into every module's name resolution scope
 - [ ] Prelude items are lowest priority — explicit definitions shadow them
 - [ ] Test: `let x: Option<I32> = Some(42)` works without any `use` statement
+
+### Known gaps and limitations
+
+| Gap | Impact | Status |
+|---|---|---|
+| **Glob imports** (`use foo::*`) | Emits `NotYetSupported` diagnostic | Deferred — explicit names preferred (singular idiom) |
+| **No cycle detection** | `A imports B, B imports A` compiles without error | Needs implementation in `axiom-modules` |
+| **`axiom-hir` ↔ `axiom-modules` decoupled** | HIR golden tests duplicate discovery logic instead of using `axiom-modules` | Design choice — HIR crate stays standalone; CLI bridges them |
+| **No `axiom run <dir>` integration test** | End-to-end pipeline tested manually only | Should add CLI integration test |
+| **No `super`/`crate` path resolution** | `use super::foo` parses but doesn't resolve | Needs resolver support |
+| **Field-level visibility not enforced** | `pub struct Foo { pub x, y }` — `y` accessible across modules | Needs type checker enforcement |
+| **No re-exports** (`pub use`) | Can't re-export items from submodules | Deferred |
 
 ---
 
@@ -257,13 +269,28 @@ modules affect *how* code is compiled, not *how* it runs.
 
 ## 6. Testing strategy
 
-- **Two-file program:** file A defines `pub fn`, file B imports and calls it
-- **Visibility:** file B can't access non-`pub` item from file A → compile error
+### Implemented (golden tests in `crates/axiom-hir/tests/fixtures/modules/`)
+
+- **cross_module_call:** `use utils::greet` → resolves pub fn across modules ✅
+- **grouped_import:** `use utils::{greet, add}` → resolves both items ✅
+- **private_item_error:** importing non-pub item → "unresolved name" diagnostic ✅
+- **struct_export:** `use models::Point` → resolves pub struct, struct literal works ✅
+
+### Unit tests (`axiom-modules` crate — 10 tests)
+
+- `flat_main_only`, `main_with_sibling_module`, `nested_directory_children`
+- `multiple_sibling_modules`, `mod_ax_pattern`, `mod_ax_with_children`
+- `find_by_name`, `topo_order_root_first`
+- `error_missing_main`, `error_dual_module_def`
+
+### Not yet tested
+
 - **Circular import:** A imports B, B imports A → compile error
 - **Nested modules:** `use a::b::c::fn_name` resolves correctly
 - **Aliasing:** `use a::b as x` → `x::fn_name` works
 - **Prelude:** `let x: Option<I32> = Some(42)` works without `use`
 - **Shadowing:** local `fn Option()` shadows prelude `Option`
+- **`super`/`crate` paths:** `use super::foo` resolves correctly
 
 ---
 
