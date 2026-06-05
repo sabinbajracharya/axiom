@@ -207,6 +207,7 @@ impl Shape for Circle {
 }
 ```
 - Traits define shared **behavior**, never shared **state** (no fields).
+- **Supertraits** `[Decided]`: a trait may require other traits via `trait Hashable: Equatable { … }` (or `: A + B` for several). Every implementor of the trait must also implement each supertrait. This is the one sanctioned way to express "X implies Y" between traits — e.g. `core::traits` declares `Hashable: Equatable` and `Ord: Equatable`. (Bounds on a trait's *generic parameters*, `trait T<U: Bound>`, are a separate thing — they constrain the parameter, not `Self`.)
 - **Static dispatch by default** (monomorphized generics). **Dynamic dispatch** via an explicit `dyn Trait` boxed form — opt-in, because it costs an indirection and a heap allocation (visible cost, singular idiom).
 - Coherence: a trait impl is allowed only if you own the trait or the type (orphan rule), to keep impls globally unambiguous.
 
