@@ -2,11 +2,16 @@
 //!
 //! Block, if/else, match, loop, struct literal, and assign inference.
 
+use super::unify::Substitution;
 use super::{helpers, Mutability, TypeChecker, VariantInfo};
 use crate::error::TypeDiagnostic;
-use crate::types::{FnTy, StructTy, Ty};
+use crate::types::{FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 
 use axiom_hir::*;
+
+/// A struct's declared type parameters paired with its field types, resolved in
+/// the struct's own type-param scope (see [`TypeChecker::struct_generic_info`]).
+type StructGenericInfo = (Vec<HirTypeParam>, Vec<(String, Ty)>);
 
 impl TypeChecker {
     pub(super) fn infer_block(&mut self, block: &Block, expected: &Option<Ty>) -> Ty {
@@ -353,61 +358,143 @@ impl TypeChecker {
     }
 
     fn check_struct_fields(&mut self, sl: &StructLitExpr, struct_ty: &StructTy) -> Ty {
-        let fields = self.lookup_struct_fields(&struct_ty.name);
-        match fields {
-            Some(expected_fields) => {
-                let provided_names: Vec<&str> = sl.fields.iter().map(|f| f.name.as_str()).collect();
-                for (name, _) in &expected_fields {
-                    if !provided_names.contains(&name.as_str()) {
-                        self.emit(TypeDiagnostic::StructMissingField {
-                            name: struct_ty.name.clone(),
-                            field: name.clone(),
-                            span: self.span_for(sl.id),
-                        });
-                    }
-                }
-                for field in &sl.fields {
-                    if !expected_fields.iter().any(|(n, _)| *n == field.name) {
-                        self.emit(TypeDiagnostic::StructUnknownField {
-                            name: struct_ty.name.clone(),
-                            field: field.name.clone(),
-                            span: self.span_for(sl.id),
-                        });
-                    }
-                }
-                if sl.fields.len() != expected_fields.len() {
-                    self.emit(TypeDiagnostic::StructFieldCountMismatch {
-                        name: struct_ty.name.clone(),
-                        expected: expected_fields.len(),
-                        found: sl.fields.len(),
-                        span: self.span_for(sl.id),
+        // Resolve the declared fields *in the struct's own type-param scope*, so
+        // a field declared `value: T` comes back as `Ty::TypeParam` keyed by the
+        // struct's parameter. For a generic struct this lets us infer the type
+        // arguments from the provided field values (and produce `Ty::Instance`).
+        let Some((type_params, expected_fields)) = self.struct_generic_info(&struct_ty.name) else {
+            return Ty::Error;
+        };
+        self.check_struct_field_presence(sl, struct_ty, &expected_fields);
+        let subst = self.check_struct_field_values(sl, &expected_fields, type_params.is_empty());
+
+        if type_params.is_empty() {
+            Ty::Struct(struct_ty.clone())
+        } else {
+            // Build the instance's type arguments from the inferred substitution.
+            let args = type_params
+                .iter()
+                .enumerate()
+                .map(|(i, tp)| {
+                    let id = TypeParamId {
+                        name: tp.name.clone(),
+                        index: i,
+                        def_id: tp.id,
+                    };
+                    subst.get(&id).cloned().unwrap_or(Ty::TypeParam(id))
+                })
+                .collect();
+            Ty::Instance(InstanceTy {
+                name: struct_ty.name.clone(),
+                def_id: HirId(0),
+                args,
+            })
+        }
+    }
+
+    /// Diagnose missing, unknown, and miscounted fields in a struct literal.
+    fn check_struct_field_presence(
+        &mut self,
+        sl: &StructLitExpr,
+        struct_ty: &StructTy,
+        expected_fields: &[(String, Ty)],
+    ) {
+        let provided_names: Vec<&str> = sl.fields.iter().map(|f| f.name.as_str()).collect();
+        for (name, _) in expected_fields {
+            if !provided_names.contains(&name.as_str()) {
+                self.emit(TypeDiagnostic::StructMissingField {
+                    name: struct_ty.name.clone(),
+                    field: name.clone(),
+                    span: self.span_for(sl.id),
+                });
+            }
+        }
+        for field in &sl.fields {
+            if !expected_fields.iter().any(|(n, _)| *n == field.name) {
+                self.emit(TypeDiagnostic::StructUnknownField {
+                    name: struct_ty.name.clone(),
+                    field: field.name.clone(),
+                    span: self.span_for(sl.id),
+                });
+            }
+        }
+        if sl.fields.len() != expected_fields.len() {
+            self.emit(TypeDiagnostic::StructFieldCountMismatch {
+                name: struct_ty.name.clone(),
+                expected: expected_fields.len(),
+                found: sl.fields.len(),
+                span: self.span_for(sl.id),
+            });
+        }
+    }
+
+    /// Type-check each provided field value against its declared type. For
+    /// generic structs (`is_plain == false`) this unifies — inferring `T = Int`
+    /// from the value — and returns the accumulated substitution; for plain
+    /// structs it is a direct equality check and the substitution stays empty.
+    fn check_struct_field_values(
+        &mut self,
+        sl: &StructLitExpr,
+        expected_fields: &[(String, Ty)],
+        is_plain: bool,
+    ) -> Substitution {
+        let mut subst = Substitution::new();
+        for field in &sl.fields {
+            let Some((_, expected_ty)) = expected_fields.iter().find(|(n, _)| *n == field.name)
+            else {
+                continue;
+            };
+            let value_ty = self
+                .types
+                .get(&field.value.id())
+                .cloned()
+                .unwrap_or(Ty::Error);
+            if helpers::is_error(&value_ty) || helpers::is_error(expected_ty) {
+                continue;
+            }
+            if is_plain {
+                if value_ty != *expected_ty {
+                    self.emit(TypeDiagnostic::TypeMismatch {
+                        expected: expected_ty.to_string(),
+                        found: value_ty.to_string(),
+                        span: self.span_for(field.value.id()),
                     });
                 }
-                for field in &sl.fields {
-                    if let Some((_, expected_ty)) =
-                        expected_fields.iter().find(|(n, _)| *n == field.name)
-                    {
-                        let value_ty = self
-                            .types
-                            .get(&field.value.id())
-                            .cloned()
-                            .unwrap_or(Ty::Error);
-                        if !helpers::is_error(&value_ty)
-                            && !helpers::is_error(expected_ty)
-                            && value_ty != *expected_ty
-                        {
-                            self.emit(TypeDiagnostic::TypeMismatch {
-                                expected: expected_ty.to_string(),
-                                found: value_ty.to_string(),
-                                span: self.span_for(field.value.id()),
-                            });
-                        }
-                    }
-                }
-                Ty::Struct(struct_ty.clone())
+            } else if let Err(found) = self.unify(&value_ty, expected_ty, &mut subst) {
+                self.emit(TypeDiagnostic::TypeMismatch {
+                    expected: expected_ty.to_string(),
+                    found: found.to_string(),
+                    span: self.span_for(field.value.id()),
+                });
             }
-            None => Ty::Error,
         }
+        subst
+    }
+
+    /// Resolve a struct's declared type parameters and field types with the
+    /// struct's own type parameters in scope. A field declared `value: T`
+    /// resolves to `Ty::TypeParam` keyed by the struct's parameter def_id, so
+    /// callers can substitute concrete type arguments (generic field access)
+    /// or infer them (struct-literal inference). Returns `None` if `name` is
+    /// not a user-defined struct.
+    pub(super) fn struct_generic_info(&mut self, name: &str) -> Option<StructGenericInfo> {
+        let sdef = self.hir.items.iter().find_map(|item| match item {
+            Item::StructDef(s) if s.name == name => Some(s.clone()),
+            _ => None,
+        })?;
+        let saved = std::mem::take(&mut self.current_type_params);
+        self.current_type_params = sdef
+            .type_params
+            .iter()
+            .map(|tp| (tp.name.clone(), tp.id, Vec::new()))
+            .collect();
+        let fields = sdef
+            .fields
+            .iter()
+            .map(|f| (f.name.clone(), self.resolve_hir_ty(&f.ty)))
+            .collect();
+        self.current_type_params = saved;
+        Some((sdef.type_params, fields))
     }
 
     pub(super) fn infer_assign(&mut self, assign: &AssignExpr) -> Ty {

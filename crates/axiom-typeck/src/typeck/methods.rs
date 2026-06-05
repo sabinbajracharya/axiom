@@ -234,6 +234,11 @@ impl TypeChecker {
                         None => Ty::Error,
                     }
                 }
+                // A parameterized struct instance (`Box<Int>`, or `Self` inside
+                // a generic `impl<T> Box<T>`). Look up the field in the struct's
+                // own type-param scope, then substitute the instance's concrete
+                // type arguments for the struct's parameters.
+                Ty::Instance(inst) => self.infer_instance_field(inst, field, &receiver_ty),
                 _ => {
                     self.emit(TypeDiagnostic::UnknownField {
                         field: field.field.clone(),
@@ -246,6 +251,45 @@ impl TypeChecker {
         };
         self.types.insert(field.id, ty.clone());
         ty
+    }
+
+    /// Resolve a field access on a parameterized struct instance. The field's
+    /// declared type (in the struct's own type-param scope) has the struct's
+    /// parameters substituted with the instance's concrete type arguments.
+    fn infer_instance_field(
+        &mut self,
+        inst: &InstanceTy,
+        field: &FieldExpr,
+        receiver_ty: &Ty,
+    ) -> Ty {
+        let unknown_field = |checker: &mut Self| {
+            checker.emit(TypeDiagnostic::UnknownField {
+                field: field.field.clone(),
+                ty: receiver_ty.to_string(),
+                span: checker.span_for(field.id),
+            });
+            Ty::Error
+        };
+        let Some((type_params, fields)) = self.struct_generic_info(&inst.name) else {
+            return unknown_field(self);
+        };
+        let Some((_, field_ty)) = fields.iter().find(|(n, _)| *n == field.field) else {
+            return unknown_field(self);
+        };
+        let mut subst = Substitution::new();
+        for (i, tp) in type_params.iter().enumerate() {
+            if let Some(arg) = inst.args.get(i) {
+                subst.insert(
+                    TypeParamId {
+                        name: tp.name.clone(),
+                        index: i,
+                        def_id: tp.id,
+                    },
+                    arg.clone(),
+                );
+            }
+        }
+        Self::substitute(field_ty, &subst)
     }
 
     pub(super) fn infer_index(&mut self, index: &IndexExpr) -> Ty {
