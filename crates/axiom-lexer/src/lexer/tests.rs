@@ -84,6 +84,16 @@ fn test_division_operators() {
 }
 
 #[test]
+fn test_compound_assignment_operators() {
+    // Compound assignment must lex as single tokens, not two adjacent tokens.
+    assert_eq!(kinds("+=")[0], TokenKind::Punct(Punct::PlusEq));
+    assert_eq!(kinds("-=")[0], TokenKind::Punct(Punct::MinusEq));
+    assert_eq!(kinds("*=")[0], TokenKind::Punct(Punct::StarEq));
+    assert_eq!(kinds("%=")[0], TokenKind::Punct(Punct::PercentEq));
+    assert_eq!(kinds("/=")[0], TokenKind::Punct(Punct::SlashEq));
+}
+
+#[test]
 fn test_empty_byte_literal_does_not_eat_quote() {
     let result = lex("b''");
     // The closing quote must not be consumed as the value.
