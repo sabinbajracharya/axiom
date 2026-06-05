@@ -2,7 +2,7 @@
 
 Register-IR interpreter for the Axiom language.
 
-Takes an `IrModule` (from `axiom-ir`) and executes it by walking basic blocks,
+Takes an `Ir` (from `axiom-ir`) and executes it by walking basic blocks,
 dispatching instructions against a register file, and managing a call stack.
 
 ## Scope (v0)
@@ -11,10 +11,11 @@ dispatching instructions against a register file, and managing a call stack.
 - Simple Vec-backed heap arena with manual alloc/free
 - Synchronous execution, no concurrency
 - Builtins: `print`, `println`
-- Struct creation (`StructNew`) and field access (`Field`)
-- Enum creation (`EnumNew` + Call-based constructors) and pattern matching
+- Struct creation and field access
+- Enum creation (Call-based constructors) and pattern matching
 - Match with payload binding (TupleStruct patterns)
-- Step limit (1M) to prevent infinite loop hangs
+- Control flow: if/else, match, loops (break/continue)
+- Function calls and returns
 
 ## Testing
 

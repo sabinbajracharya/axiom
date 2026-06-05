@@ -32,9 +32,11 @@ register-IR interpreter backend targets WASM (dual-backend).
 
 ## A taste of Axiom
 
-> ⚠️ Illustrative — the syntax below follows [`DESIGN_SPEC.md`](DESIGN_SPEC.md),
-> but only the front-end and type checker exist today; none of this *runs* yet.
-> What's missing is the back-end (IR generation, codegen) and the memory model.
+> ⚠️ Illustrative — the syntax below follows [`DESIGN_SPEC.md`](DESIGN_SPEC.md).
+> The front-end, type checker, IR lowerer, and register-IR interpreter (VM) are
+> built; structs, enums, match, and basic control flow run end-to-end. What's
+> missing is Cranelift codegen, the memory model (ownership + Perceus), and most
+> of the language surface (generics, error handling, concurrency).
 
 **Structs, traits, and methods** — receivers declare a borrowing convention
 (`let`/`inout`/`sink`), the same machinery as parameters; no `&self`/`&mut self`:
@@ -125,10 +127,11 @@ fn fetch_all(let urls: List<String>) -> List<Response>!NetError {
 
 ## Status
 
-**Phase: early compiler front-end + naive type checker.** The design is settled
-and the first four pipeline stages are built test-first, lossless, and total
-(never panic, never drop source). The memory model — the language's
-load-bearing bet — has passed its de-risking spike.
+**Phase: front-end complete, IR + register-IR interpreter running.** The design
+is settled and six pipeline stages are built test-first, lossless, and total
+(never panic, never drop source). The VM executes basic programs end-to-end
+(structs, enums, match, control flow, function calls). The memory model — the
+language's load-bearing bet — has passed its de-risking spike.
 
 | Stage | Component | Status |
 |---|---|---|
@@ -138,8 +141,10 @@ load-bearing bet — has passed its de-risking spike.
 | Parse | [`crates/axiom-parser`](crates/axiom-parser) — tokens → lossless CST (rust-analyzer-shaped green/red tree) | ✅ Done; total recovery, recovery-set-aware |
 | Name resolution (HIR) | [`crates/axiom-hir`](crates/axiom-hir) — CST → desugared, ID-keyed HIR with name resolution | ✅ Done (M1); golden + diagnostic snapshot tested |
 | Type checking (THIR) | [`crates/axiom-typeck`](crates/axiom-typeck) — HIR → THIR via bidirectional type checker | ✅ Done (M2); golden + diagnostic + invariant tested |
+| IR generation | [`crates/axiom-ir`](crates/axiom-ir) — THIR → register IR (basic blocks, SSA-lite registers) | ✅ Done (M3); golden traces + invariants |
+| Register-IR interpreter | [`crates/axiom-vm`](crates/axiom-vm) — executes IR: structs, enums, match, control flow, calls | ✅ Done (M3); 56 tests + 9 golden traces |
+| Cranelift codegen | — | ⬜ Not started |
 | Ownership pass + Perceus | — | ⬜ Not started (the v1 identity) |
-| IR + Cranelift codegen | — | ⬜ Not started |
 | `forge`, LSP | — | ⬜ Not started |
 
 **Path A is chosen** (systems-capable: no GC, zero-cost, exclusivity discipline);
@@ -151,10 +156,10 @@ exclusivity rule proves too costly in practice.
 Per [`DESIGN_SPEC.md` §14](DESIGN_SPEC.md), the **v0** milestone is an
 end-to-end pipeline `lex → parse → resolve → typecheck → IR → Cranelift` with
 *naive* memory (no exclusivity) — to prove the pipeline runs end to end. The
-front-end (lex → parse → HIR → typecheck) is complete. The next frontier is
-**M3: IR generation** from THIR, then a minimal Cranelift backend. The real
-memory model (ownership pass + Perceus), generics, and full error handling land
-in **v1**, where the language identity arrives.
+front-end and IR are complete, and the register-IR interpreter runs basic
+programs. The next frontier is a minimal **Cranelift backend** to produce native
+executables. The real memory model (ownership pass + Perceus), generics, and
+full error handling land in **v1**, where the language identity arrives.
 
 ---
 
@@ -173,12 +178,16 @@ in **v1**, where the language identity arrives.
 │   ├── axiom-parser/     # Stage 2: lossless CST + error recovery
 │   ├── axiom-hir/        # Stage 3: CST → desugared HIR + name resolution
 │   ├── axiom-typeck/     # Stage 4: HIR → THIR (bidirectional type checker)
+│   ├── axiom-ir/         # Stage 5: THIR → register IR (basic blocks, SSA-lite regs)
+│   ├── axiom-vm/         # Stage 6: register-IR interpreter (structs, enums, match)
 │   └── axiom-cli/        # Compiler driver (`axiom check` today; `run`/`build` later)
 ├── docs/
 │   ├── lexer-testing.md    # Test/debug tooling spec for the lexer
 │   ├── parser-testing.md   # Test/debug tooling spec for the parser
 │   ├── hir-testing.md      # Test/debug tooling spec for the HIR lowerer
 │   ├── typeck-testing.md   # Test/debug tooling spec for the type checker
+│   ├── ir-design.md        # IR design: register model, basic blocks, lowerer
+│   ├── vm-design.md        # VM design: execution model, value representation
 │   ├── spike-0-findings.md # Memory-model spike result + Path A/B decision
 │   └── v0-roadmap.md       # v0 milestone plan (M1–M5)
 └── scripts/              # check.sh and friends (the PostToolUse enforcement hook)
@@ -189,7 +198,7 @@ start there when diving into a stage.
 
 ### Test harness
 
-**162 tests** across 5 crates. Each pipeline stage has its own testing spec
+**455 tests** across 7 crates. Each pipeline stage has its own testing spec
 (`docs/*-testing.md`) with a 6-layer test stack:
 
 1. **Unit tests** — Rust-side logic in `#[cfg(test)]` modules
