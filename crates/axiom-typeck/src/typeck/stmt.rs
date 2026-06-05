@@ -135,25 +135,68 @@ impl TypeChecker {
     }
 
     fn define_pattern_tuple_struct(&mut self, ts: &TupleStructPat, scrutinee_ty: &Ty) {
-        if let Ty::Enum(enum_ty) = scrutinee_ty {
-            if let Some(variants) = self.lookup_enum_variants(&enum_ty.name) {
-                // Match on the last path segment so a qualified pattern
-                // (`Shape::Circle(r)`) binds its fields just like the bare form
-                // (`Circle(r)`) — variant names are unqualified.
-                let pat_name = match &ts.path {
-                    NameRef::Resolved(r) => &r.text,
-                    NameRef::Unresolved(u) => &u.text,
-                };
-                let pat_variant = pat_name.rsplit("::").next().unwrap_or(pat_name);
-                if let Some(variant) = variants.iter().find(|v| v.name == pat_variant) {
-                    for (i, field_pat) in ts.fields.iter().enumerate() {
-                        let field_ty = variant.payload.get(i).cloned().unwrap_or(Ty::Error);
-                        self.define_pattern(field_pat, &field_ty, Mutability::Immutable);
+        // Match on the last path segment so a qualified pattern (`Shape::Circle(r)`)
+        // binds its fields just like the bare form — variant names are unqualified.
+        let pat_name = match &ts.path {
+            NameRef::Resolved(r) => &r.text,
+            NameRef::Unresolved(u) => &u.text,
+        };
+        let pat_variant = pat_name.rsplit("::").next().unwrap_or(pat_name);
+        match scrutinee_ty {
+            // Plain enum: payload types are concrete already.
+            Ty::Enum(enum_ty) => {
+                if let Some(variants) = self.lookup_enum_variants(&enum_ty.name) {
+                    if let Some(variant) = variants.iter().find(|v| v.name == pat_variant) {
+                        for (i, field_pat) in ts.fields.iter().enumerate() {
+                            let field_ty = variant.payload.get(i).cloned().unwrap_or(Ty::Error);
+                            self.define_pattern(field_pat, &field_ty, Mutability::Immutable);
+                        }
                     }
                 }
             }
+            // Generic enum instance (`Opt<Int>`): substitute the enum's type
+            // parameters with the instance's arguments before binding payloads.
+            Ty::Instance(inst) => self.define_pattern_enum_instance(ts, inst, pat_variant),
+            _ => {}
         }
         self.types.insert(ts.id, scrutinee_ty.clone());
+    }
+
+    /// Bind a tuple-variant pattern against a generic enum instance, mapping the
+    /// enum's type parameters to the instance's concrete arguments.
+    fn define_pattern_enum_instance(
+        &mut self,
+        ts: &TupleStructPat,
+        inst: &crate::types::InstanceTy,
+        pat_variant: &str,
+    ) {
+        let Some((type_params, variants)) = self.enum_generic_info(&inst.name) else {
+            return;
+        };
+        let Some(variant) = variants.into_iter().find(|v| v.name == pat_variant) else {
+            return;
+        };
+        let mut subst = super::unify::Substitution::new();
+        for (i, tp) in type_params.iter().enumerate() {
+            if let Some(arg) = inst.args.get(i) {
+                subst.insert(
+                    crate::types::TypeParamId {
+                        name: tp.name.clone(),
+                        index: i,
+                        def_id: tp.id,
+                    },
+                    arg.clone(),
+                );
+            }
+        }
+        for (i, field_pat) in ts.fields.iter().enumerate() {
+            let field_ty = variant
+                .payload
+                .get(i)
+                .map(|t| Self::substitute(t, &subst))
+                .unwrap_or(Ty::Error);
+            self.define_pattern(field_pat, &field_ty, Mutability::Immutable);
+        }
     }
 
     fn define_pattern_struct(&mut self, sp: &StructPat, scrutinee_ty: &Ty) {

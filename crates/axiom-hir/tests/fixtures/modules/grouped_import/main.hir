@@ -1,3 +1,7 @@
+EnumDef(0) name=Option<T> vis=pub variants=[
+  Variant(2) name=Some(T→1)
+  Variant(3) name=None
+]
 FnDef(0) name=write vis=pub params=[let fd: Int→<unresolved>, let buf: Bytes→<unresolved>] return=Int→<unresolved> {
 }
 FnDef(4) name=read vis=pub params=[let fd: Int→<unresolved>, inout buf: Bytes→<unresolved>] return=Int→<unresolved> {

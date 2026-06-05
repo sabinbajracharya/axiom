@@ -2,7 +2,7 @@
 //! trait definitions, and impl blocks into the type environment.
 
 use super::{
-    EnumInfo, FieldInfo, ImplInfo, Mutability, StructInfo, TraitInfo, TraitMethodInfo, TypeChecker,
+    FieldInfo, ImplInfo, Mutability, StructInfo, TraitInfo, TraitMethodInfo, TypeChecker,
     VariantInfo,
 };
 use crate::error::TypeDiagnostic;
@@ -114,44 +114,65 @@ impl TypeChecker {
     }
 
     fn collect_enum_defs(&mut self) {
-        let enum_infos: Vec<EnumInfo> = self
+        // Clone the enum defs out first so we can resolve each variant's payload
+        // in the enum's own type-param scope (which borrows `self` mutably).
+        let enum_defs: Vec<EnumDef> = self
             .hir
             .items
             .iter()
             .filter_map(|item| match item {
-                Item::EnumDef(e) => Some(EnumInfo {
-                    name: e.name.clone(),
-                    def_id: e.id,
-                    variants: e
-                        .variants
-                        .iter()
-                        .map(|v| {
-                            let payload =
-                                v.payload.iter().map(|t| self.resolve_hir_ty(t)).collect();
-                            VariantInfo {
-                                name: v.name.clone(),
-                                def_id: v.id,
-                                payload,
-                            }
-                        })
-                        .collect(),
-                }),
+                Item::EnumDef(e) => Some(e.clone()),
                 _ => None,
             })
             .collect();
 
-        for info in &enum_infos {
-            let enum_ty = Ty::Enum(EnumTy {
-                name: info.name.clone(),
-                def_id: info.def_id,
-            });
-            self.env.define(
-                info.name.clone(),
-                enum_ty.clone(),
-                info.def_id,
-                Mutability::Immutable,
-            );
-            self.register_enum_variants(&info.name, &info.variants, &enum_ty);
+        for e in &enum_defs {
+            let saved = std::mem::take(&mut self.current_type_params);
+            self.current_type_params = e
+                .type_params
+                .iter()
+                .map(|tp| (tp.name.clone(), tp.id, Vec::new()))
+                .collect();
+            let variants: Vec<VariantInfo> = e
+                .variants
+                .iter()
+                .map(|v| VariantInfo {
+                    name: v.name.clone(),
+                    def_id: v.id,
+                    payload: v.payload.iter().map(|t| self.resolve_hir_ty(t)).collect(),
+                })
+                .collect();
+            self.current_type_params = saved;
+
+            // A generic enum's values are `Ty::Instance` (carrying the type
+            // arguments, like generic structs); a plain enum stays `Ty::Enum`.
+            let self_ty = if e.type_params.is_empty() {
+                Ty::Enum(EnumTy {
+                    name: e.name.clone(),
+                    def_id: e.id,
+                })
+            } else {
+                let args = e
+                    .type_params
+                    .iter()
+                    .enumerate()
+                    .map(|(i, tp)| {
+                        Ty::TypeParam(crate::types::TypeParamId {
+                            name: tp.name.clone(),
+                            index: i,
+                            def_id: tp.id,
+                        })
+                    })
+                    .collect();
+                Ty::Instance(InstanceTy {
+                    name: e.name.clone(),
+                    def_id: e.id,
+                    args,
+                })
+            };
+            self.env
+                .define(e.name.clone(), self_ty.clone(), e.id, Mutability::Immutable);
+            self.register_enum_variants(&e.name, &variants, &self_ty);
         }
     }
 

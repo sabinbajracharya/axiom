@@ -112,12 +112,6 @@ struct FieldInfo {
     ty: crate::types::Ty,
 }
 
-struct EnumInfo {
-    name: String,
-    def_id: DefId,
-    variants: Vec<VariantInfo>,
-}
-
 struct VariantInfo {
     name: String,
     def_id: DefId,

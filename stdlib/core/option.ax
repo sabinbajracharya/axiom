@@ -1,0 +1,12 @@
+// core/option.ax — the optional value type.
+//
+// `Option<T>` represents a value that may be absent: `Some(value)` or `None`.
+// It is the honest return type for partial operations — e.g. `Map::get`, which
+// has no value to return when the key is absent. Part of the implicit prelude,
+// so `Option`, `Some`, and `None` are in scope everywhere (see
+// `resolve::PRELUDE_MODULES`).
+
+pub enum Option<T> {
+    Some(T),
+    None,
+}
