@@ -41,17 +41,13 @@ FnDef(4) name=read vis=pub params=[let fd: Int→<unresolved>, let buf: <error>]
 }
 FnDef(8) name=close vis=pub params=[let fd: Int→<unresolved>] return=Int→<unresolved> {
 }
-FnDef(11) name=write_string vis=pub params=[let fd: Int→<unresolved>, let s: String→<unresolved>] return=_ {
-}
-FnDef(15) name=write_line vis=pub params=[let fd: Int→<unresolved>, let s: String→<unresolved>] return=_ {
-}
-UseItem(0) core::platform::write_string
-UseItem(1) core::platform::write_line
-FnDef(2) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
-  tail: Call(6) write_string→11(Lit(7) Int(1), Path(8) s→3)
+UseItem(0) core::platform::write
+FnDef(1) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
+  tail: Call(5) write→0(Lit(6) Int(1), Path(8) s→2.Method(7) as_bytes())
 }
 FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
-  tail: Call(13) write_line→15(Lit(14) Int(1), Path(15) s→10)
+  ExprStmt(12) Call(13) write→0(Lit(14) Int(1), Path(16) s→10.Method(15) as_bytes())
+  tail: Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
 }
 UseItem(35) utils{greet, add}
 FnDef(36) name=main vis=private params=[] return=_ {
@@ -60,7 +56,7 @@ FnDef(36) name=main vis=private params=[] return=_ {
 }
 UseItem(46) io::print
 FnDef(47) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
-  tail: Call(51) print→2(Path(52) name→48)
+  tail: Call(51) print→1(Path(52) name→48)
 }
 FnDef(53) name=add vis=pub params=[let a: Int→<unresolved>, let b: Int→<unresolved>] return=Int→<unresolved> {
   tail: Bin(58) +(Path(59) a→54, Path(60) b→55)

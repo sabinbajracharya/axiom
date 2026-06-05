@@ -189,7 +189,7 @@ fn check_call_targets(
     // Stdlib functions whose FnDefs may not be in the IR (single-file path).
     // Multi-file loads them from stdlib modules; single-file needs this
     // allowlist because the stdlib HIR isn't included in that compilation path.
-    const EXTERNS: &[&str] = &["print", "println"];
+    const EXTERNS: &[&str] = &["print", "println", "write"];
     let fn_names: HashSet<&str> = ir.functions.iter().map(|f| f.name.as_str()).collect();
     let enum_names: HashSet<&str> = ir.enum_variants.keys().map(|k| k.as_str()).collect();
     for block in &func.blocks {

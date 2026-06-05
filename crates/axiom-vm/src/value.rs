@@ -20,6 +20,7 @@ pub enum Value {
         payload: Vec<Value>,
     },
     List(Vec<Value>),
+    Bytes(Vec<u8>),
     HeapPtr(usize),
 }
 
@@ -46,6 +47,7 @@ impl Value {
             Value::Struct { .. } => "Struct",
             Value::Enum { .. } => "Enum",
             Value::List(_) => "List",
+            Value::Bytes(_) => "Bytes",
             Value::HeapPtr(_) => "HeapPtr",
         }
     }
@@ -97,6 +99,16 @@ impl fmt::Display for Value {
                 }
                 write!(f, "]")
             }
+            Value::Bytes(b) => {
+                write!(f, "[")?;
+                for (i, byte) in b.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{byte}")?;
+                }
+                write!(f, "]")
+            }
             Value::HeapPtr(addr) => write!(f, "HeapPtr({addr})"),
         }
     }
@@ -111,6 +123,7 @@ impl PartialEq for Value {
             (Value::String(a), Value::String(b)) => a == b,
             (Value::Unit, Value::Unit) => true,
             (Value::List(a), Value::List(b)) => a == b,
+            (Value::Bytes(a), Value::Bytes(b)) => a == b,
             (Value::HeapPtr(a), Value::HeapPtr(b)) => a == b,
             // Struct/Enum: compare by type + fields/variant+payload
             (

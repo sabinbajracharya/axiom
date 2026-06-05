@@ -216,13 +216,25 @@ impl TypeChecker {
             args: vec![],
         });
         let int_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Int"));
+        let bytes_ty = HirTy::Instance(axiom_hir::InstanceTy {
+            name: axiom_hir::NameRef::unresolved("Bytes"),
+            args: vec![],
+        });
 
-        let methods = vec![make_fn(
-            "len",
-            vec![],
-            vec![self_param(CallingConvention::Let, string_ty)],
-            Some(int_ty),
-        )];
+        let methods = vec![
+            make_fn(
+                "len",
+                vec![],
+                vec![self_param(CallingConvention::Let, string_ty.clone())],
+                Some(int_ty),
+            ),
+            make_fn(
+                "as_bytes",
+                vec![],
+                vec![self_param(CallingConvention::Let, string_ty)],
+                Some(bytes_ty),
+            ),
+        ];
 
         self.impl_table.push(ImplInfo {
             trait_name: None,

@@ -13,5 +13,5 @@ FnDef(4) name=area vis=private params=[let s: Shape→0] return=Float→<unresol
 FnDef(23) name=main vis=private params=[] return=_ {
   ValStmt(28) Ident(25) c→25: _ = Call(26) Circle→1(Lit(27) Float(3))
   ValStmt(32) Ident(29) a→29: _ = Call(30) area→4(Path(31) c→25)
-  tail: Call(34) print→2(Path(35) a→29)
+  tail: Call(34) print→1(Path(35) a→29)
 }

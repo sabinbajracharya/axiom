@@ -4,8 +4,8 @@
 //! Single-file path: `print`/`println` are dispatched here as name-based
 //! builtins (stdlib HIR not loaded).
 //!
-//! Multi-file path: `write_string`/`write_line` are dispatched here via the
-//! `is_extern` flag on their IR function entries. `String::len` is dispatched
+//! Multi-file path: `write` is dispatched here via the `is_extern` flag on
+//! its IR function entry. `String::len` and `String::as_bytes` are dispatched
 //! via the method-call builtin check.
 
 use crate::error::VmError;
@@ -16,7 +16,7 @@ use crate::value::Value;
 pub fn is_builtin(name: &str) -> bool {
     matches!(
         name,
-        "print" | "println" | "write_string" | "write_line" | "String::len"
+        "print" | "println" | "write" | "String::len" | "String::as_bytes"
     )
 }
 
@@ -28,9 +28,9 @@ pub fn call_builtin(
 ) -> Result<Value, VmError> {
     match name {
         "print" | "println" => builtin_print(name, args, trace),
-        "write_string" => builtin_write(args, trace, false),
-        "write_line" => builtin_write(args, trace, true),
+        "write" => builtin_write(args, trace),
         "String::len" => builtin_string_len(args),
+        "String::as_bytes" => builtin_string_as_bytes(args),
         _ => Err(VmError::BuiltinNotFound {
             name: name.to_string(),
         }),
@@ -61,31 +61,15 @@ fn builtin_print(
     Ok(Value::Unit)
 }
 
-/// `write_string` / `write_line` — platform I/O for the multi-file path.
-fn builtin_write(
-    args: Vec<Value>,
-    trace: &mut Option<ExecutionTrace>,
-    newline: bool,
-) -> Result<Value, VmError> {
-    let text = extract_string_arg(&args, 1)?;
-    if newline {
-        println!("{text}");
-    } else {
-        print!("{text}");
-    }
-    let label = if newline {
-        "write_line"
-    } else {
-        "write_string"
-    };
+/// `write(fd, buf: &[U8])` — platform I/O primitive.
+/// Writes raw bytes to stdout (fd 1) or stderr (fd 2).
+fn builtin_write(args: Vec<Value>, trace: &mut Option<ExecutionTrace>) -> Result<Value, VmError> {
+    let bytes = extract_bytes_arg(&args, 1)?;
+    let text = String::from_utf8_lossy(&bytes).to_string();
+    print!("{text}");
     if let Some(t) = trace {
-        t.record("builtin", format!("{label}({text})"), Some(Value::Unit));
-        let output = if newline {
-            format!("{text}\n")
-        } else {
-            text.clone()
-        };
-        t.record("output", output, None);
+        t.record("builtin", format!("write({text})"), Some(Value::Unit));
+        t.record("output", text, None);
     }
     Ok(Value::Unit)
 }
@@ -96,12 +80,32 @@ fn builtin_string_len(args: Vec<Value>) -> Result<Value, VmError> {
     Ok(Value::Int(s.len() as i64))
 }
 
+/// `String::as_bytes` — returns the raw bytes of a string.
+fn builtin_string_as_bytes(args: Vec<Value>) -> Result<Value, VmError> {
+    let s = extract_string_arg(&args, 0)?;
+    Ok(Value::Bytes(s.into_bytes()))
+}
+
 /// Extract a `Value::String` from `args[index]`.
 fn extract_string_arg(args: &[Value], index: usize) -> Result<String, VmError> {
     match args.get(index) {
         Some(Value::String(s)) => Ok(s.clone()),
         other => Err(VmError::TypeError {
             expected: "String".to_string(),
+            got: other
+                .map(|v| v.type_name())
+                .unwrap_or("missing")
+                .to_string(),
+        }),
+    }
+}
+
+/// Extract a `Value::Bytes` from `args[index]`.
+fn extract_bytes_arg(args: &[Value], index: usize) -> Result<Vec<u8>, VmError> {
+    match args.get(index) {
+        Some(Value::Bytes(b)) => Ok(b.clone()),
+        other => Err(VmError::TypeError {
+            expected: "Bytes".to_string(),
             got: other
                 .map(|v| v.type_name())
                 .unwrap_or("missing")
@@ -119,9 +123,9 @@ mod tests {
     fn test_is_builtin() {
         assert!(is_builtin("print"));
         assert!(is_builtin("println"));
-        assert!(is_builtin("write_string"));
-        assert!(is_builtin("write_line"));
+        assert!(is_builtin("write"));
         assert!(is_builtin("String::len"));
+        assert!(is_builtin("String::as_bytes"));
         assert!(!is_builtin("main"));
     }
 
@@ -143,10 +147,10 @@ mod tests {
     }
 
     #[test]
-    fn test_write_string_returns_unit() {
+    fn test_write_returns_unit() {
         let result = call_builtin(
-            "write_string",
-            vec![Value::Int(1), Value::String("hi".into())],
+            "write",
+            vec![Value::Int(1), Value::Bytes(b"hi".to_vec())],
             &mut None,
         )
         .unwrap();
@@ -154,14 +158,14 @@ mod tests {
     }
 
     #[test]
-    fn test_write_line_returns_unit() {
+    fn test_string_as_bytes() {
         let result = call_builtin(
-            "write_line",
-            vec![Value::Int(1), Value::String("hi".into())],
+            "String::as_bytes",
+            vec![Value::String("hi".into())],
             &mut None,
         )
         .unwrap();
-        assert_eq!(result, Value::Unit);
+        assert_eq!(result, Value::Bytes(vec![104, 105]));
     }
 
     #[test]

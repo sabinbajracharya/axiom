@@ -2,5 +2,5 @@ FnDef(0) name=add vis=private params=[let a: Int→<unresolved>, let b: Int→<u
   tail: Bin(5) +(Path(6) a→1, Path(7) b→2)
 }
 FnDef(8) name=greet vis=private params=[let name: String→<unresolved>] return=_ {
-  tail: Call(12) print→2(Path(13) name→9)
+  tail: Call(12) print→1(Path(13) name→9)
 }
