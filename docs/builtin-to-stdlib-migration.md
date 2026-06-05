@@ -142,12 +142,20 @@ stdlib/
 
 ## 4. Implementation plan (ordered; each step ≈ one commit; TDD; gate must pass)
 
-### Phase A — trait declarations (lowest risk, no new primitives)
-- [ ] **A1.** Create `stdlib/core/traits.ax` with `trait Deinit`, `Equatable`, `Hashable`
-      (`: Equatable`), `Ord` (`: Equatable`) — signatures matching the current registry in
-      `register_builtin_traits`. Wire `core` into `with_stdlib` (P1).
-- [ ] **A2.** Delete `register_builtin_traits`; trait resolution now finds them from `core`.
-      Regenerate `.thir`/`.trace` goldens. Gate green.
+### Phase A — trait declarations (lowest risk, no new primitives) ✅ DONE (M1)
+- [x] **A0 (added).** Implement real **supertrait syntax** `trait X: A + B { .. }`
+      end-to-end (parser → AST → HIR `TraitDef.supertraits` → typeck `collect_trait_defs`),
+      documented in `DESIGN_SPEC.md` §3.5. Needed because the four traits use
+      `Hashable: Equatable` / `Ord: Equatable` and the parser had no supertrait syntax (it
+      was hand-faked in the old registry). Proper impl, not a shim.
+- [x] **A1.** Created `stdlib/core/traits.ax` with `trait Deinit`, `Equatable`,
+      `Hashable: Equatable`, `Ord: Equatable`, with **proper** signatures
+      (`eq`/`lt` take `other: Self`; `drop`/`hash` take `let self`) — not the empty-param
+      registry stubs. Auto-embedded by `axiom-stdlib`; collected via `collect_trait_defs`.
+- [x] **A2.** Deleted `register_builtin_traits` + its `collect_pass` call + its unit tests;
+      trait resolution now finds them from `core::traits`. Migrated `builtin_traits.rs` to the
+      stdlib path (bare mode has no stdlib by design). Regenerated multi-file HIR goldens.
+      Gate green.
 
 ### Phase B — primitive trait impls (in `core/primitives.ax` + `core/string.ax`)
 - [ ] **B1.** `impl Deinit for {Int,Float,Bool,String,Unit}` (empty bodies). Remove the
