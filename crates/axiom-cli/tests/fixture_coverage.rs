@@ -151,6 +151,10 @@ fn default_exclusions() -> BTreeSet<(String, String)> {
     only_in("struct_field_access", &["hir", "typeck"]);
     only_in("struct_literal", &["hir"]);
 
+    // ── Parser + HIR only (supertrait syntax; typeck registration covered by
+    //    a unit test, execution not meaningful until impls/enforcement land) ──
+    only_in("trait_supertrait", &["parser", "hir"]);
+
     // ── IR + VM only (integer literal matching, no per-layer .ax fixtures) ──
     for feature in ["int_match", "multi_fn"] {
         only_in(feature, &["ir", "vm"]);

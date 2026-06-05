@@ -283,11 +283,10 @@ impl TypeChecker {
                     }
                 }
 
-                // Collect supertrait names from the trait's own type param bounds.
+                // Supertrait names from the `trait X: A + B` clause.
                 let supertraits: Vec<String> = trait_def
-                    .type_params
+                    .supertraits
                     .iter()
-                    .flat_map(|tp| &tp.bounds)
                     .map(|b| name_text(&b.name))
                     .collect();
 

@@ -364,6 +364,24 @@ mod tests {
     }
 
     #[test]
+    fn test_supertraits_collected_from_trait_decl_syntax() {
+        // `trait X: A + B { .. }` registers A and B as supertraits, sourced
+        // from the declaration's supertrait clause (collect_trait_defs).
+        let mut checker = make_checker(
+            "trait Equatable {}\ntrait Hashable: Equatable {}\ntrait Ord: Equatable + Hashable {}",
+        );
+        checker.collect_pass();
+        assert_eq!(
+            checker.trait_registry.get("Hashable").unwrap().supertraits,
+            vec!["Equatable"]
+        );
+        assert_eq!(
+            checker.trait_registry.get("Ord").unwrap().supertraits,
+            vec!["Equatable", "Hashable"]
+        );
+    }
+
+    #[test]
     fn test_builtin_list_methods_registered() {
         let mut checker = make_checker("fn main() {}");
         checker.register_builtin_methods();
