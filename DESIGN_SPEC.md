@@ -594,7 +594,18 @@ Layered to keep the core small (singular idiom + small budget):
 - **`core`** (always available, no_std-able): `Option`, `Result`, primitive methods, `Iterator` trait + adapters (`map`/`filter`/`fold`/`take`/`zip`/...), `String`, `List`, `Map`, `Set`, `OrderedMap`/`OrderedSet`, `Box`, `Weak`.
 - **`std`** (hosted): `io` (`print`, `println`, `read_line`, `dbg`), `string` (`format`), `fs`, `env`, `process`, `path`, `time`, `math`, `rand`, `json`, `net`/`http`, `db`. *(Mirrors Oxy's stdlib surface — proven useful, reuse the shape.)*
 - **Formatting:** `string::format("{} = {}", k, v)` — **one** formatting mechanism. String interpolation is **not** added unless we drop `format` (singular idiom forbids both; §15).
+  - **`print`/`println` are `String`-only** (`fn print(s: String)`); the idiomatic way to
+    print a non-string is `println(string::format("{}", x))`. They are ordinary
+    `stdlib/io.ax` functions — *not* compiler built-ins.
+  - **`format` is the language's one variadic primitive, implemented as a compiler
+    intrinsic** [Decided]. Axiom has no varargs syntax (and won't add it — singular idiom),
+    so `format` is recognised by name in the type checker (any-arity, `→ String`) and
+    rendered by the VM's runtime template engine (`{}` Display, `{:?}` Debug, `{{`/`}}`
+    escapes). This is the *only* magic call. See
+    [`docs/string-format-and-print-retire.md`](docs/string-format-and-print-retire.md).
 - **`Display`/`Debug` traits** for user types; `dbg` and `{}`/`{:?}` route through them.
+  *(Built-in scalars render directly in the VM today; the user-type `fmt` dispatch waits on
+  the trait story — deferred.)*
 
 ### 11.1 The platform boundary & FFI buffers [Decided]
 The only place Axiom meets the OS is **`core::platform`** — a module of `extern "C" fn`
@@ -701,7 +712,7 @@ Honest list. Each is tagged with whether it may remain open (isolated behind a b
 | 4 | Cross-task **shared-mutable** data (`Mutex<T>`) (§9.4) | **May stay open** — behind v2 boundary, nothing earlier depends on it |
 | 5 | Cycle collection (§4.7) | **May stay open** — `Weak`/arena escape hatch exists; add collector only if leaks prove real |
 | 6 | `Int` overflow: checked / wrapping / `Result` (§2.6) | May stay open — leaning checked-debug + explicit wrapping methods; isolated |
-| 7 | String interpolation vs `format` only (§2.5/§11) | May stay open — singular idiom forbids both; decide before stdlib freeze |
+| 7 | String interpolation vs `format` only (§2.5/§11) | **✅ Resolved — `format` chosen.** `string::format` is implemented as the one variadic intrinsic (§11); interpolation stays rejected (singular idiom forbids both). Width/precision specs and user-type `Display` dispatch remain to be added. |
 | 8 | Unify `try` (Result) and `?` (Option) into one mechanism? (§6.5) | May stay open — cosmetic; decide before 1.0 |
 | 9 | Exact Perceus elision rate on real code (§4.5) | Empirical — measure in v1, don't promise a number |
 | 10 | Algebraic effects ever? (§9.5) | Rejected for v1; post-2.0 research track if user-schedulers needed |
