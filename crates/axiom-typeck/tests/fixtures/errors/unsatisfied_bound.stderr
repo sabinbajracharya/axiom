@@ -1,2 +1,1 @@
-1:1: unknown method `print` on type `T`
 1:1: type `Circle` does not satisfy bound `Print` required by type parameter `T`

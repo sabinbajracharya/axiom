@@ -127,6 +127,18 @@ impl<'a> FnLowerCtx<'a> {
         Reg(u32::MAX)
     }
 
+    /// The type of an expression, with the active monomorphization
+    /// substitution applied. In a generic body the recorded type may be a type
+    /// parameter (`T`); in a monomorphized instance this resolves it to the
+    /// concrete type so method dispatch can qualify `Type::method`.
+    pub fn receiver_type(&self, id: HirId) -> Option<Ty> {
+        let ty = self.types.get(&id)?.clone();
+        Some(match self.subst {
+            Some(subst) => axiom_typeck::mono::helpers::substitute(&ty, subst),
+            None => ty,
+        })
+    }
+
     /// Push a loop context (for break/continue resolution).
     pub fn push_loop(&mut self, head: String, exit: String) {
         self.loop_stack.push((head, exit));

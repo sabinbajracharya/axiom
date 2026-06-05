@@ -18,6 +18,12 @@ impl TypeChecker {
 
         let ty = if helpers::is_error(&receiver_ty) {
             Ty::Error
+        } else if let Ty::TypeParam(tp) = &receiver_ty {
+            // Calling a trait method on a bounded type parameter (`key.hash()`
+            // where `key: K, K: Hashable`). Resolve it through the parameter's
+            // declared bounds; the concrete impl is dispatched after
+            // monomorphization (IR substitutes the receiver type).
+            self.infer_type_param_method(tp, mc, &arg_types)
         } else {
             let receiver_name = match &receiver_ty {
                 Ty::Struct(s) => Some(s.name.clone()),
@@ -74,6 +80,62 @@ impl TypeChecker {
         };
         self.types.insert(mc.id, ty.clone());
         ty
+    }
+
+    /// Resolve a method call on a bounded type parameter — e.g. `key.hash()`
+    /// where `key: K` and `K: Hashable`. Searches the parameter's declared
+    /// bounds (and their supertraits) for a trait that declares the method, and
+    /// returns the method's declared return type with `Self` mapped to the type
+    /// parameter. The concrete implementation is dispatched after
+    /// monomorphization (IR substitutes the receiver's type).
+    fn infer_type_param_method(
+        &mut self,
+        tp: &TypeParamId,
+        mc: &MethodCallExpr,
+        _arg_types: &[Ty],
+    ) -> Ty {
+        let bounds = self
+            .type_param_bounds
+            .get(&tp.def_id)
+            .cloned()
+            .unwrap_or_default();
+        for bound in &bounds {
+            if let Some(ret) = self.trait_method_return(bound, &mc.method) {
+                // A `Self`-typed result resolves to the receiver's own type.
+                return match ret {
+                    Ty::TypeParam(ref rt) if rt.name == "Self" => Ty::TypeParam(tp.clone()),
+                    other => other,
+                };
+            }
+        }
+        self.emit(TypeDiagnostic::UnknownMethod {
+            method: mc.method.clone(),
+            ty: Ty::TypeParam(tp.clone()).to_string(),
+            span: self.span_for(mc.id),
+        });
+        Ty::Error
+    }
+
+    /// The declared return type of `method` on `trait_name` (searching the
+    /// trait's required and default methods, then its supertraits). `None` if
+    /// the trait does not declare the method.
+    fn trait_method_return(&self, trait_name: &str, method: &str) -> Option<Ty> {
+        let info = self.trait_registry.get(trait_name)?;
+        for m in info
+            .required_methods
+            .iter()
+            .chain(info.default_methods.iter())
+        {
+            if m.name == method {
+                return Some(m.return_type.clone());
+            }
+        }
+        for supertrait in &info.supertraits {
+            if let Some(ret) = self.trait_method_return(supertrait, method) {
+                return Some(ret);
+            }
+        }
+        None
     }
 
     /// Resolve a qualified associated-function call (`Type::method(args)`) — a

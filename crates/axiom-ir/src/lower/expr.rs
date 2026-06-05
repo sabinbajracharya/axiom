@@ -163,16 +163,17 @@ fn lower_method_call(e: &axiom_hir::MethodCallExpr, ctx: &mut FnLowerCtx) -> Reg
     let args: Vec<Reg> = e.args.iter().map(|a| lower_expr(a, ctx)).collect();
     let dst = ctx.fresh_reg();
 
-    // Qualify the method name as "Type::method" to avoid collisions
-    // when two impls define the same method name.
-    let method = if let Some(ty) = ctx.types.get(&e.receiver.id()) {
-        if let Some(type_name) = type_name_from_ty(ty) {
-            format!("{type_name}::{}", e.method)
-        } else {
-            e.method.clone()
-        }
-    } else {
-        e.method.clone()
+    // Qualify the method name as "Type::method" to avoid collisions when two
+    // impls define the same method name. In a monomorphized body the receiver's
+    // type may be a type parameter (`key: K`); substitute it to the concrete
+    // type so a trait-method call (`key.hash()`) dispatches to the real impl
+    // (`Int::hash`).
+    let method = match ctx.receiver_type(e.receiver.id()) {
+        Some(ty) => match type_name_from_ty(&ty) {
+            Some(type_name) => format!("{type_name}::{}", e.method),
+            None => e.method.clone(),
+        },
+        None => e.method.clone(),
     };
 
     ctx.emit(IrInstr::MethodCall {
