@@ -103,8 +103,17 @@ pub enum IrInstr {
     },
     /// r = base.field
     Field { dst: Reg, base: Reg, field: String },
+    /// base.field = value — mutate a struct field in place (no result).
+    FieldSet {
+        base: Reg,
+        field: String,
+        value: Reg,
+    },
     /// r = base[index]
     Index { dst: Reg, base: Reg, index: Reg },
+    /// base[index] = value — mutate an indexed element in place (no result).
+    /// Works on both `List` values and `HeapBuffer` pointers.
+    IndexSet { base: Reg, index: Reg, value: Reg },
     /// register copy
     Copy { dst: Reg, src: Reg },
     /// r = Type { field1: v1, field2: v2, ... }

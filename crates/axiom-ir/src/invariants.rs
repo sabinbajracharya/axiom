@@ -149,7 +149,10 @@ fn instr_dst(instr: &IrInstr) -> Option<Reg> {
         | IrInstr::ListNew { dst, .. }
         | IrInstr::HeapAlloc { dst, .. }
         | IrInstr::HeapGet { dst, .. } => Some(*dst),
-        IrInstr::HeapFree { .. } | IrInstr::HeapSet { .. } => None,
+        IrInstr::HeapFree { .. }
+        | IrInstr::HeapSet { .. }
+        | IrInstr::FieldSet { .. }
+        | IrInstr::IndexSet { .. } => None,
     }
 }
 
@@ -177,6 +180,10 @@ fn instr_used_regs(instr: &IrInstr) -> Vec<Reg> {
         IrInstr::HeapSet {
             ptr, index, value, ..
         } => vec![*ptr, *index, *value],
+        IrInstr::FieldSet { base, value, .. } => vec![*base, *value],
+        IrInstr::IndexSet {
+            base, index, value, ..
+        } => vec![*base, *index, *value],
     }
 }
 

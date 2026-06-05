@@ -303,6 +303,46 @@ impl Vm {
                 );
                 self.current_frame_mut()?.instr_index += 1;
             }
+            IrInstr::FieldSet { base, field, value } => {
+                let val = self.current_frame()?.read_reg(value)?.clone();
+                let mut base_val = self.current_frame()?.read_reg(base)?.clone();
+                if let Value::Struct { fields, .. } = &mut base_val {
+                    if let Some((_, slot)) = fields.iter_mut().find(|(n, _)| n == &field) {
+                        *slot = val;
+                    }
+                }
+                self.current_frame_mut()?.write_reg(base, base_val)?;
+                self.trace_instr(
+                    &fn_name,
+                    format!("FieldSet %{}.{} = %{}", base.0, field, value.0),
+                );
+                self.current_frame_mut()?.instr_index += 1;
+            }
+            IrInstr::IndexSet { base, index, value } => {
+                let val = self.current_frame()?.read_reg(value)?.clone();
+                let idx = match self.current_frame()?.read_reg(index)? {
+                    Value::Int(i) => *i as usize,
+                    _ => 0,
+                };
+                // Index-write goes through the shared heap for a `HeapBuffer`
+                // pointer, or mutates a `List` value in place.
+                let mut base_val = self.current_frame()?.read_reg(base)?.clone();
+                match &mut base_val {
+                    Value::HeapPtr(addr) => self.heap.set(*addr, idx, val)?,
+                    Value::List(items) => {
+                        if idx < items.len() {
+                            items[idx] = val;
+                        }
+                        self.current_frame_mut()?.write_reg(base, base_val)?;
+                    }
+                    _ => {}
+                }
+                self.trace_instr(
+                    &fn_name,
+                    format!("IndexSet %{}[%{}] = %{}", base.0, index.0, value.0),
+                );
+                self.current_frame_mut()?.instr_index += 1;
+            }
             IrInstr::VariantPayload {
                 dst,
                 scrutinee,

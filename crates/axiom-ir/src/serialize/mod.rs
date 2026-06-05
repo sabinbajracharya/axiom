@@ -167,6 +167,13 @@ fn serialize_instr_complex(instr: &IrInstr) -> String {
         IrInstr::ListNew { dst, elements } => {
             format!("{} = ListNew [{}]", fmt_reg(*dst), fmt_regs(elements))
         }
+        _ => serialize_instr_mut(instr),
+    }
+}
+
+/// Serialize the no-result "mutation" instructions (heap and place writes).
+fn serialize_instr_mut(instr: &IrInstr) -> String {
+    match instr {
         IrInstr::HeapFree { ptr } => format!("HeapFree {}", fmt_reg(*ptr)),
         IrInstr::HeapSet { ptr, index, value } => format!(
             "HeapSet {} {} {}",
@@ -174,7 +181,16 @@ fn serialize_instr_complex(instr: &IrInstr) -> String {
             fmt_reg(*index),
             fmt_reg(*value)
         ),
-        _ => unreachable!("non-complex instruction passed to serialize_instr_complex"),
+        IrInstr::FieldSet { base, field, value } => {
+            format!("FieldSet {} {} {}", fmt_reg(*base), field, fmt_reg(*value))
+        }
+        IrInstr::IndexSet { base, index, value } => format!(
+            "IndexSet {} {} {}",
+            fmt_reg(*base),
+            fmt_reg(*index),
+            fmt_reg(*value)
+        ),
+        _ => unreachable!("non-mutation instruction passed to serialize_instr_mut"),
     }
 }
 

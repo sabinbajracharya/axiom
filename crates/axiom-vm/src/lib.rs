@@ -225,7 +225,10 @@ mod tests {
                 | IrInstr::EnumNew { dst, .. }
                 | IrInstr::ListNew { dst, .. }
                 | IrInstr::HeapAlloc { dst, .. } => dst.0 + 1,
-                IrInstr::HeapFree { .. } | IrInstr::HeapSet { .. } => 0,
+                IrInstr::HeapFree { .. }
+                | IrInstr::HeapSet { .. }
+                | IrInstr::FieldSet { .. }
+                | IrInstr::IndexSet { .. } => 0,
                 IrInstr::HeapGet { dst, .. } | IrInstr::VariantPayload { dst, .. } => dst.0 + 1,
             })
             .max()
