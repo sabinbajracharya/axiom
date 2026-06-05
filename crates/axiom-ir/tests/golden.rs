@@ -122,3 +122,56 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn test_golden_loops() {
+    check_golden(
+        "loops",
+        r#"
+fn main() {
+    var i = 0
+    loop if i < 10 {
+        i = i + 1
+    }
+    val x = loop {
+        break 42
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn test_golden_match() {
+    check_golden(
+        "match_expr",
+        r#"
+fn pick(val x: Int) -> Int {
+    match x {
+        0 => 1
+        1 => 2
+        _ => 3
+    }
+}
+
+fn main() {
+    val result = pick(0)
+}
+"#,
+    );
+}
+
+#[test]
+fn test_golden_multi_fn() {
+    check_golden(
+        "multi_fn",
+        r#"
+fn square(x: Int) -> Int { x * x }
+fn sum_of_squares(a: Int, b: Int) -> Int { square(a) + square(b) }
+
+fn main() {
+    val result = sum_of_squares(3, 4)
+}
+"#,
+    );
+}

@@ -1,0 +1,6 @@
+fn square(x: Int) -> Int { x * x }
+fn sum_of_squares(a: Int, b: Int) -> Int { square(a) + square(b) }
+
+fn main() {
+    val result = sum_of_squares(3, 4)
+}

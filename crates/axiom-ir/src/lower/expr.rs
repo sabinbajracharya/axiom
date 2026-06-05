@@ -296,13 +296,37 @@ fn lower_loop(e: &axiom_hir::LoopExpr, ctx: &mut FnLowerCtx) -> Reg {
 fn lower_assign(e: &axiom_hir::AssignExpr, ctx: &mut FnLowerCtx) -> Reg {
     let value = lower_expr(&e.value, ctx);
     let dst = resolve_assign_target(&e.target, ctx);
-    ctx.emit(IrInstr::Copy { dst, src: value });
+
+    match e.op {
+        axiom_hir::AssignOp::Plain => {
+            ctx.emit(IrInstr::Copy { dst, src: value });
+        }
+        compound => {
+            // x op= val  →  %tmp = BinOp(x, val); Copy(x, %tmp)
+            let binop = match compound {
+                axiom_hir::AssignOp::Add => axiom_hir::BinOp::Add,
+                axiom_hir::AssignOp::Sub => axiom_hir::BinOp::Sub,
+                axiom_hir::AssignOp::Mul => axiom_hir::BinOp::Mul,
+                axiom_hir::AssignOp::Div => axiom_hir::BinOp::Div,
+                axiom_hir::AssignOp::Mod => axiom_hir::BinOp::Mod,
+                axiom_hir::AssignOp::Plain => unreachable!(),
+            };
+            let tmp = ctx.fresh_reg();
+            ctx.emit(IrInstr::BinOp {
+                dst: tmp,
+                op: binop,
+                lhs: dst,
+                rhs: value,
+            });
+            ctx.emit(IrInstr::Copy { dst, src: tmp });
+        }
+    }
+
     let unit = ctx.fresh_reg();
     ctx.emit(IrInstr::Const {
         dst: unit,
         value: IrConst::Unit,
     });
-    let _ = e.op; // assign op (+= etc.) handled same as = for now
     unit
 }
 
@@ -333,7 +357,9 @@ fn resolve_assign_target(target: &AssignTarget, ctx: &FnLowerCtx) -> Reg {
             };
             ctx.resolve_name(def_id)
         }
-        AssignTarget::Field { .. } | AssignTarget::Index { .. } => Reg(0),
+        // TODO(v1): Field/Index assignment needs FieldSet/IndexSet instructions.
+        // For now, return sentinel so downstream knows this is unsupported.
+        AssignTarget::Field { .. } | AssignTarget::Index { .. } => Reg(u32::MAX),
     }
 }
 

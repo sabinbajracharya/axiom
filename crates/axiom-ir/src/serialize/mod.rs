@@ -140,12 +140,13 @@ fn serialize_instr_complex(instr: &IrInstr) -> String {
         }
         IrInstr::EnumNew {
             dst,
+            type_name,
             variant,
             payload,
-            ..
         } => format!(
-            "{} = EnumNew {}({})",
+            "{} = EnumNew {}.{}({})",
             fmt_reg(*dst),
+            type_name,
             variant,
             fmt_regs(payload)
         ),

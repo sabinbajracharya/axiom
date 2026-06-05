@@ -90,13 +90,15 @@ impl<'a> FnLowerCtx<'a> {
     }
 
     /// Resolve a def_id to a register.
+    /// Returns `Reg(u32::MAX)` as a sentinel if the binding is not found.
+    /// Downstream code should check for this; it indicates an unresolved name.
     pub fn resolve_name(&self, def_id: Option<HirId>) -> Reg {
         if let Some(id) = def_id {
             if let Some(reg) = self.bindings.get(&id) {
                 return *reg;
             }
         }
-        Reg(0)
+        Reg(u32::MAX)
     }
 
     /// Push a loop context (for break/continue resolution).

@@ -1,0 +1,11 @@
+fn pick(val x: Int) -> Int {
+    match x {
+        0 => 1
+        1 => 2
+        _ => 3
+    }
+}
+
+fn main() {
+    val result = pick(0)
+}

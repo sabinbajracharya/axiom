@@ -1,0 +1,9 @@
+fn main() {
+    var i = 0
+    loop if i < 10 {
+        i = i + 1
+    }
+    val x = loop {
+        break 42
+    }
+}
