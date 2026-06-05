@@ -322,17 +322,22 @@ impl TypeChecker {
             .as_ref()
             .map(|t| self.resolve_hir_ty(t))
             .unwrap_or(crate::types::Ty::Unit);
-        let body_type = self.check_block(&f.body, &return_type);
-        if !helpers::is_error(&body_type)
-            && !helpers::is_error(&return_type)
-            && body_type != return_type
-        {
-            self.emit(TypeDiagnostic::ReturnTypeMismatch {
-                expected: return_type.to_string(),
-                found: body_type.to_string(),
-                span: self.span_for(f.id),
-            });
-            self.types.insert(f.id, crate::types::Ty::Error);
+        // Extern fns (`extern "C" fn …;`) have no body — the platform supplies
+        // it. There is nothing to check the declared return type against, so we
+        // record the signature and skip the body/return reconciliation.
+        if f.extern_abi.is_none() {
+            let body_type = self.check_block(&f.body, &return_type);
+            if !helpers::is_error(&body_type)
+                && !helpers::is_error(&return_type)
+                && body_type != return_type
+            {
+                self.emit(TypeDiagnostic::ReturnTypeMismatch {
+                    expected: return_type.to_string(),
+                    found: body_type.to_string(),
+                    span: self.span_for(f.id),
+                });
+                self.types.insert(f.id, crate::types::Ty::Error);
+            }
         }
         let fn_ty = crate::types::Ty::Fn(crate::types::FnTy {
             params: f

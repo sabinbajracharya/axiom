@@ -90,14 +90,19 @@ wraps with safe, user-facing APIs. Users never touch `core::platform` directly.
 
 ```axiom
 // core/platform.ax — extern "C" fn declarations (no body, dispatched by VM)
-extern "C" fn write(fd: Int, buf: &[U8], len: Int) -> Int;
-extern "C" fn read(fd: Int, buf: &mut [U8], len: Int) -> Int;
-extern "C" fn close(fd: Int) -> Int;
+pub extern "C" fn write(fd: Int, let buf: Bytes) -> Int;
+pub extern "C" fn read(fd: Int, inout buf: Bytes) -> Int;
+pub extern "C" fn close(fd: Int) -> Int;
 ```
 
 - `extern "C" fn` has a signature but no body. Terminated with `;`.
 - It's `pub` or private like any other function.
 - It lives in `core::platform` — the single platform boundary module.
+- **Buffers are values + conventions, not reference types** (`&[U8]` is invalid Axiom —
+  §4.1 forbids reference types). A byte buffer is `Bytes`; `let buf` is a read-only borrow
+  (`const void*`), `inout buf` an exclusive mutable borrow (`void*`). The libc `len` is
+  synthesized from the buffer at the ABI boundary. See
+  [`extern-buffers-and-path-unification.md`](extern-buffers-and-path-unification.md).
 
 ### 1.3 IR representation
 

@@ -5,7 +5,15 @@
 //
 // These are unsafe primitives. Users should never import core::platform
 // directly -- use std::io, std::fs, etc. instead.
+//
+// Buffers cross the boundary as the value type `Bytes` (a byte buffer) with a
+// calling convention, NOT a reference type (DESIGN_SPEC §4.1 forbids reference
+// types). The convention is the C calling convention:
+//   `let buf: Bytes`   -- read-only borrow for the call   => `const void* + len`
+//   `inout buf: Bytes` -- exclusive mutable borrow         => `void* + len`
+// The libc `len` argument is synthesized from the buffer at the ABI boundary,
+// so these signatures take the buffer, not a separate length.
 
-pub extern "C" fn write(fd: Int, buf: &[U8], len: Int) -> Int;
-pub extern "C" fn read(fd: Int, buf: &mut [U8], len: Int) -> Int;
+pub extern "C" fn write(fd: Int, let buf: Bytes) -> Int;
+pub extern "C" fn read(fd: Int, inout buf: Bytes) -> Int;
 pub extern "C" fn close(fd: Int) -> Int;

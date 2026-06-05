@@ -596,6 +596,30 @@ Layered to keep the core small (singular idiom + small budget):
 - **Formatting:** `string::format("{} = {}", k, v)` — **one** formatting mechanism. String interpolation is **not** added unless we drop `format` (singular idiom forbids both; §15).
 - **`Display`/`Debug` traits** for user types; `dbg` and `{}`/`{:?}` route through them.
 
+### 11.1 The platform boundary & FFI buffers [Decided]
+The only place Axiom meets the OS is **`core::platform`** — a module of `extern "C" fn`
+declarations wrapping libc (`write`, `read`, `close`, …). It has no body; the platform
+supplies the implementation (VM callback today, real FFI once the native backend lands).
+`std::io`/`std::fs`/etc. build safe APIs on top; users never import `core::platform`
+directly. (Full design: [`docs/io-design.md`](docs/io-design.md),
+[`docs/extern-buffers-and-path-unification.md`](docs/extern-buffers-and-path-unification.md).)
+
+**Buffers cross the boundary as values + conventions, never as reference types** (§4.1
+forbids reference types). A byte buffer is the value type `Bytes`, and the **calling
+convention is the C calling convention**:
+
+| Axiom signature | Borrow | C ABI |
+|---|---|---|
+| `fn write(fd: Int, let buf: Bytes) -> Int` | read-only (§4.2 `let` ≈ `&T`) | `const void* + len` |
+| `fn read(fd: Int, inout buf: Bytes) -> Int` | exclusive mutable (`inout` ≈ `&mut T`) | `void* + len` |
+
+The libc `len` argument is synthesized from the buffer at the ABI boundary, so the Axiom
+signature carries the buffer, not a separate length. **No raw-pointer type is introduced**
+for this — a raw pointer would *store* an alias, which §4.1 forbids; it is deferred until a
+use that genuinely needs to hold a pointer across calls (mmap, FFI struct fields). The
+general slice spelling `[T]` exists as a type for array literals and future `[Byte]`
+buffers.
+
 ---
 
 ## 12. Tooling & Compiler Ergonomics

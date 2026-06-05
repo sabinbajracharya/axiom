@@ -37,33 +37,44 @@ reference type:
 
 > The conventions *are* the calling convention (§4.2: `let` ≈ `&T`, `inout` ≈ `&mut T`).
 
-So a buffer parameter is a **slice value `[U8]`** passed with a convention:
+So a buffer parameter is a **byte-buffer value passed with a convention**:
 
 | Rust placeholder | Axiom (spec-faithful) | C ABI meaning |
 |---|---|---|
-| `buf: &[U8]` | `let buf: [U8]` | `const void* + len` (read-only, borrowed for the call) |
-| `buf: &mut [U8]` | `inout buf: [U8]` | `void* + len` (writable, exclusively borrowed for the call) |
+| `buf: &[U8]` | `let buf: Bytes` | `const void* + len` (read-only, borrowed for the call) |
+| `buf: &mut [U8]` | `inout buf: Bytes` | `void* + len` (writable, exclusively borrowed for the call) |
 
-A `[U8]` is a fat *value* carrying its length. At the extern ABI boundary the lowerer emits
-`(ptr, len)` for a `let [U8]` and a writable `(ptr, len)` for an `inout [U8]`. No stored
-alias, no escaping pointer — fully MVS-faithful.
+> **Note — `U8` is not an Axiom type.** The spec (§3) rejects the `i8/u8/...` integer zoo;
+> the byte scalar is `Byte`, and the byte buffer is `Bytes` (what `String::as_bytes()`
+> already returns and the VM represents as `Value::Bytes`). So the byte buffer is `Bytes`,
+> **not** `[U8]`. The convention — not a reference type — supplies the `const`/mutable
+> distinction (§4.2: `let` ≈ `&T`, `inout` ≈ `&mut T`). No stored alias, no escaping
+> pointer — fully MVS-faithful.
 
 **No `RawPtr<T>` is added.** A raw pointer is reference-like (it *stores* an alias), which
 §4.1 forbids. Defer it until something genuinely needs to *hold* a pointer across calls
 (mmap regions, FFI struct fields). libc `read`/`write`/`close` never do.
 
-The real missing piece is therefore not a pointer type — it is that **`HirTy` has no slice
-variant**. We add `HirTy::Slice(Box<HirTy>)` (surface syntax `[T]`), which is needed anyway
-for `[1, 2, 3]` array literals and `List`'s internals. The typeck layer already has
-`Ty::HeapBuffer(Box<Ty>)`; `HirTy::Slice` lowers onto it.
+We still add a general **`HirTy::Slice(Box<HirTy>)`** (surface syntax `[T]`) — needed for
+`[1, 2, 3]` array literals and a future `[Byte]` spelling — lowering onto the typeck layer's
+existing `Ty::HeapBuffer(Box<Ty>)`. The byte buffer specifically uses `Bytes` today;
+unifying `Bytes` with `[Byte]` waits on wiring the `Byte` scalar primitive into the type
+checker (deferred — no current need).
 
 ### Arity reconciliation
 
-The Axiom-level signature becomes `fn write(fd: Int, let buf: [U8]) -> Int` — **two
+The Axiom-level signature becomes `fn write(fd: Int, let buf: Bytes) -> Int` — **two
 params**, matching the existing `write(1, s.as_bytes())` call. libc's `len` is synthesized
-by ABI lowering from the slice's length. `read` becomes
-`fn read(fd: Int, inout buf: [U8]) -> Int` — the `inout` slice is the writable buffer, the
-return value is bytes-read.
+by ABI lowering from the buffer's length. `read` becomes
+`fn read(fd: Int, inout buf: Bytes) -> Int` — the `inout` buffer is writable, the return
+value is bytes-read.
+
+### Extern fns have no body
+
+A second gap surfaced: the type checker ran its return-type-vs-body check on `extern` fns,
+whose (empty) body is `Unit` — so `-> Int` wrongly reported a mismatch. Fixed: when
+`extern_abi.is_some()`, record the signature and skip body reconciliation (the platform
+supplies the body).
 
 ## 3. Work plan (each step is one commit; TDD; gate must pass)
 
@@ -74,9 +85,9 @@ return value is bytes-read.
    `lower/ty.rs`; serialize as `[T]`. Tests first.
 3. **typeck lowering** — lower `HirTy::Slice(inner)` → `Ty::HeapBuffer(inner)` (reusing the
    existing runtime-buffer type). Tests.
-4. **Rewrite `platform.ax`** — `let buf: [U8]` / `inout buf: [U8]`, 2-param `write`,
-   3-param `read` with `inout`. Document the extern ABI lowering rule (`[T]` → ptr+len) in
-   `ir-design.md`.
+4. **Rewrite `platform.ax`** — `let buf: Bytes` / `inout buf: Bytes`, 2-param `write`,
+   `inout` `read`. Fix the type checker to skip body/return reconciliation for bodiless
+   `extern` fns. Record the resolved buffer-type decision in `DESIGN_SPEC.md` §11.1.
 5. **Extern dispatch table** — replace the hardcoded `matches!` list in `vm/exec/builtins.rs`
    with the `register_extern` registration table from `io-design.md` §3 Phase 2. The VM
    dispatches off `is_extern` + qualified-name lookup; **signature correctness stays a
