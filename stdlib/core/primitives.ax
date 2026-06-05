@@ -24,3 +24,41 @@ impl Deinit for Bool {
 impl Deinit for Unit {
     fn drop(let self) {}
 }
+
+// ── Equatable ──
+impl Equatable for Int {
+    fn eq(let self, other: Int) -> Bool {
+        self == other
+    }
+}
+
+impl Equatable for Float {
+    fn eq(let self, other: Float) -> Bool {
+        self == other
+    }
+}
+
+impl Equatable for Bool {
+    fn eq(let self, other: Bool) -> Bool {
+        self == other
+    }
+}
+
+// ── Ord ──
+impl Ord for Int {
+    fn lt(let self, other: Int) -> Bool {
+        self < other
+    }
+}
+
+impl Ord for Float {
+    fn lt(let self, other: Float) -> Bool {
+        self < other
+    }
+}
+
+impl Ord for Bool {
+    fn lt(let self, other: Bool) -> Bool {
+        self < other
+    }
+}

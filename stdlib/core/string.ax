@@ -9,3 +9,17 @@
 impl Deinit for String {
     fn drop(let self) {}
 }
+
+// ── Equatable / Ord (bottom out on the scalar ==/< operators; String
+//    comparison is byte-lexicographic in the VM) ──
+impl Equatable for String {
+    fn eq(let self, other: String) -> Bool {
+        self == other
+    }
+}
+
+impl Ord for String {
+    fn lt(let self, other: String) -> Bool {
+        self < other
+    }
+}

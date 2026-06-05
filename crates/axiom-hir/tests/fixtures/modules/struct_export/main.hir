@@ -20,8 +20,48 @@ ImplDef(12) Deinit→0 for Unit→1000004 methods=[
   FnDef(13) name=drop vis=private params=[let self: _] return=_ {
   }
 ]
+ImplDef(16) Equatable→3 for Int→1000000 methods=[
+  FnDef(17) name=eq vis=private params=[let self: _, let other: Int→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(22) ==(Path(23) self→18, Path(24) other→19)
+  }
+]
+ImplDef(25) Equatable→3 for Float→1000001 methods=[
+  FnDef(26) name=eq vis=private params=[let self: _, let other: Float→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(31) ==(Path(32) self→27, Path(33) other→28)
+  }
+]
+ImplDef(34) Equatable→3 for Bool→1000002 methods=[
+  FnDef(35) name=eq vis=private params=[let self: _, let other: Bool→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(40) ==(Path(41) self→36, Path(42) other→37)
+  }
+]
+ImplDef(43) Ord→10 for Int→1000000 methods=[
+  FnDef(44) name=lt vis=private params=[let self: _, let other: Int→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(49) <(Path(50) self→45, Path(51) other→46)
+  }
+]
+ImplDef(52) Ord→10 for Float→1000001 methods=[
+  FnDef(53) name=lt vis=private params=[let self: _, let other: Float→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(58) <(Path(59) self→54, Path(60) other→55)
+  }
+]
+ImplDef(61) Ord→10 for Bool→1000002 methods=[
+  FnDef(62) name=lt vis=private params=[let self: _, let other: Bool→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(67) <(Path(68) self→63, Path(69) other→64)
+  }
+]
 ImplDef(0) Deinit→0 for String→1000003 methods=[
   FnDef(1) name=drop vis=private params=[let self: _] return=_ {
+  }
+]
+ImplDef(4) Equatable→3 for String→1000003 methods=[
+  FnDef(5) name=eq vis=private params=[let self: _, let other: String→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(10) ==(Path(11) self→6, Path(12) other→7)
+  }
+]
+ImplDef(13) Ord→10 for String→1000003 methods=[
+  FnDef(14) name=lt vis=private params=[let self: _, let other: String→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(19) <(Path(20) self→15, Path(21) other→16)
   }
 ]
 TraitDef(0) name=Deinit vis=pub methods=[
@@ -81,8 +121,8 @@ FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(12) Call(13) write→0(Lit(14) Int(1), Path(16) s→10.Method(15) as_bytes())
   ExprStmt(17) Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
 }
-UseItem(35) models::Point
-FnDef(36) name=main vis=private params=[] return=_ {
-  ValStmt(42) Ident(38) p→38: _ = StructLit(39) Point→43 { x: Lit(40) Int(1), y: Lit(41) Int(2) }
+UseItem(65) models::Point
+FnDef(66) name=main vis=private params=[] return=_ {
+  ValStmt(72) Ident(68) p→68: _ = StructLit(69) Point→73 { x: Lit(70) Int(1), y: Lit(71) Int(2) }
 }
-StructDef(43) name=Point vis=pub fields=[pub x: Int→<unresolved>, pub y: Int→<unresolved>]
+StructDef(73) name=Point vis=pub fields=[pub x: Int→<unresolved>, pub y: Int→<unresolved>]

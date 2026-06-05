@@ -182,22 +182,20 @@ impl TypeChecker {
 
     /// Register auto-implementations for built-in traits.
     ///
-    /// Deinit for the primitives now lives in `core/primitives.ax` +
-    /// `core/string.ax` (collected via the normal impl path). Only the
-    /// Equatable/Hashable/Ord primitive auto-impls remain here, pending
-    /// Phases B2/B3.
+    /// Deinit, Equatable, and Ord for the primitives now live in
+    /// `core/primitives.ax` + `core/string.ax` (collected via the normal impl
+    /// path). Only the Hashable primitive auto-impls remain here, pending the
+    /// scalar `hash` floor intrinsic (Phase B3).
     pub(super) fn register_builtin_impls(&mut self) {
         for type_name in PRIMITIVE_TYPES {
-            for trait_name in &["Equatable", "Hashable", "Ord"] {
-                self.impl_table.push(ImplInfo {
-                    trait_name: Some(trait_name.to_string()),
-                    type_name: type_name.to_string(),
-                    methods: vec![],
-                    subscripts: vec![],
-                    type_params: vec![],
-                    type_param_bounds: HashMap::new(),
-                });
-            }
+            self.impl_table.push(ImplInfo {
+                trait_name: Some("Hashable".to_string()),
+                type_name: type_name.to_string(),
+                methods: vec![],
+                subscripts: vec![],
+                type_params: vec![],
+                type_param_bounds: HashMap::new(),
+            });
         }
     }
 }
@@ -217,18 +215,6 @@ mod tests {
     }
 
     #[test]
-    fn test_builtin_equatable_auto_impl() {
-        let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_impls();
-        let impls: Vec<_> = checker
-            .impl_table
-            .iter()
-            .filter(|i| i.trait_name.as_deref() == Some("Equatable"))
-            .collect();
-        assert_eq!(impls.len(), 4);
-    }
-
-    #[test]
     fn test_builtin_hashable_auto_impl() {
         let mut checker = make_checker("fn main() {}");
         checker.register_builtin_impls();
@@ -236,18 +222,6 @@ mod tests {
             .impl_table
             .iter()
             .filter(|i| i.trait_name.as_deref() == Some("Hashable"))
-            .collect();
-        assert_eq!(impls.len(), 4);
-    }
-
-    #[test]
-    fn test_builtin_ord_auto_impl() {
-        let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_impls();
-        let impls: Vec<_> = checker
-            .impl_table
-            .iter()
-            .filter(|i| i.trait_name.as_deref() == Some("Ord"))
             .collect();
         assert_eq!(impls.len(), 4);
     }
