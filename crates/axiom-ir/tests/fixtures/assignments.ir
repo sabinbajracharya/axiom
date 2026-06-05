@@ -1,0 +1,9 @@
+fn update(p: Int) -> fn(Int) -> Unit {
+  entry:
+  %1 = Const Int(1)
+  %2 = BinOp + %0 %1
+  %0 = Copy %2
+  %3 = Const Unit
+  Return %3
+}
+

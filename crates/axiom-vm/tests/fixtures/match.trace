@@ -1,0 +1,12 @@
+[fn main] %0 = Const(Float(3.0))
+[fn main] %1 = Circle(...)
+[fn main] Call describe(%1)
+[fn describe] Match %0 => match_arm_1
+[fn describe] %5 = BinOp Mul(%1, %1)
+[fn describe] %4 = Copy %5
+[fn describe] Jump match_merge_0
+[fn describe] Return %4
+[fn builtin] print(9) => ()
+[fn output] 9
+[fn main] 
+[fn main] Return %3

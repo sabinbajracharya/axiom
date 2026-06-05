@@ -1,0 +1,14 @@
+fn double(x: Int) -> fn(Int) -> Int {
+  entry:
+  %1 = BinOp + %0 %0
+  Return %1
+}
+
+fn run() -> fn() -> Unit {
+  entry:
+  %0 = Const Int(1)
+  %1 = Call double [%0]
+  %2 = Const Unit
+  Return %2
+}
+

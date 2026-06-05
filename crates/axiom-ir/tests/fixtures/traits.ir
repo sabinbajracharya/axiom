@@ -1,0 +1,10 @@
+fn area(self: <error>) -> fn(<error>) -> Float {
+  entry:
+  %1 = Const Float(3.14159)
+  %2 = Field %0 r
+  %3 = BinOp * %1 %2
+  %4 = Field %0 r
+  %5 = BinOp * %3 %4
+  Return %5
+}
+

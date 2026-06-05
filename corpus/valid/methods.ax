@@ -1,0 +1,8 @@
+fn double(let x: Int) -> Int {
+    x + x
+}
+
+fn main() {
+    val y = double(5)
+    print(y)
+}

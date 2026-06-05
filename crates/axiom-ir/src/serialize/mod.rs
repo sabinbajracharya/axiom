@@ -6,9 +6,13 @@ use crate::ir::{Ir, IrBlock, IrConst, IrFunction, IrInstr, IrPattern, Terminator
 use helpers::{fmt_reg, indent};
 
 /// Serialize an IR program to a deterministic string.
+/// Functions are sorted by name to ensure stable output regardless of
+/// lowering order (monomorphized instances may be added in HashMap order).
 pub fn serialize(ir: &Ir) -> String {
     let mut out = String::new();
-    for func in &ir.functions {
+    let mut funcs: Vec<&IrFunction> = ir.functions.iter().collect();
+    funcs.sort_by(|a, b| a.name.cmp(&b.name));
+    for func in funcs {
         serialize_fn(func, &mut out);
     }
     out

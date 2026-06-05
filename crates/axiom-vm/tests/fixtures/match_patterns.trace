@@ -1,0 +1,11 @@
+[fn main] %0 = Const(Int(0))
+[fn main] Call describe(%0)
+[fn describe] Match %0 => match_arm_1
+[fn describe] %2 = Const(Float(1.0))
+[fn describe] %1 = Copy %2
+[fn describe] Jump match_merge_0
+[fn describe] Return %1
+[fn builtin] print(1) => ()
+[fn output] 1
+[fn main] 
+[fn main] Return %2

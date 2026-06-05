@@ -1,0 +1,6 @@
+fn describe(let x: Int) -> Float {
+    match x {
+        0 => 1.0,
+        _ => 0.0,
+    }
+}

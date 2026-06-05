@@ -1,0 +1,70 @@
+SourceFile @ 0..92
+  FnDef @ 0..92
+    KwFn @ 0..2 "fn"
+    Name @ 2..11
+      Whitespace @ 2..3 " "
+      Ident @ 3..11 "describe"
+    ParamList @ 11..23
+      LParen @ 11..12 "("
+      Param @ 12..22
+        KwLet @ 12..15 "let"
+        Whitespace @ 15..16 " "
+        Ident @ 16..17 "x"
+        Colon @ 17..18 ":"
+        PathType @ 18..22
+          Path @ 18..22
+            PathSegment @ 18..22
+              Whitespace @ 18..19 " "
+              Ident @ 19..22 "Int"
+      RParen @ 22..23 ")"
+    Whitespace @ 23..24 " "
+    Arrow @ 24..26 "->"
+    RetType @ 26..32
+      PathType @ 26..32
+        Path @ 26..32
+          PathSegment @ 26..32
+            Whitespace @ 26..27 " "
+            Ident @ 27..32 "Float"
+    BlockExpr @ 32..92
+      Whitespace @ 32..33 " "
+      LBrace @ 33..34 "{"
+      ExprStmt @ 34..90
+        MatchExpr @ 34..90
+          Newline @ 34..35 "\n"
+          Whitespace @ 35..39 "    "
+          KwMatch @ 39..44 "match"
+          PathExpr @ 44..46
+            Path @ 44..46
+              PathSegment @ 44..46
+                Whitespace @ 44..45 " "
+                Ident @ 45..46 "x"
+          MatchArmList @ 46..90
+            Whitespace @ 46..47 " "
+            LBrace @ 47..48 "{"
+            MatchArm @ 48..66
+              LiteralPat @ 48..58
+                Newline @ 48..49 "\n"
+                Whitespace @ 49..57 "        "
+                IntLit @ 57..58 "0"
+              Whitespace @ 58..59 " "
+              FatArrow @ 59..61 "=>"
+              LiteralExpr @ 61..65
+                Whitespace @ 61..62 " "
+                FloatLit @ 62..65 "1.0"
+              Comma @ 65..66 ","
+            MatchArm @ 66..84
+              WildcardPat @ 66..76
+                Newline @ 66..67 "\n"
+                Whitespace @ 67..75 "        "
+                Ident @ 75..76 "_"
+              Whitespace @ 76..77 " "
+              FatArrow @ 77..79 "=>"
+              LiteralExpr @ 79..83
+                Whitespace @ 79..80 " "
+                FloatLit @ 80..83 "0.0"
+              Comma @ 83..84 ","
+            Newline @ 84..85 "\n"
+            Whitespace @ 85..89 "    "
+            RBrace @ 89..90 "}"
+      Newline @ 90..91 "\n"
+      RBrace @ 91..92 "}"

@@ -1,0 +1,3 @@
+let x = 5
+var y = 0xFF
+val z = 1_000_000

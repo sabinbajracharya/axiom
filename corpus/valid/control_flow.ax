@@ -1,0 +1,10 @@
+fn main() {
+    val x = 1
+    if x == 1 {
+        val y = 2
+    }
+    val z = if x == 0 { 10 } else { 20 }
+    loop {
+        val done = true
+    }
+}

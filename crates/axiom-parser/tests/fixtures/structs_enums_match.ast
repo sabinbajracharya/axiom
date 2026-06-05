@@ -1,0 +1,250 @@
+SourceFile @ 0..275
+  EnumDef @ 0..68
+    KwEnum @ 0..4 "enum"
+    Name @ 4..10
+      Whitespace @ 4..5 " "
+      Ident @ 5..10 "Shape"
+    VariantList @ 10..68
+      Whitespace @ 10..11 " "
+      LBrace @ 11..12 "{"
+      Variant @ 12..30
+        Newline @ 12..13 "\n"
+        Whitespace @ 13..17 "    "
+        Ident @ 17..23 "Circle"
+        VariantPayload @ 23..30
+          LParen @ 23..24 "("
+          PathType @ 24..29
+            Path @ 24..29
+              PathSegment @ 24..29
+                Ident @ 24..29 "Float"
+          RParen @ 29..30 ")"
+      Comma @ 30..31 ","
+      Variant @ 31..54
+        Newline @ 31..32 "\n"
+        Whitespace @ 32..36 "    "
+        Ident @ 36..40 "Rect"
+        VariantPayload @ 40..54
+          LParen @ 40..41 "("
+          PathType @ 41..46
+            Path @ 41..46
+              PathSegment @ 41..46
+                Ident @ 41..46 "Float"
+          Comma @ 46..47 ","
+          PathType @ 47..53
+            Path @ 47..53
+              PathSegment @ 47..53
+                Whitespace @ 47..48 " "
+                Ident @ 48..53 "Float"
+          RParen @ 53..54 ")"
+      Comma @ 54..55 ","
+      Variant @ 55..65
+        Newline @ 55..56 "\n"
+        Whitespace @ 56..60 "    "
+        Ident @ 60..65 "Empty"
+      Comma @ 65..66 ","
+      Newline @ 66..67 "\n"
+      RBrace @ 67..68 "}"
+  FnDef @ 68..203
+    Newline @ 68..69 "\n"
+    Newline @ 69..70 "\n"
+    KwFn @ 70..72 "fn"
+    Name @ 72..77
+      Whitespace @ 72..73 " "
+      Ident @ 73..77 "area"
+    ParamList @ 77..91
+      LParen @ 77..78 "("
+      Param @ 78..90
+        KwLet @ 78..81 "let"
+        Whitespace @ 81..82 " "
+        Ident @ 82..83 "s"
+        Colon @ 83..84 ":"
+        PathType @ 84..90
+          Path @ 84..90
+            PathSegment @ 84..90
+              Whitespace @ 84..85 " "
+              Ident @ 85..90 "Shape"
+      RParen @ 90..91 ")"
+    Whitespace @ 91..92 " "
+    Arrow @ 92..94 "->"
+    RetType @ 94..100
+      PathType @ 94..100
+        Path @ 94..100
+          PathSegment @ 94..100
+            Whitespace @ 94..95 " "
+            Ident @ 95..100 "Float"
+    BlockExpr @ 100..203
+      Whitespace @ 100..101 " "
+      LBrace @ 101..102 "{"
+      ExprStmt @ 102..201
+        MatchExpr @ 102..201
+          Newline @ 102..103 "\n"
+          Whitespace @ 103..107 "    "
+          KwMatch @ 107..112 "match"
+          PathExpr @ 112..114
+            Path @ 112..114
+              PathSegment @ 112..114
+                Whitespace @ 112..113 " "
+                Ident @ 113..114 "s"
+          MatchArmList @ 114..201
+            Whitespace @ 114..115 " "
+            LBrace @ 115..116 "{"
+            MatchArm @ 116..144
+              TupleStructPat @ 116..134
+                Path @ 116..131
+                  PathSegment @ 116..131
+                    Newline @ 116..117 "\n"
+                    Whitespace @ 117..125 "        "
+                    Ident @ 125..131 "Circle"
+                TuplePatFieldList @ 131..134
+                  LParen @ 131..132 "("
+                  IdentPat @ 132..133
+                    Path @ 132..133
+                      PathSegment @ 132..133
+                        Ident @ 132..133 "r"
+                  RParen @ 133..134 ")"
+              Whitespace @ 134..135 " "
+              FatArrow @ 135..137 "=>"
+              BinExpr @ 137..143
+                PathExpr @ 137..139
+                  Path @ 137..139
+                    PathSegment @ 137..139
+                      Whitespace @ 137..138 " "
+                      Ident @ 138..139 "r"
+                Whitespace @ 139..140 " "
+                Star @ 140..141 "*"
+                PathExpr @ 141..143
+                  Path @ 141..143
+                    PathSegment @ 141..143
+                      Whitespace @ 141..142 " "
+                      Ident @ 142..143 "r"
+              Comma @ 143..144 ","
+            MatchArm @ 144..173
+              TupleStructPat @ 144..163
+                Path @ 144..157
+                  PathSegment @ 144..157
+                    Newline @ 144..145 "\n"
+                    Whitespace @ 145..153 "        "
+                    Ident @ 153..157 "Rect"
+                TuplePatFieldList @ 157..163
+                  LParen @ 157..158 "("
+                  IdentPat @ 158..159
+                    Path @ 158..159
+                      PathSegment @ 158..159
+                        Ident @ 158..159 "w"
+                  Comma @ 159..160 ","
+                  IdentPat @ 160..162
+                    Path @ 160..162
+                      PathSegment @ 160..162
+                        Whitespace @ 160..161 " "
+                        Ident @ 161..162 "h"
+                  RParen @ 162..163 ")"
+              Whitespace @ 163..164 " "
+              FatArrow @ 164..166 "=>"
+              BinExpr @ 166..172
+                PathExpr @ 166..168
+                  Path @ 166..168
+                    PathSegment @ 166..168
+                      Whitespace @ 166..167 " "
+                      Ident @ 167..168 "w"
+                Whitespace @ 168..169 " "
+                Star @ 169..170 "*"
+                PathExpr @ 170..172
+                  Path @ 170..172
+                    PathSegment @ 170..172
+                      Whitespace @ 170..171 " "
+                      Ident @ 171..172 "h"
+              Comma @ 172..173 ","
+            MatchArm @ 173..195
+              IdentPat @ 173..187
+                Path @ 173..187
+                  PathSegment @ 173..187
+                    Newline @ 173..174 "\n"
+                    Whitespace @ 174..182 "        "
+                    Ident @ 182..187 "Empty"
+              Whitespace @ 187..188 " "
+              FatArrow @ 188..190 "=>"
+              LiteralExpr @ 190..194
+                Whitespace @ 190..191 " "
+                FloatLit @ 191..194 "0.0"
+              Comma @ 194..195 ","
+            Newline @ 195..196 "\n"
+            Whitespace @ 196..200 "    "
+            RBrace @ 200..201 "}"
+      Newline @ 201..202 "\n"
+      RBrace @ 202..203 "}"
+  FnDef @ 203..275
+    Newline @ 203..204 "\n"
+    Newline @ 204..205 "\n"
+    KwFn @ 205..207 "fn"
+    Name @ 207..212
+      Whitespace @ 207..208 " "
+      Ident @ 208..212 "main"
+    ParamList @ 212..214
+      LParen @ 212..213 "("
+      RParen @ 213..214 ")"
+    BlockExpr @ 214..275
+      Whitespace @ 214..215 " "
+      LBrace @ 215..216 "{"
+      LetStmt @ 216..240
+        Newline @ 216..217 "\n"
+        Whitespace @ 217..221 "    "
+        KwVal @ 221..224 "val"
+        IdentPat @ 224..226
+          Path @ 224..226
+            PathSegment @ 224..226
+              Whitespace @ 224..225 " "
+              Ident @ 225..226 "c"
+        Whitespace @ 226..227 " "
+        Eq @ 227..228 "="
+        CallExpr @ 228..240
+          PathExpr @ 228..235
+            Path @ 228..235
+              PathSegment @ 228..235
+                Whitespace @ 228..229 " "
+                Ident @ 229..235 "Circle"
+          ArgList @ 235..240
+            LParen @ 235..236 "("
+            LiteralExpr @ 236..239
+              FloatLit @ 236..239 "3.0"
+            RParen @ 239..240 ")"
+      LetStmt @ 240..260
+        Newline @ 240..241 "\n"
+        Whitespace @ 241..245 "    "
+        KwVal @ 245..248 "val"
+        IdentPat @ 248..250
+          Path @ 248..250
+            PathSegment @ 248..250
+              Whitespace @ 248..249 " "
+              Ident @ 249..250 "a"
+        Whitespace @ 250..251 " "
+        Eq @ 251..252 "="
+        CallExpr @ 252..260
+          PathExpr @ 252..257
+            Path @ 252..257
+              PathSegment @ 252..257
+                Whitespace @ 252..253 " "
+                Ident @ 253..257 "area"
+          ArgList @ 257..260
+            LParen @ 257..258 "("
+            PathExpr @ 258..259
+              Path @ 258..259
+                PathSegment @ 258..259
+                  Ident @ 258..259 "c"
+            RParen @ 259..260 ")"
+      ExprStmt @ 260..273
+        CallExpr @ 260..273
+          PathExpr @ 260..270
+            Path @ 260..270
+              PathSegment @ 260..270
+                Newline @ 260..261 "\n"
+                Whitespace @ 261..265 "    "
+                Ident @ 265..270 "print"
+          ArgList @ 270..273
+            LParen @ 270..271 "("
+            PathExpr @ 271..272
+              Path @ 271..272
+                PathSegment @ 271..272
+                  Ident @ 271..272 "a"
+            RParen @ 272..273 ")"
+      Newline @ 273..274 "\n"
+      RBrace @ 274..275 "}"

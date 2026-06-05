@@ -1,0 +1,11 @@
+FnDef(0) name=main vis=private params=[] return=_ {
+  VarStmt(4) Ident(2) i→2: _ = Lit(3) Int(0)
+  ExprStmt(5) LoopCond(6) Bin(13) <(Path(14) i→2, Lit(15) Int(10)) Block(7) {
+    tail: i→2 = Bin(10) +(Path(11) i→2, Lit(12) Int(1))
+  }
+  ValStmt(23) Ident(16) x→16: _ = Loop(17) Block(18) {
+    tail: Block(20) {
+      BreakStmt(22) Lit(21) Int(42)
+    }
+  }
+}

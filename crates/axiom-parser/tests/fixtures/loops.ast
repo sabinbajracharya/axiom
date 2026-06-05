@@ -1,0 +1,102 @@
+SourceFile @ 0..115
+  FnDef @ 0..114
+    KwFn @ 0..2 "fn"
+    Name @ 2..7
+      Whitespace @ 2..3 " "
+      Ident @ 3..7 "main"
+    ParamList @ 7..9
+      LParen @ 7..8 "("
+      RParen @ 8..9 ")"
+    BlockExpr @ 9..114
+      Whitespace @ 9..10 " "
+      LBrace @ 10..11 "{"
+      LetStmt @ 11..25
+        Newline @ 11..12 "\n"
+        Whitespace @ 12..16 "    "
+        KwVar @ 16..19 "var"
+        IdentPat @ 19..21
+          Path @ 19..21
+            PathSegment @ 19..21
+              Whitespace @ 19..20 " "
+              Ident @ 20..21 "i"
+        Whitespace @ 21..22 " "
+        Eq @ 22..23 "="
+        LiteralExpr @ 23..25
+          Whitespace @ 23..24 " "
+          IntLit @ 24..25 "0"
+      ExprStmt @ 25..70
+        LoopExpr @ 25..70
+          Newline @ 25..26 "\n"
+          Whitespace @ 26..30 "    "
+          KwLoop @ 30..34 "loop"
+          Whitespace @ 34..35 " "
+          KwIf @ 35..37 "if"
+          BinExpr @ 37..44
+            PathExpr @ 37..39
+              Path @ 37..39
+                PathSegment @ 37..39
+                  Whitespace @ 37..38 " "
+                  Ident @ 38..39 "i"
+            Whitespace @ 39..40 " "
+            Lt @ 40..41 "<"
+            LiteralExpr @ 41..44
+              Whitespace @ 41..42 " "
+              IntLit @ 42..44 "10"
+          BlockExpr @ 44..70
+            Whitespace @ 44..45 " "
+            LBrace @ 45..46 "{"
+            ExprStmt @ 46..64
+              AssignExpr @ 46..64
+                PathExpr @ 46..56
+                  Path @ 46..56
+                    PathSegment @ 46..56
+                      Newline @ 46..47 "\n"
+                      Whitespace @ 47..55 "        "
+                      Ident @ 55..56 "i"
+                Whitespace @ 56..57 " "
+                Eq @ 57..58 "="
+                BinExpr @ 58..64
+                  PathExpr @ 58..60
+                    Path @ 58..60
+                      PathSegment @ 58..60
+                        Whitespace @ 58..59 " "
+                        Ident @ 59..60 "i"
+                  Whitespace @ 60..61 " "
+                  Plus @ 61..62 "+"
+                  LiteralExpr @ 62..64
+                    Whitespace @ 62..63 " "
+                    IntLit @ 63..64 "1"
+            Newline @ 64..65 "\n"
+            Whitespace @ 65..69 "    "
+            RBrace @ 69..70 "}"
+      LetStmt @ 70..112
+        Newline @ 70..71 "\n"
+        Whitespace @ 71..75 "    "
+        KwVal @ 75..78 "val"
+        IdentPat @ 78..80
+          Path @ 78..80
+            PathSegment @ 78..80
+              Whitespace @ 78..79 " "
+              Ident @ 79..80 "x"
+        Whitespace @ 80..81 " "
+        Eq @ 81..82 "="
+        LoopExpr @ 82..112
+          Whitespace @ 82..83 " "
+          KwLoop @ 83..87 "loop"
+          BlockExpr @ 87..112
+            Whitespace @ 87..88 " "
+            LBrace @ 88..89 "{"
+            ExprStmt @ 89..106
+              BreakStmt @ 89..106
+                Newline @ 89..90 "\n"
+                Whitespace @ 90..98 "        "
+                KwBreak @ 98..103 "break"
+                LiteralExpr @ 103..106
+                  Whitespace @ 103..104 " "
+                  IntLit @ 104..106 "42"
+            Newline @ 106..107 "\n"
+            Whitespace @ 107..111 "    "
+            RBrace @ 111..112 "}"
+      Newline @ 112..113 "\n"
+      RBrace @ 113..114 "}"
+  Newline @ 114..115 "\n"

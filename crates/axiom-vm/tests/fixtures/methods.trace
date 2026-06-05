@@ -1,0 +1,8 @@
+[fn main] %0 = Const(Int(5))
+[fn main] Call double(%0)
+[fn double] %1 = BinOp Add(%0, %0)
+[fn double] Return %1
+[fn builtin] print(10) => ()
+[fn output] 10
+[fn main] 
+[fn main] Return %2

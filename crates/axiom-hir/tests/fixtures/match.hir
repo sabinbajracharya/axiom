@@ -1,0 +1,12 @@
+EnumDef(0) name=Shape vis=private variants=[
+  Variant(1) name=Circle(Float→<unresolved>)
+  Variant(2) name=Rect(Float→<unresolved>, Float→<unresolved>)
+  Variant(3) name=Empty
+]
+FnDef(4) name=describe vis=private params=[let s: Shape→0] return=Float→<unresolved> {
+  tail: Match(8) Path(9) s→5 {
+    Circle→1(Ident(11) r→11) => Bin(12) *(Path(13) r→11, Path(14) r→11)
+    Rect→2(Ident(16) w→16, Ident(17) h→17) => Bin(18) *(Path(19) w→16, Path(20) h→17)
+    Wild(21) => Lit(22) Float(0)
+  }
+}

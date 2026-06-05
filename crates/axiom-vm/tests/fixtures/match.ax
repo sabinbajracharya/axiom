@@ -11,3 +11,9 @@ fn describe(let s: Shape) -> Float {
         _ => 0.0,
     }
 }
+
+fn main() {
+    val c = Circle(3.0)
+    val a = describe(c)
+    print(a)
+}

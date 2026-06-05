@@ -1,14 +1,14 @@
-fn pick(: <error>) -> fn(<error>) -> Unit {
-  entry:
-  %1 = Const Unit
-  Return %1
-}
-
 fn main() -> fn() -> Unit {
   entry:
   %0 = Const Int(0)
   %1 = Call pick [%0]
   %2 = Const Unit
   Return %2
+}
+
+fn pick(: <error>) -> fn(<error>) -> Unit {
+  entry:
+  %1 = Const Unit
+  Return %1
 }
 

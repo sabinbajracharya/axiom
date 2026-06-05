@@ -1,0 +1,14 @@
+struct Point {
+    x: Float,
+    y: Float,
+}
+
+impl Point {
+    fn origin() -> Point {
+        Point { x: 0.0, y: 0.0 }
+    }
+
+    fn translate(inout self, dx: Float, dy: Float) {
+        self.x = self.x + dx
+    }
+}

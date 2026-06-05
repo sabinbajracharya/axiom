@@ -1,0 +1,15 @@
+fn describe(x: Int) -> fn(Int) -> Float {
+  entry:
+  Match %0 [Int(0) -> match_arm_1, _ -> match_arm_2] fallback match_arm_2
+  match_arm_1:
+  %2 = Const Float(1)
+  %1 = Copy %2
+  Jump match_merge_0
+  match_arm_2:
+  %3 = Const Float(0)
+  %1 = Copy %3
+  Jump match_merge_0
+  match_merge_0:
+  Return %1
+}
+

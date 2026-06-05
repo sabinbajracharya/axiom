@@ -1,0 +1,26 @@
+SourceFile @ 0..36
+  FnDef @ 0..36
+    KwFn @ 0..2 "fn"
+    Name @ 2..7
+      Whitespace @ 2..3 " "
+      Ident @ 3..7 "main"
+    ParamList @ 7..9
+      LParen @ 7..8 "("
+      RParen @ 8..9 ")"
+    BlockExpr @ 9..36
+      Whitespace @ 9..10 " "
+      LBrace @ 10..11 "{"
+      ExprStmt @ 11..34
+        CallExpr @ 11..34
+          PathExpr @ 11..17
+            Path @ 11..17
+              PathSegment @ 11..17
+                Whitespace @ 11..12 " "
+                Ident @ 12..17 "print"
+          ArgList @ 17..34
+            LParen @ 17..18 "("
+            LiteralExpr @ 18..33
+              StrLit @ 18..33 "\"Hello, Axiom!\""
+            RParen @ 33..34 ")"
+      Whitespace @ 34..35 " "
+      RBrace @ 35..36 "}"

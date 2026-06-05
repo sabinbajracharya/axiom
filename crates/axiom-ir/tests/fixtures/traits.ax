@@ -1,0 +1,12 @@
+trait Shape {
+    fn area(let self) -> Float;
+    fn name(let self) -> String {
+        "shape"
+    }
+}
+
+impl Shape for Circle {
+    fn area(let self) -> Float {
+        3.14159 * self.r * self.r
+    }
+}

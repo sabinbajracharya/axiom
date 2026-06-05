@@ -1,0 +1,9 @@
+[fn main] %0 = Const(Int(10))
+[fn main] %1 = Const(Int(5))
+[fn main] %2 = BinOp Add(%0, %1)
+[fn main] %0 = Copy %2
+[fn main] %3 = Const(Unit)
+[fn builtin] print(15) => ()
+[fn output] 15
+[fn main] 
+[fn main] Return %4

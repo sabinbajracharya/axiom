@@ -1,0 +1,3 @@
+fn update(inout p: Int) {
+    p = p + 1
+}

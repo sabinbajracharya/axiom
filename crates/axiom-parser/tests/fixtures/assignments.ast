@@ -1,0 +1,45 @@
+SourceFile @ 0..41
+  FnDef @ 0..41
+    KwFn @ 0..2 "fn"
+    Name @ 2..9
+      Whitespace @ 2..3 " "
+      Ident @ 3..9 "update"
+    ParamList @ 9..23
+      LParen @ 9..10 "("
+      Param @ 10..22
+        KwInout @ 10..15 "inout"
+        Whitespace @ 15..16 " "
+        Ident @ 16..17 "p"
+        Colon @ 17..18 ":"
+        PathType @ 18..22
+          Path @ 18..22
+            PathSegment @ 18..22
+              Whitespace @ 18..19 " "
+              Ident @ 19..22 "Int"
+      RParen @ 22..23 ")"
+    BlockExpr @ 23..41
+      Whitespace @ 23..24 " "
+      LBrace @ 24..25 "{"
+      ExprStmt @ 25..39
+        AssignExpr @ 25..39
+          PathExpr @ 25..31
+            Path @ 25..31
+              PathSegment @ 25..31
+                Newline @ 25..26 "\n"
+                Whitespace @ 26..30 "    "
+                Ident @ 30..31 "p"
+          Whitespace @ 31..32 " "
+          Eq @ 32..33 "="
+          BinExpr @ 33..39
+            PathExpr @ 33..35
+              Path @ 33..35
+                PathSegment @ 33..35
+                  Whitespace @ 33..34 " "
+                  Ident @ 34..35 "p"
+            Whitespace @ 35..36 " "
+            Plus @ 36..37 "+"
+            LiteralExpr @ 37..39
+              Whitespace @ 37..38 " "
+              IntLit @ 38..39 "1"
+      Newline @ 39..40 "\n"
+      RBrace @ 40..41 "}"
