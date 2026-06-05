@@ -13,7 +13,11 @@ use std::collections::HashMap;
 
 impl TypeChecker {
     pub(super) fn collect_pass(&mut self) {
-        self.register_builtin_traits();
+        // Trait *declarations* (Deinit/Equatable/Hashable/Ord) are no longer
+        // registered here — they are ordinary library traits in
+        // `stdlib/core/traits.ax`, collected via collect_trait_defs like any
+        // other trait. Only the primitive auto-impls remain compiler-side
+        // (until Phase B moves them to core/primitives.ax).
         self.register_builtin_impls();
         self.register_builtin_methods();
         self.collect_struct_defs();

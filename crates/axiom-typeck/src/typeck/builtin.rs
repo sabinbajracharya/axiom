@@ -8,8 +8,7 @@
 //!
 //! Built-in collection types: List<T>, Map<K, V>.
 
-use super::{ImplInfo, TraitInfo, TraitMethodInfo, TypeChecker};
-use crate::types::Ty;
+use super::{ImplInfo, TypeChecker};
 use axiom_hir::{Block, CallingConvention, FnDef, HirId, HirTy, HirTypeParam, Param, Visibility};
 use std::collections::HashMap;
 
@@ -64,69 +63,6 @@ fn named_param(id: HirId, convention: CallingConvention, name: &str, ty: HirTy) 
 }
 
 impl TypeChecker {
-    /// Register the four built-in trait definitions in the trait registry.
-    pub(super) fn register_builtin_traits(&mut self) {
-        self.trait_registry.insert(
-            "Deinit".to_string(),
-            TraitInfo {
-                name: "Deinit".to_string(),
-                def_id: HirId(0),
-                required_methods: vec![TraitMethodInfo {
-                    name: "drop".to_string(),
-                    params: vec![],
-                    return_type: Ty::Unit,
-                }],
-                default_methods: vec![],
-                supertraits: vec![],
-            },
-        );
-
-        self.trait_registry.insert(
-            "Equatable".to_string(),
-            TraitInfo {
-                name: "Equatable".to_string(),
-                def_id: HirId(0),
-                required_methods: vec![TraitMethodInfo {
-                    name: "eq".to_string(),
-                    params: vec![],
-                    return_type: Ty::Bool,
-                }],
-                default_methods: vec![],
-                supertraits: vec![],
-            },
-        );
-
-        self.trait_registry.insert(
-            "Hashable".to_string(),
-            TraitInfo {
-                name: "Hashable".to_string(),
-                def_id: HirId(0),
-                required_methods: vec![TraitMethodInfo {
-                    name: "hash".to_string(),
-                    params: vec![],
-                    return_type: Ty::Int,
-                }],
-                default_methods: vec![],
-                supertraits: vec!["Equatable".to_string()],
-            },
-        );
-
-        self.trait_registry.insert(
-            "Ord".to_string(),
-            TraitInfo {
-                name: "Ord".to_string(),
-                def_id: HirId(0),
-                required_methods: vec![TraitMethodInfo {
-                    name: "cmp".to_string(),
-                    params: vec![],
-                    return_type: Ty::Unit,
-                }],
-                default_methods: vec![],
-                supertraits: vec!["Equatable".to_string()],
-            },
-        );
-    }
-
     /// Register inherent methods for built-in types (List, Map, String).
     pub(super) fn register_builtin_methods(&mut self) {
         self.register_list_methods();
@@ -290,16 +226,6 @@ mod tests {
     }
 
     #[test]
-    fn test_builtin_traits_registered() {
-        let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_traits();
-        assert!(checker.trait_registry.contains_key("Deinit"));
-        assert!(checker.trait_registry.contains_key("Equatable"));
-        assert!(checker.trait_registry.contains_key("Hashable"));
-        assert!(checker.trait_registry.contains_key("Ord"));
-    }
-
-    #[test]
     fn test_builtin_deinit_auto_impl() {
         let mut checker = make_checker("fn main() {}");
         checker.register_builtin_impls();
@@ -345,22 +271,6 @@ mod tests {
             .filter(|i| i.trait_name.as_deref() == Some("Ord"))
             .collect();
         assert_eq!(impls.len(), 4);
-    }
-
-    #[test]
-    fn test_builtin_supertrait_hashable_requires_equatable() {
-        let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_traits();
-        let hashable = checker.trait_registry.get("Hashable").unwrap();
-        assert_eq!(hashable.supertraits, vec!["Equatable"]);
-    }
-
-    #[test]
-    fn test_builtin_supertrait_ord_requires_equatable() {
-        let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_traits();
-        let ord = checker.trait_registry.get("Ord").unwrap();
-        assert_eq!(ord.supertraits, vec!["Equatable"]);
     }
 
     #[test]

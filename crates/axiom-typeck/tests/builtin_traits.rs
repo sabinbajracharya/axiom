@@ -1,18 +1,12 @@
-//! Integration tests for built-in traits: Deinit, Equatable, Hashable, Ord.
+//! Integration tests for the core traits: Deinit, Equatable, Hashable, Ord.
 //!
-//! These traits are registered automatically by the compiler. Their auto-impls
-//! cover primitives (Int, Float, Bool, String) and Deinit covers all types.
+//! These are ordinary library traits declared in `stdlib/core/traits.ax`, so
+//! the tests compile user source on top of the embedded stdlib (the same path
+//! `forge run` uses). Their primitive auto-impls cover Int/Float/Bool/String,
+//! and Deinit covers all types.
 
-use axiom_hir::lower;
-use axiom_parser::ast::AstNode;
-use axiom_typeck::check;
-
-#[allow(clippy::unwrap_used)]
 fn check_source(source: &str) -> axiom_typeck::Thir {
-    let result = axiom_parser::parse(source);
-    let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source, None);
-    check(hir)
+    axiom_typeck::check_modules(&axiom_stdlib::with_main(source))
 }
 
 // ── Deinit bound ────────────────────────────────────────────────────────────
@@ -266,21 +260,22 @@ fn main() { use_both(Foo { x: 1 }) }",
     );
 }
 
-// ── User impl overrides built-in ────────────────────────────────────────────
+// ── User-defined trait + impl satisfies a bound ──────────────────────────────
 
 #[test]
-fn test_user_can_define_equatable() {
-    // User defines their own Equatable trait — overrides the built-in.
+fn test_user_defined_trait_satisfies_bound() {
+    // A user trait with an explicit impl satisfies a bound on that trait,
+    // alongside the core traits from stdlib.
     let thir = check_source(
-        "trait Equatable {}
+        "trait Drawable {}
 struct Foo {}
-impl Equatable for Foo {}
-fn eq_test<T: Equatable>(let x: T) { }
-fn main() { eq_test(Foo {}) }",
+impl Drawable for Foo {}
+fn draw<T: Drawable>(let x: T) { }
+fn main() { draw(Foo {}) }",
     );
     assert!(
         thir.diagnostics.is_empty(),
-        "expected no diagnostics for user-defined Equatable, got: {:?}",
+        "expected no diagnostics for user-defined trait bound, got: {:?}",
         thir.diagnostics
     );
 }
