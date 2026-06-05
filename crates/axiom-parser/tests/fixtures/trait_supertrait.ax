@@ -1,0 +1,11 @@
+trait Equatable {
+    fn eq(let self, other: Self) -> Bool;
+}
+
+trait Hashable: Equatable {
+    fn hash(let self) -> Int;
+}
+
+trait Ord: Equatable + Hashable {
+    fn lt(let self, other: Self) -> Bool;
+}

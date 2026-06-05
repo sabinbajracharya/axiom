@@ -189,6 +189,10 @@ impl TraitDef {
     pub fn generic_param_list(&self) -> Option<GenericParamList> {
         child_node(&self.0)
     }
+    /// Supertrait bounds from `trait X: A + B { .. }`, if present.
+    pub fn supertraits(&self) -> Option<TraitBounds> {
+        child_node(&self.0)
+    }
     pub fn item_list(&self) -> Option<TraitItemList> {
         child_node(&self.0)
     }

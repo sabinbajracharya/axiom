@@ -258,6 +258,10 @@ fn trait_def(p: &mut Parser, m: Marker) {
     p.bump(); // trait
     name(p);
     opt_generic_params(p);
+    // Optional supertrait list: `trait Hashable: Equatable + Ord { .. }`.
+    if p.eat(K::Colon) {
+        trait_bounds(p);
+    }
     member_list(p, K::TraitItemList);
     m.complete(p, K::TraitDef);
 }

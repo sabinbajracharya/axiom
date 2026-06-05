@@ -1,0 +1,146 @@
+SourceFile @ 0..202
+  TraitDef @ 0..61
+    KwTrait @ 0..5 "trait"
+    Name @ 5..15
+      Whitespace @ 5..6 " "
+      Ident @ 6..15 "Equatable"
+    TraitItemList @ 15..61
+      Whitespace @ 15..16 " "
+      LBrace @ 16..17 "{"
+      FnDef @ 17..59
+        Newline @ 17..18 "\n"
+        Whitespace @ 18..22 "    "
+        KwFn @ 22..24 "fn"
+        Name @ 24..27
+          Whitespace @ 24..25 " "
+          Ident @ 25..27 "eq"
+        ParamList @ 27..50
+          LParen @ 27..28 "("
+          SelfParam @ 28..36
+            KwLet @ 28..31 "let"
+            Whitespace @ 31..32 " "
+            KwSelf @ 32..36 "self"
+          Comma @ 36..37 ","
+          Param @ 37..49
+            Whitespace @ 37..38 " "
+            Ident @ 38..43 "other"
+            Colon @ 43..44 ":"
+            PathType @ 44..49
+              Path @ 44..49
+                PathSegment @ 44..49
+                  Whitespace @ 44..45 " "
+                  KwSelfType @ 45..49 "Self"
+          RParen @ 49..50 ")"
+        Whitespace @ 50..51 " "
+        Arrow @ 51..53 "->"
+        RetType @ 53..58
+          PathType @ 53..58
+            Path @ 53..58
+              PathSegment @ 53..58
+                Whitespace @ 53..54 " "
+                Ident @ 54..58 "Bool"
+        Semicolon @ 58..59 ";"
+      Newline @ 59..60 "\n"
+      RBrace @ 60..61 "}"
+  TraitDef @ 61..122
+    Newline @ 61..62 "\n"
+    Newline @ 62..63 "\n"
+    KwTrait @ 63..68 "trait"
+    Name @ 68..77
+      Whitespace @ 68..69 " "
+      Ident @ 69..77 "Hashable"
+    Colon @ 77..78 ":"
+    TraitBounds @ 78..88
+      PathType @ 78..88
+        Path @ 78..88
+          PathSegment @ 78..88
+            Whitespace @ 78..79 " "
+            Ident @ 79..88 "Equatable"
+    TraitItemList @ 88..122
+      Whitespace @ 88..89 " "
+      LBrace @ 89..90 "{"
+      FnDef @ 90..120
+        Newline @ 90..91 "\n"
+        Whitespace @ 91..95 "    "
+        KwFn @ 95..97 "fn"
+        Name @ 97..102
+          Whitespace @ 97..98 " "
+          Ident @ 98..102 "hash"
+        ParamList @ 102..112
+          LParen @ 102..103 "("
+          SelfParam @ 103..111
+            KwLet @ 103..106 "let"
+            Whitespace @ 106..107 " "
+            KwSelf @ 107..111 "self"
+          RParen @ 111..112 ")"
+        Whitespace @ 112..113 " "
+        Arrow @ 113..115 "->"
+        RetType @ 115..119
+          PathType @ 115..119
+            Path @ 115..119
+              PathSegment @ 115..119
+                Whitespace @ 115..116 " "
+                Ident @ 116..119 "Int"
+        Semicolon @ 119..120 ";"
+      Newline @ 120..121 "\n"
+      RBrace @ 121..122 "}"
+  TraitDef @ 122..201
+    Newline @ 122..123 "\n"
+    Newline @ 123..124 "\n"
+    KwTrait @ 124..129 "trait"
+    Name @ 129..133
+      Whitespace @ 129..130 " "
+      Ident @ 130..133 "Ord"
+    Colon @ 133..134 ":"
+    TraitBounds @ 134..155
+      PathType @ 134..144
+        Path @ 134..144
+          PathSegment @ 134..144
+            Whitespace @ 134..135 " "
+            Ident @ 135..144 "Equatable"
+      Whitespace @ 144..145 " "
+      Plus @ 145..146 "+"
+      PathType @ 146..155
+        Path @ 146..155
+          PathSegment @ 146..155
+            Whitespace @ 146..147 " "
+            Ident @ 147..155 "Hashable"
+    TraitItemList @ 155..201
+      Whitespace @ 155..156 " "
+      LBrace @ 156..157 "{"
+      FnDef @ 157..199
+        Newline @ 157..158 "\n"
+        Whitespace @ 158..162 "    "
+        KwFn @ 162..164 "fn"
+        Name @ 164..167
+          Whitespace @ 164..165 " "
+          Ident @ 165..167 "lt"
+        ParamList @ 167..190
+          LParen @ 167..168 "("
+          SelfParam @ 168..176
+            KwLet @ 168..171 "let"
+            Whitespace @ 171..172 " "
+            KwSelf @ 172..176 "self"
+          Comma @ 176..177 ","
+          Param @ 177..189
+            Whitespace @ 177..178 " "
+            Ident @ 178..183 "other"
+            Colon @ 183..184 ":"
+            PathType @ 184..189
+              Path @ 184..189
+                PathSegment @ 184..189
+                  Whitespace @ 184..185 " "
+                  KwSelfType @ 185..189 "Self"
+          RParen @ 189..190 ")"
+        Whitespace @ 190..191 " "
+        Arrow @ 191..193 "->"
+        RetType @ 193..198
+          PathType @ 193..198
+            Path @ 193..198
+              PathSegment @ 193..198
+                Whitespace @ 193..194 " "
+                Ident @ 194..198 "Bool"
+        Semicolon @ 198..199 ";"
+      Newline @ 199..200 "\n"
+      RBrace @ 200..201 "}"
+  Newline @ 201..202 "\n"
