@@ -4,10 +4,5 @@
 [fn main] %2 = Const(Unit)
 [fn main] Match %4294967295 => match_arm_1
 [fn main] VariantPayload %4294967295 [0]
-[fn builtin] println(5) => ()
-[fn output] 5
-
-[fn main] 
-[fn main] %6 = Copy %7
-[fn main] Jump match_merge_0
-[fn main] Return %6
+[fn main] Call println(%3)
+[fn println] %1 = Const(Int(1))

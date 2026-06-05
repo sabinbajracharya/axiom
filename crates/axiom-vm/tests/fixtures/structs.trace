@@ -4,8 +4,5 @@
 [fn main] %4294967295 = Copy %2
 [fn main] %3 = Const(Unit)
 [fn main] %4 = Field %4294967295.x
-[fn builtin] println(10) => ()
-[fn output] 10
-
-[fn main] 
-[fn main] Return %5
+[fn main] Call println(%4)
+[fn println] %1 = Const(Int(1))

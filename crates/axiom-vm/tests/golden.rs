@@ -17,9 +17,13 @@ fn normalize(s: &str) -> String {
 }
 
 fn run_with_trace(source: &str) -> String {
-    let result = axiom_parser::parse(source);
+    // Prepend the stdlib so print/println resolve to the real `stdlib/io.ax`
+    // functions (which call core::platform::write) — there are no print/println
+    // VM builtins. Mirrors the single-file compilation path.
+    let combined = axiom_typeck::with_stdlib(source);
+    let result = axiom_parser::parse(&combined);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = axiom_hir::lower(&root, source, None);
+    let hir = axiom_hir::lower(&root, &combined, None);
 
     let thir = axiom_typeck::check(hir);
     let mono = axiom_typeck::monomorphize(&thir);

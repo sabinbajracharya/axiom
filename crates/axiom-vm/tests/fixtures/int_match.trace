@@ -3,10 +3,20 @@
 [fn main] %1 = Const(Unit)
 [fn main] Match %4294967295 => match_arm_2
 [fn main] %5 = Const(String("the answer"))
-[fn builtin] println(the answer) => ()
+[fn main] Call println(%5)
+[fn println] %1 = Const(Int(1))
+[fn println] 
+[fn extern] write(the answer) => ()
 [fn output] the answer
-
-[fn main] 
+[fn println] 
+[fn println] %4 = Const(Int(1))
+[fn println] %5 = Const(String("\\n"))
+[fn println] 
+[fn extern] write(\n) => ()
+[fn output] \n
+[fn println] 
+[fn println] %8 = Const(Unit)
+[fn println] Return %8
 [fn main] %2 = Copy %6
 [fn main] Jump match_merge_0
 [fn main] Return %2

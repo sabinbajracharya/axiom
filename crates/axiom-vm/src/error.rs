@@ -45,6 +45,9 @@ pub enum VmError {
     #[error("builtin not found: {name}")]
     BuiltinNotFound { name: String },
 
+    #[error("extern function not implemented in the VM: {name}")]
+    ExternNotImplemented { name: String },
+
     #[error("type error: expected {expected}, got {got}")]
     TypeError { expected: String, got: String },
 }

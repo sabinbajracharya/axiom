@@ -71,13 +71,17 @@ impl Vm {
                     return Ok(());
                 }
 
-                // Extern functions (extern "C" fn) are dispatched as builtins.
-                // They have no body in the IR — the Rust-side builtin table
-                // provides the implementation.
+                // Extern functions (extern "C" fn) have no body in the IR — the
+                // platform supplies the implementation. Dispatched off the
+                // is_extern flag through the closed PlatformFn enum, not by name.
                 if let Some(func) = self.ir.functions.iter().find(|f| f.name == function) {
                     if func.is_extern {
-                        let val = crate::exec::builtins::call_builtin(
-                            &function,
+                        let platform_fn = crate::exec::builtins::resolve_extern(&function)
+                            .ok_or_else(|| VmError::ExternNotImplemented {
+                                name: function.clone(),
+                            })?;
+                        let val = crate::exec::builtins::call_extern(
+                            platform_fn,
                             arg_vals,
                             &mut self.trace,
                         )?;

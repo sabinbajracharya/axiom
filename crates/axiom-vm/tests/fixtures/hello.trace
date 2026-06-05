@@ -1,6 +1,16 @@
 [fn main] %0 = Const(String("hello world"))
-[fn builtin] println(hello world) => ()
+[fn main] Call println(%0)
+[fn println] %1 = Const(Int(1))
+[fn println] 
+[fn extern] write(hello world) => ()
 [fn output] hello world
-
-[fn main] 
+[fn println] 
+[fn println] %4 = Const(Int(1))
+[fn println] %5 = Const(String("\\n"))
+[fn println] 
+[fn extern] write(\n) => ()
+[fn output] \n
+[fn println] 
+[fn println] %8 = Const(Unit)
+[fn println] Return %8
 [fn main] Return %1

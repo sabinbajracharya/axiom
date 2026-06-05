@@ -35,6 +35,7 @@ pub use coverage::{check_all, TypeckCoverageError};
 pub use error::TypeDiagnostic;
 pub use mono::{monomorphize, MonoInstance, MonoResult};
 pub use serialize::serialize;
+pub use stdlib::with_stdlib;
 pub use thir::{Thir, TypeMap};
 pub use typeck::check;
 pub use types::{EnumTy, FnTy, StructTy, Ty, TypeParamId};

@@ -119,10 +119,16 @@ fn lower_method_call(e: &axiom_hir::MethodCallExpr, ctx: &mut FnLowerCtx) -> Reg
 }
 
 /// Extract the type name from a Ty for method name qualification.
+/// Primitives qualify too, so their intrinsic methods (e.g. `String::as_bytes`)
+/// dispatch correctly in the VM rather than being looked up as bare functions.
 fn type_name_from_ty(ty: &axiom_typeck::Ty) -> Option<String> {
     match ty {
         axiom_typeck::Ty::Struct(s) => Some(s.name.clone()),
         axiom_typeck::Ty::Enum(e) => Some(e.name.clone()),
+        axiom_typeck::Ty::String => Some("String".to_string()),
+        axiom_typeck::Ty::Int => Some("Int".to_string()),
+        axiom_typeck::Ty::Float => Some("Float".to_string()),
+        axiom_typeck::Ty::Bool => Some("Bool".to_string()),
         _ => None,
     }
 }

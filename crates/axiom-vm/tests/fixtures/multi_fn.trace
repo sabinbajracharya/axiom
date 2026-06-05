@@ -11,8 +11,5 @@
 [fn sum_of_squares] Return %4
 [fn main] %4294967295 = Copy %2
 [fn main] %3 = Const(Unit)
-[fn builtin] println(25) => ()
-[fn output] 25
-
-[fn main] 
-[fn main] Return %4
+[fn main] Call println(%4294967295)
+[fn println] %1 = Const(Int(1))

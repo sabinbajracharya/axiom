@@ -5,10 +5,20 @@
 [fn main] %3 = BinOp Gt(%4294967295, %2)
 [fn main] Branch %3 => then_0
 [fn main] %4 = Const(String("big"))
-[fn builtin] println(big) => ()
+[fn main] Call println(%4)
+[fn println] %1 = Const(Int(1))
+[fn println] 
+[fn extern] write(big) => ()
 [fn output] big
-
-[fn main] 
+[fn println] 
+[fn println] %4 = Const(Int(1))
+[fn println] %5 = Const(String("\\n"))
+[fn println] 
+[fn extern] write(\n) => ()
+[fn output] \n
+[fn println] 
+[fn println] %8 = Const(Unit)
+[fn println] Return %8
 [fn main] %6 = Copy %5
 [fn main] Jump if_merge_1
 [fn main] %10 = Copy %6

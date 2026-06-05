@@ -5,8 +5,5 @@
 [fn add] Return %2
 [fn main] %4294967295 = Copy %2
 [fn main] %3 = Const(Unit)
-[fn builtin] println(7) => ()
-[fn output] 7
-
-[fn main] 
-[fn main] Return %4
+[fn main] Call println(%4294967295)
+[fn println] %1 = Const(Int(1))

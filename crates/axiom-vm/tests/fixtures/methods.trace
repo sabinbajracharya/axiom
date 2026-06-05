@@ -7,7 +7,5 @@
 [fn main] MethodCall %2.Point::dist(%5)
 [fn Point::dist] %2 = Field %0.x
 [fn Point::dist] Return %2
-[fn builtin] print(3) => ()
-[fn output] 3
-[fn main] 
-[fn main] Return %7
+[fn main] Call print(%6)
+[fn print] %1 = Const(Int(1))

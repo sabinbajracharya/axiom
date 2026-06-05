@@ -7,7 +7,5 @@
 [fn Circle::area] %4 = Field %0.r
 [fn Circle::area] %5 = BinOp Mul(%3, %4)
 [fn Circle::area] Return %5
-[fn builtin] print(28.274309999999996) => ()
-[fn output] 28.274309999999996
-[fn main] 
-[fn main] Return %3
+[fn main] Call print(%2)
+[fn print] %1 = Const(Int(1))

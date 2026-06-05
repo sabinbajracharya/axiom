@@ -28,16 +28,21 @@ pub(super) fn call_name(name_ref: &NameRef) -> String {
     }
 }
 
-/// Look up a builtin function by name. Returns `None` for unknown names.
+/// Look up a compiler-intrinsic function by name. Returns `None` for unknown
+/// names.
 ///
-/// In multi-file mode, `print`/`println` resolve to real FnDefs in the
-/// stdlib HIR and this lookup isn't used. In single-file mode the stdlib
-/// HIR isn't loaded, so the type checker falls back to these hardcoded
-/// types for the extern declarations.
+/// `print`/`println` are real functions in `stdlib/io.ax`. The paths that
+/// *prepend* the stdlib (`with_stdlib` — single-file check, VM) resolve them
+/// there and never reach this fallback. But the path that loads the stdlib as
+/// modules and expects a **prelude** to auto-import `print`/`println` has no
+/// prelude yet (it is a deferred prerequisite — see `modules-design.md` Phase 4
+/// and `extern-buffers-and-path-unification.md`). Until the prelude lands, these
+/// entries stand in for it so bare `print`/`println` resolve. **Remove once the
+/// prelude exists.**
 pub(super) fn builtin_fn(name: &str) -> Option<Ty> {
     match name {
-        // print/println accept any type — use a type parameter so the unifier
-        // binds T to the actual argument type at each call site.
+        // Interim prelude stand-in (see above). print/println accept any type —
+        // a type parameter lets the unifier bind it at each call site.
         "print" | "println" => Some(Ty::Fn(crate::types::FnTy {
             params: vec![Ty::TypeParam(crate::types::TypeParamId {
                 name: "T".to_string(),

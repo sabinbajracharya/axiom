@@ -5,7 +5,5 @@
 [fn describe] %1 = Copy %2
 [fn describe] Jump match_merge_0
 [fn describe] Return %1
-[fn builtin] print(1) => ()
-[fn output] 1
-[fn main] 
-[fn main] Return %2
+[fn main] Call print(%1)
+[fn print] %1 = Const(Int(1))

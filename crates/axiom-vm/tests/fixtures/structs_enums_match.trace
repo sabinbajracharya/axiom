@@ -7,7 +7,5 @@
 [fn area] %4 = Copy %5
 [fn area] Jump match_merge_0
 [fn area] Return %4
-[fn builtin] print(9) => ()
-[fn output] 9
-[fn main] 
-[fn main] Return %3
+[fn main] Call print(%2)
+[fn print] %1 = Const(Int(1))

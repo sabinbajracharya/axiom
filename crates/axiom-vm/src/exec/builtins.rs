@@ -1,40 +1,34 @@
-//! Builtin functions — VM-level implementations for extern "C" fns and
-//! compiler-intrinsic methods.
+//! Builtin functions — VM-level implementations for compiler-intrinsic methods
+//! and the platform extern boundary.
 //!
-//! Single-file path: `print`/`println` are dispatched here as name-based
-//! builtins (stdlib HIR not loaded).
+//! Two distinct mechanisms, kept separate:
+//! - **Platform externs** (`core::platform::write`/`read`/`close`) are dispatched
+//!   off the `IrFunction.is_extern` flag through the closed [`PlatformFn`] enum —
+//!   never by ad-hoc name matching. The Rust bodies here stand in until real FFI
+//!   (`dlsym`) lands with the native backend.
+//! - **Method intrinsics** (`String::len`, `String::as_bytes`) are dispatched via
+//!   the method-call builtin check.
 //!
-//! Multi-file path: `write` is dispatched here via the `is_extern` flag on
-//! its IR function entry. `String::len` and `String::as_bytes` are dispatched
-//! via the method-call builtin check.
+//! `print`/`println` are NOT builtins — they are real Axiom functions in
+//! `stdlib/io.ax` that call `core::platform::write`.
 
 use crate::error::VmError;
 use crate::trace::ExecutionTrace;
 use crate::value::Value;
 
-/// Check if a function/method name is a builtin.
-/// Accepts both bare names (single-file) and module-qualified names (multi-file).
+/// Check if a method name is a compiler intrinsic dispatched in the VM.
+/// (Platform externs are dispatched via `is_extern`, not this check.)
 pub fn is_builtin(name: &str) -> bool {
-    matches!(
-        name,
-        "print"
-            | "println"
-            | "write"
-            | "core::platform::write"
-            | "String::len"
-            | "String::as_bytes"
-    )
+    matches!(name, "String::len" | "String::as_bytes")
 }
 
-/// Call a builtin function.
+/// Call a method intrinsic.
 pub fn call_builtin(
     name: &str,
     args: Vec<Value>,
-    trace: &mut Option<ExecutionTrace>,
+    _trace: &mut Option<ExecutionTrace>,
 ) -> Result<Value, VmError> {
     match name {
-        "print" | "println" => builtin_print(name, args, trace),
-        "write" | "core::platform::write" => builtin_write(args, trace),
         "String::len" => builtin_string_len(args),
         "String::as_bytes" => builtin_string_as_bytes(args),
         _ => Err(VmError::BuiltinNotFound {
@@ -43,38 +37,53 @@ pub fn call_builtin(
     }
 }
 
-/// Legacy `print`/`println` builtin — used by the single-file path.
-fn builtin_print(
-    name: &str,
+/// The closed set of `core::platform` extern fns. Dispatched off the
+/// `IrFunction.is_extern` flag via [`resolve_extern`] — the single place platform
+/// fns are named. Exhaustive `match` (no wildcard) guards against silent drift,
+/// mirroring the dual-backend divergence guards (DESIGN_SPEC §13.2).
+pub enum PlatformFn {
+    Write,
+    Read,
+    Close,
+}
+
+/// Map an extern fn's IR name to its [`PlatformFn`]. Accepts both bare
+/// (single-file) and module-qualified (`core::platform::write`) forms by
+/// matching the final path segment.
+pub fn resolve_extern(name: &str) -> Option<PlatformFn> {
+    match name.rsplit("::").next().unwrap_or(name) {
+        "write" => Some(PlatformFn::Write),
+        "read" => Some(PlatformFn::Read),
+        "close" => Some(PlatformFn::Close),
+        _ => None,
+    }
+}
+
+/// Invoke a platform extern. (Real FFI replaces these bodies with the native backend.)
+pub fn call_extern(
+    f: PlatformFn,
     args: Vec<Value>,
     trace: &mut Option<ExecutionTrace>,
 ) -> Result<Value, VmError> {
-    let text: String = args
-        .iter()
-        .map(|v| v.to_string())
-        .collect::<Vec<_>>()
-        .join(" ");
-    if name == "println" {
-        println!("{text}");
-    } else {
-        print!("{text}");
+    match f {
+        PlatformFn::Write => builtin_write(args, trace),
+        // No-op for the standard streams the VM supports; reports success.
+        PlatformFn::Close => Ok(Value::Int(0)),
+        // The tree-walking VM has no stdin; real input waits for the native backend.
+        PlatformFn::Read => Err(VmError::ExternNotImplemented {
+            name: "read".to_string(),
+        }),
     }
-    if let Some(t) = trace {
-        let suffix = if name == "println" { "\n" } else { "" };
-        t.record("builtin", format!("{name}({text})"), Some(Value::Unit));
-        t.record("output", format!("{text}{suffix}"), None);
-    }
-    Ok(Value::Unit)
 }
 
-/// `write(fd, buf: &[U8])` — platform I/O primitive.
+/// `write(fd, buf: Bytes)` — platform I/O primitive.
 /// Writes raw bytes to stdout (fd 1) or stderr (fd 2).
 fn builtin_write(args: Vec<Value>, trace: &mut Option<ExecutionTrace>) -> Result<Value, VmError> {
     let bytes = extract_bytes_arg(&args, 1)?;
     let text = String::from_utf8_lossy(&bytes).to_string();
     print!("{text}");
     if let Some(t) = trace {
-        t.record("builtin", format!("write({text})"), Some(Value::Unit));
+        t.record("extern", format!("write({text})"), Some(Value::Unit));
         t.record("output", text, None);
     }
     Ok(Value::Unit)
@@ -127,40 +136,50 @@ mod tests {
 
     #[test]
     fn test_is_builtin() {
-        assert!(is_builtin("print"));
-        assert!(is_builtin("println"));
-        assert!(is_builtin("write"));
+        // Only method intrinsics — print/println/write are NOT builtins.
         assert!(is_builtin("String::len"));
         assert!(is_builtin("String::as_bytes"));
+        assert!(!is_builtin("print"));
+        assert!(!is_builtin("println"));
+        assert!(!is_builtin("write"));
         assert!(!is_builtin("main"));
     }
 
     #[test]
-    fn test_print_returns_unit() {
-        let result = call_builtin("print", vec![Value::Int(42)], &mut None).unwrap();
-        assert_eq!(result, Value::Unit);
+    fn test_resolve_extern_bare_and_qualified() {
+        assert!(matches!(resolve_extern("write"), Some(PlatformFn::Write)));
+        assert!(matches!(
+            resolve_extern("core::platform::write"),
+            Some(PlatformFn::Write)
+        ));
+        assert!(matches!(resolve_extern("read"), Some(PlatformFn::Read)));
+        assert!(matches!(resolve_extern("close"), Some(PlatformFn::Close)));
+        assert!(resolve_extern("println").is_none());
     }
 
     #[test]
-    fn test_print_multiple_args() {
-        let result = call_builtin(
-            "println",
-            vec![Value::String("hello".into()), Value::Int(42)],
-            &mut None,
-        )
-        .unwrap();
-        assert_eq!(result, Value::Unit);
-    }
-
-    #[test]
-    fn test_write_returns_unit() {
-        let result = call_builtin(
-            "write",
+    fn test_call_extern_write_returns_unit() {
+        let result = call_extern(
+            PlatformFn::Write,
             vec![Value::Int(1), Value::Bytes(b"hi".to_vec())],
             &mut None,
         )
         .unwrap();
         assert_eq!(result, Value::Unit);
+    }
+
+    #[test]
+    fn test_call_extern_close_succeeds() {
+        let result = call_extern(PlatformFn::Close, vec![Value::Int(1)], &mut None).unwrap();
+        assert_eq!(result, Value::Int(0));
+    }
+
+    #[test]
+    fn test_call_extern_read_not_implemented() {
+        assert!(matches!(
+            call_extern(PlatformFn::Read, vec![], &mut None),
+            Err(VmError::ExternNotImplemented { .. })
+        ));
     }
 
     #[test]
