@@ -195,6 +195,7 @@ impl TypeChecker {
                     // Handled by collect_trait_defs / collect_impl_defs.
                 }
                 Item::SubscriptDef(_) => {}
+                Item::UseItem(_) => {}
             }
         }
     }

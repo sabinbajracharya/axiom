@@ -28,6 +28,7 @@ fn serialize_item(item: &Item, depth: usize, out: &mut String) {
         Item::TraitDef(t) => serialize_trait_def(t, depth, out),
         Item::ImplDef(i) => serialize_impl_def(i, depth, out),
         Item::SubscriptDef(s) => serialize_subscript_def(s, depth, out),
+        Item::UseItem(u) => serialize_use_item(u, depth, out),
     }
 }
 
@@ -161,6 +162,37 @@ fn serialize_subscript_def(s: &SubscriptDef, depth: usize, out: &mut String) {
     }
     out.push_str(" body\n");
     serialize_block(&s.body, depth + 1, out);
+}
+
+fn serialize_use_item(u: &UseItem, depth: usize, out: &mut String) {
+    indent(out, depth);
+    out.push_str(&format!("UseItem({}) ", u.id));
+    serialize_use_tree(&u.tree, out);
+    out.push('\n');
+}
+
+fn serialize_use_tree(tree: &UseTree, out: &mut String) {
+    out.push_str(&tree.path.join("::"));
+    match &tree.kind {
+        UseTreeKind::Single { rename } => {
+            if let Some(alias) = rename {
+                out.push_str(&format!(" as {alias}"));
+            }
+        }
+        UseTreeKind::Group(trees) => {
+            out.push('{');
+            for (i, t) in trees.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                serialize_use_tree(t, out);
+            }
+            out.push('}');
+        }
+        UseTreeKind::Glob => {
+            out.push_str("::*");
+        }
+    }
 }
 
 fn fmt_name_ref(nr: &NameRef) -> String {

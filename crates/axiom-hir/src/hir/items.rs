@@ -12,6 +12,7 @@ pub enum Item {
     TraitDef(TraitDef),
     ImplDef(ImplDef),
     SubscriptDef(SubscriptDef),
+    UseItem(UseItem),
 }
 
 #[derive(Debug, Clone)]
@@ -104,4 +105,34 @@ pub struct SubscriptDef {
     pub params: Vec<Param>,
     pub return_type: Option<HirTy>,
     pub body: Block,
+}
+
+// ── Use items ─────────────────────────────────────────────────────────────────
+
+/// A `use` declaration: `use foo::{bar, baz};`
+#[derive(Debug, Clone)]
+pub struct UseItem {
+    pub id: HirId,
+    pub visibility: Visibility,
+    pub tree: UseTree,
+}
+
+/// A use tree: a path with either a single import, a group, or a glob.
+#[derive(Debug, Clone)]
+pub struct UseTree {
+    /// Path segments (e.g. `["foo", "bar"]` for `foo::bar`).
+    pub path: Vec<String>,
+    /// What this tree imports.
+    pub kind: UseTreeKind,
+}
+
+/// The kind of import a use tree represents.
+#[derive(Debug, Clone)]
+pub enum UseTreeKind {
+    /// A single name import: `use foo::bar` or `use foo::bar as baz`.
+    Single { rename: Option<String> },
+    /// A grouped import: `use foo::{bar, baz}`.
+    Group(Vec<UseTree>),
+    /// A glob import: `use foo::*`.
+    Glob,
 }

@@ -105,6 +105,9 @@ fn collect_item_ids(item: &axiom_hir::Item, ids: &mut Vec<(HirId, String)>) {
         axiom_hir::Item::SubscriptDef(s) => {
             ids.push((s.id, "SubscriptDef".to_string()));
         }
+        axiom_hir::Item::UseItem(u) => {
+            ids.push((u.id, "UseItem".to_string()));
+        }
     }
 }
 

@@ -64,7 +64,8 @@ fn check_item(item: &Item, diagnosed: &[String], errors: &mut Vec<CoverageError>
         | Item::EnumDef(_)
         | Item::TraitDef(_)
         | Item::ImplDef(_)
-        | Item::SubscriptDef(_) => {}
+        | Item::SubscriptDef(_)
+        | Item::UseItem(_) => {}
     }
 }
 

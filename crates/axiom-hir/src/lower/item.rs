@@ -17,8 +17,10 @@ pub(super) fn lower_item(node: axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> 
         Some(Item::EnumDef(lower_enum_def(&enum_def, ctx)))
     } else if let Some(trait_def) = ast::TraitDef::cast(node.clone()) {
         Some(Item::TraitDef(lower_trait_def(&trait_def, ctx)))
-    } else if let Some(impl_block) = ast::ImplBlock::cast(node) {
+    } else if let Some(impl_block) = ast::ImplBlock::cast(node.clone()) {
         Some(Item::ImplDef(lower_impl_block(&impl_block, ctx)))
+    } else if let Some(use_decl) = ast::UseDecl::cast(node) {
+        Some(Item::UseItem(lower_use_decl(&use_decl, ctx)))
     } else {
         ctx.diag(HirDiagnostic::NotYetSupported {
             feature: format!("{kind:?}"),
@@ -417,4 +419,80 @@ fn path_from_ast_type(ty_node: &ast::PathType, _ctx: &mut LowerCtx) -> NameRef {
         .path()
         .map(|p| NameRef::unresolved(path_last_segment(Some(p))))
         .unwrap_or_else(|| NameRef::unresolved(""))
+}
+
+/// Lower a `use` declaration into a `UseItem`.
+fn lower_use_decl(decl: &ast::UseDecl, ctx: &mut LowerCtx) -> UseItem {
+    let id = ctx.alloc_id();
+    let visibility = if decl.visibility().is_some() {
+        Visibility::Public
+    } else {
+        Visibility::Private
+    };
+    let tree = decl
+        .use_tree()
+        .map(|t| lower_use_tree(&t))
+        .unwrap_or_else(|| UseTree {
+            path: Vec::new(),
+            kind: UseTreeKind::Single { rename: None },
+        });
+    UseItem {
+        id,
+        visibility,
+        tree,
+    }
+}
+
+/// Lower a `UseTree` CST node into a HIR `UseTree`.
+fn lower_use_tree(node: &ast::UseTree) -> UseTree {
+    use axiom_parser::{SyntaxElement, SyntaxKind};
+
+    // Extract path segments from direct child PathSegment nodes.
+    let path: Vec<String> = node
+        .syntax()
+        .children()
+        .into_iter()
+        .filter_map(|elem| match elem {
+            SyntaxElement::Node(n) if n.kind() == SyntaxKind::PathSegment => {
+                // PathSegment contains an Ident (or keyword) token child.
+                n.children().into_iter().find_map(|child| match child {
+                    SyntaxElement::Token(t) => Some(t.text().to_string()),
+                    _ => None,
+                })
+            }
+            _ => None,
+        })
+        .collect();
+
+    // Check for a group `{ ... }`.
+    if let Some(group) = node.group() {
+        let trees = group.trees().iter().map(lower_use_tree).collect();
+        return UseTree {
+            path,
+            kind: UseTreeKind::Group(trees),
+        };
+    }
+
+    // Check for a glob `*`.
+    let is_glob = node
+        .syntax()
+        .children()
+        .into_iter()
+        .any(|elem| matches!(elem, SyntaxElement::Token(t) if t.kind() == SyntaxKind::Star));
+    if is_glob {
+        return UseTree {
+            path,
+            kind: UseTreeKind::Glob,
+        };
+    }
+
+    // Single import, possibly renamed.
+    let rename = node
+        .rename()
+        .and_then(|r| r.name_token())
+        .map(|t| t.text().to_string());
+    UseTree {
+        path,
+        kind: UseTreeKind::Single { rename },
+    }
 }

@@ -39,6 +39,7 @@ fn check_item_ids(item: &axiom_hir::Item, seen: &mut HashSet<axiom_hir::HirId>) 
         axiom_hir::Item::TraitDef(t) => t.id,
         axiom_hir::Item::ImplDef(i) => i.id,
         axiom_hir::Item::SubscriptDef(s) => s.id,
+        axiom_hir::Item::UseItem(u) => u.id,
     };
     if !seen.insert(id) {
         return false;
@@ -88,6 +89,7 @@ fn check_item_ids(item: &axiom_hir::Item, seen: &mut HashSet<axiom_hir::HirId>) 
             }
             check_block_ids(&s.body, seen)
         }
+        axiom_hir::Item::UseItem(_) => true,
     }
 }
 

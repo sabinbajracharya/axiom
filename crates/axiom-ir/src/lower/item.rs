@@ -40,7 +40,7 @@ pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
                 }
             }
         }
-        Item::StructDef(_) | Item::TraitDef(_) | Item::SubscriptDef(_) => {}
+        Item::StructDef(_) | Item::TraitDef(_) | Item::SubscriptDef(_) | Item::UseItem(_) => {}
     }
 }
 

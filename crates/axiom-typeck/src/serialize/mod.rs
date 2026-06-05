@@ -93,6 +93,7 @@ fn serialize_item(item: &Item, depth: usize, thir: &Thir, out: &mut String) {
         Item::TraitDef(t) => serialize_trait_def(t, depth, thir, out),
         Item::ImplDef(i) => serialize_impl_def(i, depth, thir, out),
         Item::SubscriptDef(_) => {}
+        Item::UseItem(_) => {}
     }
 }
 
