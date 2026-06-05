@@ -274,7 +274,10 @@ impl TypeChecker {
                     }
                 }
             }
-            NameRef::Unresolved(_) => Ty::Error,
+            // An unresolved callee has no FnDef — but it may still name a
+            // compiler intrinsic (e.g. the `heap_*` floor ops, which have no
+            // library definition). Consult `builtin_fn` before giving up.
+            NameRef::Unresolved(u) => helpers::builtin_fn(&u.text).unwrap_or(Ty::Error),
         }
     }
 

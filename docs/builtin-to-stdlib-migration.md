@@ -128,10 +128,10 @@ stdlib/
       needs: a per-scalar `hash` (for M4) and a `Bytes` length op (for M5). Keep these as
       named VM intrinsics behind the same `is_builtin` door — they are the irreducible
       floor, not stand-ins.
-- [ ] **P4 — `HeapBuffer<T>` growable primitive + subscript** (gates M6/M7). This is the
-      v0 collections prerequisite already scoped in [`struct-v0-plan.md`](struct-v0-plan.md):
-      the heap-backed, refcounted growable buffer with `Deinit`, subscript read/write, and
-      length. List/Map cannot be written in Axiom without it.
+- [x] **P4 — `HeapBuffer<T>` growable primitive + subscript** (gates M6/M7). Done in **D1**:
+      the heap-backed growable buffer with the four floor ops + subscript read/write, exposed
+      to Axiom. (`Deinit`/refcounting is Perceus/v1 territory; the caller tracks length, as
+      `List` will via its `count`/`cap` fields.) List/Map can now be written in Axiom.
 - [ ] **P5 — decision: explicit per-primitive impls vs. a `derive`.** The current
       auto-impl table generates `4×{Equatable,Hashable,Ord}` + `5×Deinit` impls. Decide
       whether `core` writes these out explicitly (simplest; no new machinery; singular-idiom
@@ -181,7 +181,15 @@ stdlib/
       e2e test. *(M5)*
 
 ### Phase D — collections (largest; gated on P4 = `HeapBuffer<T>`)
-- [ ] **D1.** Land `HeapBuffer<T>` (P4) if not already done.
+- [x] **D1.** Landed `HeapBuffer<T>` (P4): the four floor ops are exposed to Axiom as
+      compiler intrinsics — `heap_alloc<T>(count) -> [T]`, `heap_get<T>([T], i) -> T`,
+      `heap_set<T>([T], i, T)`, `heap_free<T>([T])` — lowering to the VM's
+      `HeapAlloc`/`HeapGet`/`HeapSet`/`HeapFree` instructions. `[T]` slice syntax resolves to
+      `Ty::HeapBuffer`; `buf[i]` (read) and `buf[i] = v` (`IndexSet`) work on buffers.
+      `heap_alloc`'s **return-only** type parameter is bound from the binding annotation via
+      unification (generalised `val`/`var` annotation check from `==` to `unify`); added
+      `Ty::HeapBuffer` arms to `unify`/`substitute`/`contains_type_param`. Tests:
+      `axiom-typeck/tests/heap_buffer.rs` (incl. negatives) + `axiom-vm/tests/heap_buffer_e2e.rs`.
 - [ ] **D2.** Implement real `stdlib/std/collections/list.ax` bodies (`new`/`push`/`count`/
       `is_empty`/`capacity`/subscript) on `HeapBuffer<T>`. Remove `register_list_methods`
       (incl. the `push` intrinsic). Add list e2e tests. Regen. *(M6)*

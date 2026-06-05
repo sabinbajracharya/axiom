@@ -61,6 +61,13 @@ fn lower_lit(e: &axiom_hir::LitExpr, ctx: &mut FnLowerCtx) -> Reg {
 }
 
 fn lower_call(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
+    // `HeapBuffer<T>` floor ops (P4) lower to dedicated heap instructions rather
+    // than function calls — there is no `heap_*` FnDef; they are compiler
+    // intrinsics the VM implements directly.
+    if let Some(reg) = lower_heap_intrinsic(e, ctx) {
+        return reg;
+    }
+
     // Collect arg expr references for type lookup before lowering to registers.
     let arg_refs: Vec<&Expr> = e.args.iter().collect();
     let callee_id = match &e.callee {
@@ -90,6 +97,40 @@ fn lower_call(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
         args,
     });
     dst
+}
+
+/// Lower a `HeapBuffer<T>` floor-op call (`heap_alloc`/`heap_get`/`heap_set`/
+/// `heap_free`) to its dedicated heap instruction. Returns `None` for any other
+/// call so normal function-call lowering proceeds.
+fn lower_heap_intrinsic(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Option<Reg> {
+    let name = name_ref_text(&e.callee);
+    let args: Vec<Reg> = match name.as_str() {
+        "heap_alloc" | "heap_get" | "heap_set" | "heap_free" => {
+            e.args.iter().map(|a| lower_expr(a, ctx)).collect()
+        }
+        _ => return None,
+    };
+    let dst = ctx.fresh_reg();
+    let instr = match name.as_str() {
+        "heap_alloc" => IrInstr::HeapAlloc {
+            dst,
+            count: args[0],
+        },
+        "heap_get" => IrInstr::HeapGet {
+            dst,
+            ptr: args[0],
+            index: args[1],
+        },
+        "heap_set" => IrInstr::HeapSet {
+            ptr: args[0],
+            index: args[1],
+            value: args[2],
+        },
+        "heap_free" => IrInstr::HeapFree { ptr: args[0] },
+        _ => unreachable!("guarded by the match above"),
+    };
+    ctx.emit(instr);
+    Some(dst)
 }
 
 fn lower_method_call(e: &axiom_hir::MethodCallExpr, ctx: &mut FnLowerCtx) -> Reg {

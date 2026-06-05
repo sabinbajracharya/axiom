@@ -296,6 +296,14 @@ impl TypeChecker {
         let base_ty = self.infer_expr(&index.base);
         let _index_ty = self.infer_expr(&index.index);
 
+        // A heap buffer `[T]` (the P4 storage primitive) indexes by `Int`,
+        // yielding `T` directly — no library subscript needed.
+        if let Ty::HeapBuffer(elem) = &base_ty {
+            let ty = (**elem).clone();
+            self.types.insert(index.id, ty.clone());
+            return ty;
+        }
+
         // Extract the type name for subscript lookup.
         let type_name = Self::type_name_from_ty(&base_ty);
 

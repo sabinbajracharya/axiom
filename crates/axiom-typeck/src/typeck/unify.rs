@@ -64,6 +64,8 @@ impl TypeChecker {
                 }
                 Ok(())
             }
+            // Heap buffers (`[T]`): unify element types.
+            (Ty::HeapBuffer(a), Ty::HeapBuffer(e)) => self.unify(a, e, subst),
             // Same concrete type: success.
             _ if actual == expected => Ok(()),
             // Mismatch.
@@ -96,6 +98,7 @@ impl TypeChecker {
                     .map(|a| Self::substitute(a, subst))
                     .collect(),
             }),
+            Ty::HeapBuffer(inner) => Ty::HeapBuffer(Box::new(Self::substitute(inner, subst))),
             // Concrete types (Int, Float, Bool, String, Unit, Struct, Enum, Error):
             // no substitution needed.
             _ => ty.clone(),
@@ -112,6 +115,7 @@ impl TypeChecker {
             }
             Ty::Tuple(elems) => elems.iter().any(Self::contains_type_param),
             Ty::Instance(inst) => inst.args.iter().any(Self::contains_type_param),
+            Ty::HeapBuffer(inner) => Self::contains_type_param(inner),
             _ => false,
         }
     }

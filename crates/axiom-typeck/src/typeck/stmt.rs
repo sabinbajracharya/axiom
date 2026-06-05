@@ -22,46 +22,40 @@ impl TypeChecker {
 
     fn type_val_stmt(&mut self, s: &ValStmt) {
         let value_ty = self.infer_expr(&s.value);
-        let binding_ty = if let Some(ty_ann) = &s.ty {
-            let resolved = self.resolve_hir_ty(ty_ann);
-            if !helpers::is_error(&value_ty)
-                && !helpers::is_error(&resolved)
-                && value_ty != resolved
-            {
-                self.emit(crate::error::TypeDiagnostic::TypeMismatch {
-                    expected: resolved.to_string(),
-                    found: value_ty.to_string(),
-                    span: self.span_for(s.id),
-                });
-            }
-            resolved
-        } else {
-            value_ty
-        };
+        let binding_ty = self.binding_ty(&s.ty, value_ty, s.id);
         self.define_pattern(&s.pattern, &binding_ty, Mutability::Immutable);
         self.types.insert(s.id, Ty::Unit);
     }
 
     fn type_var_stmt(&mut self, s: &VarStmt) {
         let value_ty = self.infer_expr(&s.value);
-        let binding_ty = if let Some(ty_ann) = &s.ty {
-            let resolved = self.resolve_hir_ty(ty_ann);
-            if !helpers::is_error(&value_ty)
-                && !helpers::is_error(&resolved)
-                && value_ty != resolved
-            {
+        let binding_ty = self.binding_ty(&s.ty, value_ty, s.id);
+        self.define_pattern(&s.pattern, &binding_ty, Mutability::Mutable);
+        self.types.insert(s.id, Ty::Unit);
+    }
+
+    /// Resolve a `val`/`var` binding's type. With no annotation, the inferred
+    /// value type is used directly. With an annotation, the annotation is the
+    /// binding type, and the value is checked against it by *unification* (not
+    /// strict equality) so a value whose type still carries type parameters —
+    /// e.g. `heap_alloc(n)`'s return-only `[T]` — has them bound from the
+    /// declared type (`var buf: [Int] = heap_alloc(n)` binds `T = Int`).
+    fn binding_ty(&mut self, ann: &Option<axiom_hir::HirTy>, value_ty: Ty, id: HirId) -> Ty {
+        let Some(ty_ann) = ann else {
+            return value_ty;
+        };
+        let resolved = self.resolve_hir_ty(ty_ann);
+        if !helpers::is_error(&value_ty) && !helpers::is_error(&resolved) {
+            let mut subst = super::unify::Substitution::new();
+            if self.unify(&resolved, &value_ty, &mut subst).is_err() {
                 self.emit(crate::error::TypeDiagnostic::TypeMismatch {
                     expected: resolved.to_string(),
                     found: value_ty.to_string(),
-                    span: self.span_for(s.id),
+                    span: self.span_for(id),
                 });
             }
-            resolved
-        } else {
-            value_ty
-        };
-        self.define_pattern(&s.pattern, &binding_ty, Mutability::Mutable);
-        self.types.insert(s.id, Ty::Unit);
+        }
+        resolved
     }
 
     fn type_expr_stmt(&mut self, s: &ExprStmt) {
