@@ -1,11 +1,16 @@
 # std::io Design — Writer Trait, Extern Fn & Removing Builtins
 
 > **Status:** Layers 1–2 implemented. `extern "C" fn` syntax works through
-> lexer→parser→HIR→IR→VM. `stdlib/io.ax` has real `pub fn print`/`println` that
-> call `core::platform::write_string`/`write_line`. VM dispatches extern fns via
-> builtin table (no real FFI). Both single-file and multi-file paths resolve
-> `print`/`println` through the stdlib module system — no hardcoded builtins in
-> resolver or type checker.
+> lexer→parser→HIR→IR→VM. `stdlib/io.ax` has real `pub fn print`/`println` that call
+> `core::platform::write` (buffers are `Bytes` + `let`/`inout` convention — see
+> [`extern-buffers-and-path-unification.md`](extern-buffers-and-path-unification.md)).
+> The VM dispatches extern fns off `IrFunction.is_extern` through the closed
+> `PlatformFn` enum (no real FFI yet; no name-matched builtins). **Both** the
+> single-file path (`with_stdlib` now prepends `core/platform.ax`) and the multi-file
+> module path resolve `print`/`println` to the real `io.ax` functions; the VM has no
+> `print`/`println`/`write` builtins. The one remaining stand-in is `print`/`println`
+> in the type checker's `builtin_fn` — an **interim prelude** for the module path,
+> kept until the real prelude (modules Phase 4) lands.
 >
 > **Architecture:** Two layers following Go/Rust/Zig — `core::platform` owns the unsafe
 > platform boundary (extern "C" fns around libc), `std::io` builds safe user-facing APIs
@@ -38,13 +43,18 @@
 | `extern_abi()` AST accessor | ✅ Done | `FnDef.extern_abi()` returns `Some("C")`, `Some("")`, or `None` |
 | `extern_abi` HIR field | ✅ Done | `FnDef.extern_abi: Option<String>` — set during lowering |
 | `IrFunction.is_extern` | ✅ Done | Field added, set from `extern_abi` during IR lowering |
-| VM extern dispatch | ✅ Done | Extern fns dispatched via `call_builtin()` (same as hardcoded builtins) |
-| `stdlib/io.ax` | ✅ Done | Real `pub fn print`/`println` calling `core::platform::write_string`/`write_line` |
+| VM extern dispatch | ✅ Done | Off `is_extern` via the closed `PlatformFn` enum (`resolve_extern`/`call_extern`), not name matching |
+| Extern fns type-check (bodiless) | ✅ Done | Type checker records the signature and skips body/return reconciliation for `extern` fns |
+| Buffer type at the boundary | ✅ Done | `Bytes` value + `let`/`inout` convention (no reference types, no raw pointer); `read` uses `inout` |
+| `stdlib/io.ax` | ✅ Done | Real `pub fn print`/`println` calling `core::platform::write`; discard the `Int` via trailing `;` |
+| Single-file path loads `platform.ax` | ✅ Done | `typeck::with_stdlib` prepends `core/platform.ax` before `io.ax` |
 | CLI loads stdlib via module system | ✅ Done | Multi-file path: `discover_library()` + `merge()` |
-| `core/platform.ax` | ✅ Done | `pub extern "C" fn write_string`/`write_line` + raw `write`/`read`/`close` |
-| Remove `print`/`println` builtins from resolver | ✅ Done | Both paths resolve via stdlib module system; no hardcoded builtins in resolver/typeck |
-| Safe wrappers (`pub fn print`/`println`) | ✅ Done | `io::print`/`println` are real Axiom functions calling `core::platform` externs |
-| Real FFI (`dlsym`/`libloading`) | ❌ Deferred | Needs Cranelift JIT backend; VM uses builtin dispatch table |
+| `core/platform.ax` | ✅ Done | `pub extern "C" fn write`/`read`/`close` with `Bytes` buffers |
+| Remove `print`/`println`/`write` VM builtins | ✅ Done | None remain in the VM; `is_builtin` covers only `String` method intrinsics |
+| Remove `print`/`println` from type checker | ⚠️ Partial | Kept in `builtin_fn` as an interim prelude stand-in until the prelude (modules Phase 4) exists |
+| Safe wrappers (`pub fn print`/`println`) | ✅ Done | Real Axiom functions calling the `core::platform::write` extern |
+| Real FFI (`dlsym`/`libloading`) | ❌ Deferred | Needs the native backend; VM uses the `PlatformFn` callbacks |
+| `read` extern in the VM | ❌ Deferred | No stdin in the tree-walking VM — returns `ExternNotImplemented` |
 | `unsafe` blocks | ❌ Deferred | Keywords exist, grammar not implemented |
 
 ---
