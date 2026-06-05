@@ -4,6 +4,11 @@
 > lexer→parser→HIR→IR→VM. `stdlib/io.ax` exists with `extern "C" fn print/println`.
 > VM dispatches extern fns via builtin table (no real FFI). `print`/`println` remain
 > hardcoded builtins in resolver + type checker until CLI pipeline loads stdlib.
+>
+> **Architecture:** Two layers following Go/Rust/Zig — `core::platform` owns the unsafe
+> platform boundary (extern "C" fns around libc), `std::io` builds safe user-facing APIs
+> on top. Users import `std::io`, never `core::platform` directly.
+>
 > **Decisions baked in:** `core`/`std` two-tier stdlib layering (§11),
 > `Display`/`Debug` traits for formatting (§11), `string::format` as the one formatting
 > mechanism (§11), `std::io` includes `print`, `println`, `read_line`, `dbg` (§11).
@@ -35,9 +40,10 @@
 | `stdlib/io.ax` | ✅ Done | `extern "C" fn print(s: String); extern "C" fn println(s: String);` |
 | `with_stdlib()` includes io.ax | ✅ Done | Concatenated with list.ax and map.ax |
 | Remove `print`/`println` builtins | ❌ Blocked | CLI pipeline doesn't use `with_stdlib()` — needs pipeline refactor |
+| `core/platform.ax` | ⏸ Not started | Move extern "C" fns from io.ax to core/platform.ax (platform boundary) |
+| Safe wrappers (`pub fn print`) | ⏸ Not started | Layer 2 — wraps `core::platform::write` with safe API |
 | Real FFI (`dlsym`/`libloading`) | ❌ Deferred | Needs Cranelift JIT backend; VM uses builtin dispatch table |
 | `unsafe` blocks | ❌ Deferred | Keywords exist, grammar not implemented |
-| Layer 2 (safe wrappers) | ❌ Deferred | Blocked on removing builtins from resolver/typeck |
 
 ---
 
@@ -62,89 +68,67 @@ then remove the print builtins entirely.
 
 ---
 
-## 1. Extern fn — the bridge to the host
+## 1. `core::platform` — the platform boundary (Layer 1)
 
-Extern functions let library code declare a function signature without providing a body.
-The VM provides the implementation at runtime. This is how Axiom code reaches the host
-(Rust) for I/O, system calls, and anything else that touches the outside world.
+The extern "C" boundary is a **platform concern**, not an I/O concern. It belongs in `core`,
+not `std::io`. This follows Go (`runtime.write`), Rust (`std::sys`), and Zig (`std.os`) —
+all isolate the platform boundary in one place, then build safe APIs on top.
 
-### 1.1 Syntax
+### 1.1 Architecture
+
+```
+core/platform.ax        ← extern "C" wrappers around libc (write, read, close, etc.)
+  └─ std/io.ax          ← safe Axiom API built on core::platform (print, println)
+```
+
+`core::platform` owns the entire unsafe platform boundary. `std::io` imports from it and
+wraps with safe, user-facing APIs. Users never touch `core::platform` directly.
+
+### 1.2 Syntax
 
 ```axiom
-// Declare a host function — no body
-extern fn write(fd: I32, buf: &[U8]) -> I32;
-extern fn read(fd: I32, buf: &mut [U8]) -> I32;
+// core/platform.ax — extern "C" fn declarations (no body, dispatched by VM)
+extern "C" fn write(fd: Int, buf: &[U8], len: Int) -> Int;
+extern "C" fn read(fd: Int, buf: &mut [U8], len: Int) -> Int;
+extern "C" fn close(fd: Int) -> Int;
 ```
 
-- `extern fn` has a signature but no body. Terminated with `;`.
+- `extern "C" fn` has a signature but no body. Terminated with `;`.
 - It's `pub` or private like any other function.
-- It can be a method (`extern fn write(let self, ...)`) or a free function.
-- It lives in a module — `core::os::write`, `std::io::_write_stdout`, etc.
+- It lives in `core::platform` — the single platform boundary module.
 
-### 1.2 IR representation
+### 1.3 IR representation
 
-New instruction:
+Extern fns use `IrFunction.is_extern: bool` (already implemented). The VM dispatches them
+via the builtin table — same mechanism as hardcoded builtins, but triggered by the `is_extern`
+flag rather than name matching.
 
-```rust
-// In ir.rs
-IrInstr::ExternCall {
-    dst: Reg,               // return value
-    name: String,           // host function name, e.g. "io._write_stdout"
-    args: Vec<Reg>,         // arguments
-}
-```
+When real FFI arrives (Cranelift JIT), `core::platform` becomes the single place where
+`libc::write`, `libc::read`, etc. are declared — not scattered across `std::io`, `std::fs`, etc.
 
-- `name` is a flat string — the VM uses it to look up a Rust callback.
-- No type info needed in the IR — the type checker already validated the call.
+### 1.4 VM host callback mechanism
 
-### 1.3 VM host callback mechanism
+Extern fns are dispatched via the builtin table (already implemented). The VM looks up the
+function name, calls the Rust implementation, stores the result.
 
-The VM gets a new field:
+### 1.5 Why `core`, not `std::io`
 
-```rust
-pub struct Vm {
-    // ... existing fields ...
-    extern_fns: HashMap<String, ExternFn>,
-}
-
-type ExternFn = Box<dyn Fn(&[Value]) -> Result<Value, VmError>>;
-```
-
-- Extern functions are registered at VM initialization.
-- The VM's `run()` loop handles `ExternCall` by looking up the name in `extern_fns`,
-  calling the Rust function, and storing the result.
-- If the name isn't registered → runtime error (should be caught at compile time, but
-  this is the safety net).
-
-### 1.4 Registration
-
-When the VM is created, the host registers available extern functions:
-
-```rust
-let mut vm = Vm::new(program);
-vm.register_extern("io._write_stdout", Box::new(|args| {
-    let buf = args[0].as_bytes();
-    let s = std::str::from_utf8(buf).map_err(|_| VmError::InvalidUtf8)?;
-    print!("{}", s);
-    Ok(Value::I32(buf.len() as i32))
-}));
-```
-
-### 1.5 What this does NOT include
-
-| Feature | Status | Why |
-|---|---|---|
-| C FFI (`extern "C"`) | `[Deferred → v2]` | Calling C libraries — separate concern from host callbacks |
-| Callbacks from Rust into Axiom | `[Deferred → v2]` | Reverse direction — needs function pointers or closures |
-| Variadic extern fns | `[Deferred → when needed]` | `extern fn printf(fmt: &str, ...)` — not needed for v1 |
+| Reason | Detail |
+|---|---|
+| **Platform boundary is reusable** | `std::fs`, `std::net`, `std::process` all need `write`/`read`/`close` — declare once in `core` |
+| **Matches Go/Rust/Zig** | Go: `runtime.write`, Rust: `std::sys`, Zig: `std.os` — all isolate platform boundary |
+| **Testing clarity** | Test `core::platform` primitives in isolation, then test `std::io` wrappers separately |
+| **Unsafe boundary is `core`'s job** | `core` = language primitives + unsafe boundaries. `std` = safe user-facing API |
+| **Future FFI story** | When real FFI arrives, `core::platform` is where `libc` bindings live — one place |
 
 ---
 
-## 2. Writer trait & std::io
+## 2. Writer trait & std::io (Layer 2)
 
-With modules (prerequisite) and extern fn in place, the I/O stack becomes possible.
+With `core::platform` providing the platform boundary, `std::io` builds safe user-facing
+APIs on top. Users import `std::io`, never `core::platform` directly.
 
-### 2.1 The Writer trait — `core::io`
+### 2.1 The Writer trait — `std::io`
 
 ```axiom
 // core/io.ax
@@ -193,15 +177,13 @@ pub enum IoError {
 ```axiom
 // std/io.ax
 use core::io::{Writer, IoError}
-
-// Extern fn — the actual bridge to the host
-extern fn _write_stdout(buf: &[U8]) -> I32;
+use core::platform::write   // platform boundary — extern "C" fn
 
 pub struct Stdout { }
 
 impl Writer for Stdout {
     fn write(let self, let data: &[U8]) -> Result<usize, IoError> {
-        let n = _write_stdout(data)
+        let n = write(1, data, data.len())  // fd 1 = stdout
         if n < 0 {
             Err(IoError::WriteFailed)
         } else {
