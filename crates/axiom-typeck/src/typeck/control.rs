@@ -237,13 +237,10 @@ impl TypeChecker {
     }
 
     pub(super) fn infer_loop(&mut self, loop_expr: &LoopExpr) -> Ty {
-        // Push a break-type collector for this loop.
         self.loop_break_types.push(Vec::new());
 
         match &loop_expr.kind {
-            LoopKind::Infinite(body) => {
-                self.infer_block(body, &None);
-            }
+            LoopKind::Infinite(body) => self.check_loop_body(body, loop_expr.id),
             LoopKind::Conditional { condition, body } => {
                 let cond_ty = self.infer_expr(condition);
                 if !helpers::is_error(&cond_ty) && cond_ty != Ty::Bool {
@@ -252,7 +249,7 @@ impl TypeChecker {
                         span: self.span_for(loop_expr.id),
                     });
                 }
-                self.infer_block(body, &None);
+                self.check_loop_body(body, loop_expr.id);
             }
             LoopKind::Iterator {
                 binding,
@@ -276,15 +273,25 @@ impl TypeChecker {
                     *binding_id,
                     Mutability::Immutable,
                 );
-                self.infer_block(body, &None);
+                self.check_loop_body(body, loop_expr.id);
             }
         };
 
-        // Pop the collector and compute the loop type from break values.
         let break_types = self.loop_break_types.pop().unwrap_or_default();
         let ty = self.unify_break_types(&break_types, loop_expr.id);
         self.types.insert(loop_expr.id, ty.clone());
         ty
+    }
+
+    /// Type-check a loop body and emit LoopBodyNotUnit if it produces a non-Unit type.
+    fn check_loop_body(&mut self, body: &Block, loop_id: HirId) {
+        let body_ty = self.infer_block(body, &None);
+        if !helpers::is_error(&body_ty) && body_ty != Ty::Unit {
+            self.emit(TypeDiagnostic::LoopBodyNotUnit {
+                found: body_ty.to_string(),
+                span: self.span_for(loop_id),
+            });
+        }
     }
 
     /// Unify the types from all `break value` expressions in a loop.

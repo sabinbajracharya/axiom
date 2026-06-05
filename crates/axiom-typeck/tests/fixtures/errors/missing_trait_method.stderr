@@ -1,0 +1,1 @@
+1:1: missing required method `area` in impl of trait `Shape` for `Circle`

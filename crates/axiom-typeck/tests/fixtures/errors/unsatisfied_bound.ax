@@ -1,0 +1,4 @@
+trait Print { fn print(self) }
+fn do_print<T: Print>(x: T) { x.print() }
+struct Circle { radius: Float }
+fn main() { do_print(Circle { radius: 1.0 }) }

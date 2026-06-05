@@ -24,6 +24,7 @@ fn test_typecker_handles_every_hir_expr_kind() {
         "Match",
         "Loop",
         "StructLit",
+        "ListLit",
         "Assign",
     ];
     let stmt_kinds = [
@@ -46,7 +47,7 @@ fn test_typecker_handles_every_hir_expr_kind() {
 
     assert_eq!(
         expr_kinds.len(),
-        14,
+        15,
         "Expr kinds count changed — update typeck.rs"
     );
     assert_eq!(
@@ -91,10 +92,15 @@ fn test_every_error_type_has_diagnostic_kind() {
         "if_without_else_not_unit",
         "not_yet_supported",
         "break_type_mismatch",
+        "missing_trait_method",
+        "unknown_method",
+        "trait_not_found",
+        "type_not_found_for_impl",
+        "unsatisfied_bound",
     ];
     assert_eq!(
         diagnostic_kinds.len(),
-        21,
+        26,
         "diagnostic kinds count changed — update this test"
     );
 }

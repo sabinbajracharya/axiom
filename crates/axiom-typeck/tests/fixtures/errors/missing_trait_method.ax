@@ -1,0 +1,4 @@
+trait Shape { fn area(self) -> Float }
+struct Circle { radius: Float }
+impl Shape for Circle { }
+fn main() { }

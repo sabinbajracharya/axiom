@@ -148,7 +148,7 @@ fn test_diag_snapshot_match_arm_type_mismatch() {
 fn area(s: Shape) -> Float {
     match s {
         Circle(r) => r
-        Rect(w, h) => w
+        Rect(w, h) => h == w
     }
 }",
     );
@@ -175,4 +175,95 @@ fn test_diag_snapshot_assign_to_immutable() {
 #[test]
 fn test_diag_snapshot_return_type_mismatch() {
     check_diagnostics_snapshot("return_type_mismatch", "fn main() -> Int { 3.14 }");
+}
+
+#[test]
+fn test_diag_snapshot_condition_not_bool() {
+    check_diagnostics_snapshot("condition_not_bool", "fn main() { loop if 1 { } }");
+}
+
+#[test]
+fn test_diag_snapshot_loop_body_not_unit() {
+    check_diagnostics_snapshot("loop_body_not_unit", "fn main() { loop { 1 } }");
+}
+
+#[test]
+fn test_diag_snapshot_bin_op_mismatch() {
+    check_diagnostics_snapshot("bin_op_mismatch", "fn main() { val x = true + 1 }");
+}
+
+#[test]
+fn test_diag_snapshot_unary_op_mismatch() {
+    check_diagnostics_snapshot("unary_op_mismatch", "fn main() { val x = -true }");
+}
+
+#[test]
+fn test_diag_snapshot_if_without_else_not_unit() {
+    check_diagnostics_snapshot(
+        "if_without_else_not_unit",
+        "fn main() { val x = if true { 1 } }",
+    );
+}
+
+#[test]
+fn test_diag_snapshot_not_yet_supported() {
+    check_diagnostics_snapshot("not_yet_supported", "fn main() { loop x in [1, 2, 3] { } }");
+}
+
+#[test]
+fn test_diag_snapshot_break_type_mismatch() {
+    check_diagnostics_snapshot(
+        "break_type_mismatch",
+        "fn main() { val x: Int = loop { break true } }",
+    );
+}
+
+#[test]
+fn test_diag_snapshot_missing_trait_method() {
+    check_diagnostics_snapshot(
+        "missing_trait_method",
+        "trait Shape { fn area(self) -> Float }
+struct Circle { radius: Float }
+impl Shape for Circle { }
+fn main() { }",
+    );
+}
+
+#[test]
+fn test_diag_snapshot_unknown_method() {
+    check_diagnostics_snapshot(
+        "unknown_method",
+        "struct Circle { radius: Float }
+fn main() { val c = Circle { radius: 1.0 } c.area() }",
+    );
+}
+
+#[test]
+fn test_diag_snapshot_trait_not_found() {
+    check_diagnostics_snapshot(
+        "trait_not_found",
+        "struct Circle { radius: Float }
+impl Shape for Circle { }
+fn main() { }",
+    );
+}
+
+#[test]
+fn test_diag_snapshot_type_not_found_for_impl() {
+    check_diagnostics_snapshot(
+        "type_not_found_for_impl",
+        "impl Circle { }
+fn main() { }",
+    );
+}
+
+#[test]
+fn test_diag_snapshot_unsatisfied_bound() {
+    check_diagnostics_snapshot(
+        "unsatisfied_bound",
+        "trait Print { fn print(self) }
+fn do_print<T: Print>(x: T) { x.print() }
+struct Circle { radius: Float }
+fn main() { do_print(Circle { radius: 1.0 }) }",
+    );
 }

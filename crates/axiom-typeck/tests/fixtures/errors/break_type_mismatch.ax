@@ -1,0 +1,1 @@
+fn main() { val x: Int = loop { break true } }

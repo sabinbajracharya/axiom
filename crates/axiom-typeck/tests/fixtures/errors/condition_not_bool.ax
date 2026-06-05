@@ -1,0 +1,1 @@
+fn main() { loop if 1 { } }

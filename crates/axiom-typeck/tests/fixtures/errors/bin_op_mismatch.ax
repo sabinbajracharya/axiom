@@ -1,0 +1,1 @@
+fn main() { val x = true + 1 }

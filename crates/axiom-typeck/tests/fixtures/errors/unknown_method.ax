@@ -1,0 +1,2 @@
+struct Circle { radius: Float }
+fn main() { val c = Circle { radius: 1.0 } c.area() }
