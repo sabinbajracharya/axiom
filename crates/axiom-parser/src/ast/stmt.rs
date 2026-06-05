@@ -59,6 +59,13 @@ impl ExprStmt {
     pub fn expr(&self) -> Option<SyntaxNode> {
         child_expr_node(&self.0)
     }
+
+    /// Whether this statement is terminated by a `;`. A block's final expression
+    /// is its value only when there is *no* trailing semicolon (DESIGN_SPEC §16);
+    /// a trailing `;` discards the value, making the block evaluate to `()`.
+    pub fn has_semicolon(&self) -> bool {
+        child_token(&self.0, SyntaxKind::Semicolon).is_some()
+    }
 }
 
 pub struct ReturnStmt(SyntaxNode);

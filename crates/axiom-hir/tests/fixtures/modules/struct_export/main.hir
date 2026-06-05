@@ -43,11 +43,11 @@ FnDef(8) name=close vis=pub params=[let fd: Int→<unresolved>] return=Int→<un
 }
 UseItem(0) core::platform::write
 FnDef(1) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
-  tail: Call(5) write→0(Lit(6) Int(1), Path(8) s→2.Method(7) as_bytes())
+  ExprStmt(4) Call(5) write→0(Lit(6) Int(1), Path(8) s→2.Method(7) as_bytes())
 }
 FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(12) Call(13) write→0(Lit(14) Int(1), Path(16) s→10.Method(15) as_bytes())
-  tail: Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
+  ExprStmt(17) Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
 }
 UseItem(35) models::Point
 FnDef(36) name=main vis=private params=[] return=_ {

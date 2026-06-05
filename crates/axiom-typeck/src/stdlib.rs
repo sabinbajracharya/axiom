@@ -4,6 +4,8 @@
 pub(crate) fn with_stdlib(user_source: &str) -> String {
     let list = include_str!("../../../stdlib/collections/list.ax");
     let map = include_str!("../../../stdlib/collections/map.ax");
+    let platform = include_str!("../../../stdlib/core/platform.ax");
     let io = include_str!("../../../stdlib/io.ax");
-    format!("{list}\n{map}\n{io}\n{user_source}")
+    // `platform` must precede `io` — io's print/println call core::platform::write.
+    format!("{list}\n{map}\n{platform}\n{io}\n{user_source}")
 }

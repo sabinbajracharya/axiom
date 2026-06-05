@@ -19,15 +19,20 @@ pub(super) fn lower_block(block: &ast::BlockExpr, ctx: &mut LowerCtx) -> Block {
             stmts.push(stmt);
         }
     }
-    // The last ExprStmt in a block is the tail expression — its value is
-    // the block's result. Pop it off the stmts list and store as `tail`.
+    // The last ExprStmt in a block is the tail expression — its value is the
+    // block's result — UNLESS it ends with a trailing `;`, which discards the
+    // value so the block evaluates to `()` (DESIGN_SPEC §16). A bare expression
+    // node (no statement wrapper) is always a tail.
     let tail = match stmts.last() {
         Some(Stmt::ExprStmt(_)) => {
-            let is_last_expr = raw_stmts
-                .last()
-                .map(|n| ast::is_expr_kind(n.kind()) || n.kind() == SyntaxKind::ExprStmt)
-                .unwrap_or(false);
-            if is_last_expr {
+            let is_tail = match raw_stmts.last() {
+                Some(n) if n.kind() == SyntaxKind::ExprStmt => ast::ExprStmt::cast(n.clone())
+                    .map(|s| !s.has_semicolon())
+                    .unwrap_or(false),
+                Some(n) => ast::is_expr_kind(n.kind()),
+                None => false,
+            };
+            if is_tail {
                 match stmts.pop() {
                     Some(Stmt::ExprStmt(e)) => Some(Box::new(e.expr)),
                     _ => None,
