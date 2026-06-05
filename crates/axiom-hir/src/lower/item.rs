@@ -38,6 +38,7 @@ fn lower_fn_def(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
         name: result.name.clone(),
         def_id: result.id,
         kind: DefKind::Fn,
+        visibility: result.visibility,
         span: ctx.span_of(f.syntax()),
     });
     result
@@ -103,6 +104,7 @@ fn lower_params(param_list: Option<ast::ParamList>, ctx: &mut LowerCtx) -> Vec<P
             name: "self".to_string(),
             def_id: id,
             kind: DefKind::Param,
+            visibility: Visibility::Private,
             span: ctx.span_of(sp.syntax()),
         });
         result.push(Param {
@@ -129,6 +131,7 @@ fn lower_params(param_list: Option<ast::ParamList>, ctx: &mut LowerCtx) -> Vec<P
             name: pname.clone(),
             def_id: id,
             kind: DefKind::Param,
+            visibility: Visibility::Private,
             span: ctx.span_of(param.syntax()),
         });
 
@@ -175,6 +178,7 @@ fn lower_generic_params(
                 name: pname.clone(),
                 def_id: id,
                 kind: DefKind::TypeParam,
+                visibility: Visibility::Private,
                 span: ctx.span_of(p.syntax()),
             });
             HirTypeParam {
@@ -216,6 +220,7 @@ fn lower_struct_def(s: &ast::StructDef, ctx: &mut LowerCtx) -> StructDef {
                 name: fname.clone(),
                 def_id: fid,
                 kind: DefKind::Field,
+                visibility: fvis,
                 span: ctx.span_of(f.syntax()),
             });
             FieldDef {
@@ -231,6 +236,7 @@ fn lower_struct_def(s: &ast::StructDef, ctx: &mut LowerCtx) -> StructDef {
         name: sname.clone(),
         def_id: id,
         kind: DefKind::Struct,
+        visibility,
         span: ctx.span_of(s.syntax()),
     });
 
@@ -273,6 +279,7 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
                 name: vname.clone(),
                 def_id: vid,
                 kind: DefKind::Variant,
+                visibility: Visibility::Private,
                 span: ctx.span_of(v.syntax()),
             });
             VariantDef {
@@ -287,6 +294,7 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
         name: ename.clone(),
         def_id: id,
         kind: DefKind::Enum,
+        visibility,
         span: ctx.span_of(e.syntax()),
     });
 
@@ -320,6 +328,7 @@ fn lower_trait_def(t: &ast::TraitDef, ctx: &mut LowerCtx) -> TraitDef {
         name: tname.clone(),
         def_id: id,
         kind: DefKind::Trait,
+        visibility,
         span: ctx.span_of(t.syntax()),
     });
 
@@ -456,7 +465,18 @@ fn lower_use_tree(node: &ast::UseTree) -> UseTree {
             SyntaxElement::Node(n) if n.kind() == SyntaxKind::PathSegment => {
                 // PathSegment contains an Ident (or keyword) token child.
                 n.children().into_iter().find_map(|child| match child {
-                    SyntaxElement::Token(t) => Some(t.text().to_string()),
+                    SyntaxElement::Token(t)
+                        if matches!(
+                            t.kind(),
+                            SyntaxKind::Ident
+                                | SyntaxKind::KwSelf
+                                | SyntaxKind::KwSelfType
+                                | SyntaxKind::KwSuper
+                                | SyntaxKind::KwCrate
+                        ) =>
+                    {
+                        Some(t.text().to_string())
+                    }
                     _ => None,
                 })
             }

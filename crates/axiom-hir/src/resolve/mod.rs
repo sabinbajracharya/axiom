@@ -11,10 +11,36 @@ mod body;
 mod item;
 
 use crate::hir::*;
-use crate::lower::DefKind;
+use crate::lower::{Def, DefKind};
 use crate::HirDiagnostic;
 use axiom_lexer::Span;
 use std::collections::{HashMap, HashSet};
+
+/// Maps module name → { item name → (DefId, DefKind, Visibility) }.
+/// Used for cross-module import resolution.
+pub type GlobalExports = HashMap<String, HashMap<String, (DefId, DefKind, Visibility)>>;
+
+/// Build a global export map from multiple modules' definitions.
+/// Only includes `pub` items of kind Fn, Struct, Enum, Trait, or Variant.
+pub fn build_global_exports(modules: &[(String, Vec<Def>)]) -> GlobalExports {
+    let mut exports: GlobalExports = HashMap::new();
+    for (module_name, defs) in modules {
+        let module_exports = exports.entry(module_name.clone()).or_default();
+        for def in defs {
+            if !matches!(
+                def.kind,
+                DefKind::Fn | DefKind::Struct | DefKind::Enum | DefKind::Trait | DefKind::Variant
+            ) {
+                continue;
+            }
+            if def.visibility != Visibility::Public {
+                continue;
+            }
+            module_exports.insert(def.name.clone(), (def.def_id, def.kind, def.visibility));
+        }
+    }
+    exports
+}
 
 /// Run name resolution over the HIR built by lowering.
 /// Mutates the HIR in-place: resolves `NameRef::Unresolved` entries
@@ -22,21 +48,66 @@ use std::collections::{HashMap, HashSet};
 /// where they are not.
 pub fn resolve(ctx: &mut crate::lower::LowerCtx) {
     // Pass 1: top-level item defs are already collected in ctx.defs during lowering.
-    // Build a top-level scope map.
+    let mut top_level = build_top_level(&ctx.defs, &mut ctx.diagnostics);
+
+    // Pass 1.5: process `use` items to add imported names to the top-level scope.
+    process_use_items(&ctx.items, &mut top_level, &mut ctx.diagnostics, None, "");
+
+    // Pass 2: resolve name references in all items.
+    for item in &mut ctx.items {
+        item::resolve_item_names(item, &top_level, &mut ctx.diagnostics);
+    }
+}
+
+/// Run name resolution with cross-module context.
+/// Takes pre-built items, defs, diagnostics, and a global export map.
+pub fn resolve_with_globals(
+    items: &mut [Item],
+    defs: &[Def],
+    diagnostics: &mut Vec<HirDiagnostic>,
+    global_exports: &GlobalExports,
+    current_module: &str,
+) {
+    // Pass 1: build top-level scope from this module's defs.
+    let mut top_level = build_top_level(defs, diagnostics);
+
+    // Pass 1.5: process `use` items with cross-module lookup.
+    process_use_items(
+        items,
+        &mut top_level,
+        diagnostics,
+        Some(global_exports),
+        current_module,
+    );
+
+    // Pass 2: resolve name references in all items.
+    for item in items {
+        item::resolve_item_names(item, &top_level, diagnostics);
+    }
+}
+
+/// Build the top-level scope from a module's definitions.
+fn build_top_level(
+    defs: &[Def],
+    diagnostics: &mut Vec<HirDiagnostic>,
+) -> HashMap<String, (DefId, DefKind)> {
     let mut top_level: HashMap<String, (DefId, DefKind)> = HashMap::new();
-    for def in &ctx.defs {
+    for def in defs {
         if matches!(
             def.kind,
             DefKind::Fn | DefKind::Struct | DefKind::Enum | DefKind::Trait | DefKind::Variant
         ) {
             if let Some((prev_def_id, _)) = top_level.get(&def.name) {
-                let prev_def = ctx.defs.iter().find(|d| &d.def_id == prev_def_id);
-                let prev_span = prev_def.map(|d| d.span).unwrap_or(def.span);
-                ctx.diagnostics.push(HirDiagnostic::DuplicateDefinition {
+                let prev_span = defs
+                    .iter()
+                    .find(|d| &d.def_id == prev_def_id)
+                    .map(|d| d.span)
+                    .unwrap_or(def.span);
+                diagnostics.push(HirDiagnostic::DuplicateDefinition {
                     name: def.name.clone(),
                     span: def.span,
                 });
-                ctx.diagnostics.push(HirDiagnostic::DuplicateDefinition {
+                diagnostics.push(HirDiagnostic::DuplicateDefinition {
                     name: format!("{} (previous definition here)", def.name),
                     span: prev_span,
                 });
@@ -45,14 +116,7 @@ pub fn resolve(ctx: &mut crate::lower::LowerCtx) {
             }
         }
     }
-
-    // Pass 1.5: process `use` items to add imported names to the top-level scope.
-    process_use_items(&ctx.items, &mut top_level, &mut ctx.diagnostics);
-
-    // Pass 2: resolve name references in all items.
-    for item in &mut ctx.items {
-        item::resolve_item_names(item, &top_level, &mut ctx.diagnostics);
-    }
+    top_level
 }
 
 // ── Use item processing ──────────────────────────────────────────────────────
@@ -62,10 +126,18 @@ fn process_use_items(
     items: &[Item],
     top_level: &mut HashMap<String, (DefId, DefKind)>,
     diagnostics: &mut Vec<HirDiagnostic>,
+    global_exports: Option<&GlobalExports>,
+    current_module: &str,
 ) {
     for item in items {
         if let Item::UseItem(u) = item {
-            process_use_tree(&u.tree, top_level, diagnostics);
+            process_use_tree(
+                &u.tree,
+                top_level,
+                diagnostics,
+                global_exports,
+                current_module,
+            );
         }
     }
 }
@@ -75,19 +147,22 @@ fn process_use_tree(
     tree: &UseTree,
     top_level: &mut HashMap<String, (DefId, DefKind)>,
     diagnostics: &mut Vec<HirDiagnostic>,
+    global_exports: Option<&GlobalExports>,
+    current_module: &str,
 ) {
     match &tree.kind {
         UseTreeKind::Single { rename } => {
-            if let Some((def_id, kind)) = resolve_use_path(&tree.path, top_level) {
+            if let Some((def_id, kind)) = resolve_use_path(
+                &tree.path,
+                top_level,
+                global_exports,
+                current_module,
+                diagnostics,
+            ) {
                 let name = rename
                     .clone()
                     .unwrap_or_else(|| tree.path.last().cloned().unwrap_or_default());
                 top_level.insert(name, (def_id, kind));
-            } else {
-                diagnostics.push(HirDiagnostic::UnresolvedName {
-                    name: tree.path.join("::"),
-                    span: Span { lo: 0, hi: 0 },
-                });
             }
         }
         UseTreeKind::Group(trees) => {
@@ -98,27 +173,78 @@ fn process_use_tree(
                     path: full_path,
                     kind: sub_tree.kind.clone(),
                 };
-                process_use_tree(&combined, top_level, diagnostics);
+                process_use_tree(
+                    &combined,
+                    top_level,
+                    diagnostics,
+                    global_exports,
+                    current_module,
+                );
             }
         }
         UseTreeKind::Glob => {
             // Glob imports require module graph support — deferred.
+            diagnostics.push(HirDiagnostic::NotYetSupported {
+                feature: "glob imports (`use foo::*`)".to_string(),
+                span: Span { lo: 0, hi: 0 },
+            });
         }
     }
 }
 
 /// Resolve a use path to a definition.
-/// Single-segment paths look up directly in top_level.
-/// Multi-segment paths resolve the last segment (simplified until module graph).
+///
+/// - Single-segment paths look up directly in `top_level` (intra-module).
+/// - Multi-segment paths resolve the first segment(s) as a module name in
+///   `global_exports`, then look up the final segment in that module's exports.
 fn resolve_use_path(
     path: &[String],
     top_level: &HashMap<String, (DefId, DefKind)>,
+    global_exports: Option<&GlobalExports>,
+    current_module: &str,
+    diagnostics: &mut Vec<HirDiagnostic>,
 ) -> Option<(DefId, DefKind)> {
     if path.is_empty() {
         return None;
     }
-    let name = path.last()?;
-    top_level.get(name).copied()
+
+    // Single segment: look up in local top_level (same as before).
+    if path.len() == 1 {
+        let name = &path[0];
+        return top_level.get(name).copied();
+    }
+
+    // Multi-segment: resolve module path + item name.
+    let exports = global_exports?;
+
+    // The last segment is the item name; everything before is the module path.
+    let item_name = &path[path.len() - 1];
+    let module_path = &path[..path.len() - 1];
+
+    // Try to find the module by joining segments.
+    let module_key = module_path.join("::");
+
+    if let Some(module_items) = exports.get(&module_key) {
+        if let Some(&(def_id, kind, vis)) = module_items.get(item_name) {
+            // Visibility check: private items from other modules are not accessible.
+            if vis == Visibility::Private && module_key != current_module {
+                diagnostics.push(HirDiagnostic::PrivateImport {
+                    name: item_name.clone(),
+                    module: module_key,
+                    span: Span { lo: 0, hi: 0 },
+                });
+                return None;
+            }
+            return Some((def_id, kind));
+        }
+    }
+
+    // Not found — emit unresolved.
+    diagnostics.push(HirDiagnostic::UnresolvedName {
+        name: path.join("::"),
+        span: Span { lo: 0, hi: 0 },
+    });
+    None
 }
 
 // ── Name resolution helpers ──────────────────────────────────────────────────
@@ -188,12 +314,12 @@ impl Scope {
         }
     }
 
-    /// Define a binding in this scope. Returns `true` if this is a same-scope
-    /// redefinition (error), `false` if it's a new name or shadowing a parent name.
-    pub fn define(&mut self, name: String, id: DefId, kind: DefKind) -> bool {
-        let redefines_own = self.own_names.contains(&name);
-        self.bindings.insert(name.clone(), (id, kind));
-        self.own_names.insert(name);
-        redefines_own
+    /// Define a name in this scope. Returns `true` if it shadows a name
+    /// already defined in the same scope (an error).
+    pub fn define(&mut self, name: String, def_id: DefId, kind: DefKind) -> bool {
+        let shadows_same_scope = self.own_names.contains(&name);
+        self.own_names.insert(name.clone());
+        self.bindings.insert(name, (def_id, kind));
+        shadows_same_scope
     }
 }

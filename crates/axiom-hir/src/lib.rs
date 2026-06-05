@@ -29,7 +29,8 @@ mod serialize;
 
 pub use error::HirDiagnostic;
 pub use hir::*;
-pub use lower::lower;
+pub use lower::{lower, lower_structural, Def, DefKind};
+pub use resolve::{build_global_exports, resolve_with_globals, GlobalExports};
 pub use serialize::serialize;
 
 /// Coverage checks: verifies that every `NameRef::Unresolved` in the HIR

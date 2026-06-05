@@ -99,6 +99,14 @@ fn run_check(path: &Path) -> ExitCode {
 }
 
 /// Multi-file check: build the module graph, compile each module, and combine.
+/// Per-module data collected during structural lowering.
+type ModuleData = (
+    String,
+    Vec<axiom_hir::Item>,
+    Vec<axiom_hir::Def>,
+    Vec<axiom_hir::HirDiagnostic>,
+);
+
 fn run_check_dir(path: &Path) -> ExitCode {
     let src_dir = path.join("src");
     let search_dir = if src_dir.exists() { &src_dir } else { path };
@@ -110,9 +118,33 @@ fn run_check_dir(path: &Path) -> ExitCode {
         }
     };
 
-    // Compile each module in topological order and combine HIRs.
-    let mut all_items = Vec::new();
-    let mut all_diagnostics = Vec::new();
+    // Phase 1: structural lowering for all modules (no name resolution yet).
+    let (mut module_data, mut any_errors) = lower_all_modules(&graph);
+
+    // Phase 2: build global export map from all modules' pub items.
+    let export_input: Vec<(String, Vec<axiom_hir::Def>)> = module_data
+        .iter()
+        .map(|(name, _, defs, _)| (name.clone(), (*defs).clone()))
+        .collect();
+    let global_exports = axiom_hir::build_global_exports(&export_input);
+
+    // Phase 3: resolve each module with cross-module context.
+    let all_items = resolve_all_modules(&mut module_data, &global_exports, &mut any_errors);
+
+    // Phase 4: type-check the combined HIR.
+    any_errors |= typecheck_combined(all_items);
+
+    if any_errors {
+        ExitCode::from(EXIT_DIAGNOSTICS)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+/// Phase 1: parse and structurally lower all modules.
+fn lower_all_modules(graph: &axiom_modules::graph::ModuleGraph) -> (Vec<ModuleData>, bool) {
+    let mut next_id = 0usize;
+    let mut module_data = Vec::new();
     let mut any_errors = false;
 
     for module_id in graph.topo_order() {
@@ -123,35 +155,66 @@ fn run_check_dir(path: &Path) -> ExitCode {
             any_errors = true;
             continue;
         };
-        let hir = axiom_hir::lower(&root, &module.source);
-        for diag in &hir.diagnostics {
+        let (items, defs, diags, nid) = axiom_hir::lower_structural(&root, &module.source, next_id);
+        next_id = nid;
+        for diag in &diags {
             eprintln!("{diag}");
             any_errors = true;
         }
-        all_items.extend(hir.items);
-        all_diagnostics.extend(hir.diagnostics);
+        module_data.push((module.name.clone(), items, defs, diags));
     }
 
-    // Type-check the combined HIR.
+    (module_data, any_errors)
+}
+
+/// Phase 3: resolve names in all modules using cross-module exports.
+fn resolve_all_modules(
+    module_data: &mut [ModuleData],
+    global_exports: &axiom_hir::GlobalExports,
+    any_errors: &mut bool,
+) -> Vec<axiom_hir::Item> {
+    let mut all_items = Vec::new();
+
+    for (module_name, items, defs, module_diags) in module_data {
+        let mut items = std::mem::take(items);
+        let mut diagnostics = std::mem::take(module_diags);
+        axiom_hir::resolve_with_globals(
+            &mut items,
+            defs,
+            &mut diagnostics,
+            global_exports,
+            module_name,
+        );
+        for diag in &diagnostics {
+            eprintln!("{diag}");
+            *any_errors = true;
+        }
+        all_items.extend(items);
+    }
+
+    all_items
+}
+
+/// Phase 4: type-check the combined HIR. Returns true if there were errors.
+fn typecheck_combined(items: Vec<axiom_hir::Item>) -> bool {
     let combined_hir = axiom_hir::Hir {
-        items: all_items,
+        items,
         diagnostics: Vec::new(),
     };
     let thir = axiom_typeck::check(combined_hir);
+    let mut any_errors = false;
     for diag in &thir.diagnostics {
         eprintln!("{diag}");
         any_errors = true;
     }
-
-    if any_errors {
-        ExitCode::from(EXIT_DIAGNOSTICS)
-    } else {
-        ExitCode::SUCCESS
-    }
+    any_errors
 }
 
 /// Read the file, compile through IR, and execute in the VM.
 fn run_run(path: &Path) -> ExitCode {
+    if path.is_dir() {
+        return run_run_dir(path);
+    }
     let source = match std::fs::read_to_string(path) {
         Ok(text) => text,
         Err(err) => {
@@ -170,6 +233,58 @@ fn run_run(path: &Path) -> ExitCode {
         Some(t) => t,
         None => return ExitCode::from(EXIT_DIAGNOSTICS),
     };
+    let mono = axiom_typeck::monomorphize(&thir);
+    let ir = axiom_ir::lower(&thir, &mono);
+    let mut vm = axiom_vm::Vm::new(ir);
+    match vm.run() {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("error: {err}");
+            ExitCode::from(EXIT_DIAGNOSTICS)
+        }
+    }
+}
+
+/// Compile a multi-file project and run it in the VM.
+fn run_run_dir(path: &Path) -> ExitCode {
+    let src_dir = path.join("src");
+    let search_dir = if src_dir.exists() { &src_dir } else { path };
+    let graph = match axiom_modules::discover::discover(search_dir) {
+        Ok(g) => g,
+        Err(err) => {
+            eprintln!("error: {err}");
+            return ExitCode::from(EXIT_USAGE);
+        }
+    };
+
+    // Phase 1: structural lowering for all modules.
+    let (mut module_data, mut any_errors) = lower_all_modules(&graph);
+
+    // Phase 2: build global export map.
+    let export_input: Vec<(String, Vec<axiom_hir::Def>)> = module_data
+        .iter()
+        .map(|(name, _, defs, _)| (name.clone(), (*defs).clone()))
+        .collect();
+    let global_exports = axiom_hir::build_global_exports(&export_input);
+
+    // Phase 3: resolve each module with cross-module context.
+    let all_items = resolve_all_modules(&mut module_data, &global_exports, &mut any_errors);
+
+    // Phase 4: type-check the combined HIR.
+    let combined_hir = axiom_hir::Hir {
+        items: all_items,
+        diagnostics: Vec::new(),
+    };
+    let thir = axiom_typeck::check(combined_hir);
+    for diag in &thir.diagnostics {
+        eprintln!("{diag}");
+        any_errors = true;
+    }
+    if any_errors {
+        return ExitCode::from(EXIT_DIAGNOSTICS);
+    }
+
+    // Phase 5: monomorphize, lower to IR, and execute.
     let mono = axiom_typeck::monomorphize(&thir);
     let ir = axiom_ir::lower(&thir, &mono);
     let mut vm = axiom_vm::Vm::new(ir);

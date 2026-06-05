@@ -21,6 +21,12 @@ pub enum HirDiagnostic {
     },
     #[error("{feature} is not yet supported in this version")]
     NotYetSupported { feature: String, span: Span },
+    #[error("`{name}` is private in module `{module}`")]
+    PrivateImport {
+        name: String,
+        module: String,
+        span: Span,
+    },
 }
 
 impl HirDiagnostic {
@@ -29,7 +35,8 @@ impl HirDiagnostic {
             HirDiagnostic::UnresolvedName { span, .. }
             | HirDiagnostic::DuplicateDefinition { span, .. }
             | HirDiagnostic::ArityMismatch { span, .. }
-            | HirDiagnostic::NotYetSupported { span, .. } => *span,
+            | HirDiagnostic::NotYetSupported { span, .. }
+            | HirDiagnostic::PrivateImport { span, .. } => *span,
         }
     }
 

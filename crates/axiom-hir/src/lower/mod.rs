@@ -34,6 +34,27 @@ pub fn lower(root: &ast::SourceFile, source: &str) -> Hir {
     }
 }
 
+/// Structural lowering only — produces HIR items and defs without name resolution.
+/// Takes a `start_id` so DefIds are globally unique across modules.
+/// Returns (items, defs, diagnostics, next_id).
+pub fn lower_structural(
+    root: &ast::SourceFile,
+    source: &str,
+    start_id: usize,
+) -> (Vec<Item>, Vec<Def>, Vec<HirDiagnostic>, usize) {
+    let mut ctx = LowerCtx::new(source);
+    ctx.next_id = start_id;
+    for item_node in root.items() {
+        let item = match item::lower_item(item_node, &mut ctx) {
+            Some(i) => i,
+            None => continue,
+        };
+        ctx.items.push(item);
+    }
+    let next_id = ctx.next_id;
+    (ctx.items, ctx.defs, ctx.diagnostics, next_id)
+}
+
 pub(crate) struct LowerCtx {
     #[allow(dead_code)]
     pub source: String,
@@ -43,16 +64,18 @@ pub(crate) struct LowerCtx {
     pub defs: Vec<Def>,
 }
 
-pub(crate) struct Def {
+#[derive(Debug, Clone)]
+pub struct Def {
     pub name: String,
     pub def_id: DefId,
     pub kind: DefKind,
+    pub visibility: Visibility,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(dead_code)]
-pub(crate) enum DefKind {
+pub enum DefKind {
     Fn,
     Struct,
     Enum,

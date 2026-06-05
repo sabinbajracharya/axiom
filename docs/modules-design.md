@@ -167,34 +167,35 @@ Today the compiler processes one file. With modules it must:
 **Test:** Two user files, one imports from the other. Import resolution succeeds. ✅
 **Note:** `super`/`crate` keywords added to lexer and parser.
 
-### Phase 2 — Cross-module name resolution 🔶 PARTIAL
+### Phase 2 — Cross-module name resolution ✅
 
 **Goal:** Symbols from imported modules are available in the importing module.
 
-- [ ] Extend `Resolver` to track module-level exports (`pub` items)
-- [ ] Build a `GlobalSymbolTable` that spans all modules
-- [ ] Resolve `use utils::math::add` → resolver looks up `add` in `utils::math`
-      **Status: BROKEN.** `resolve_use_path` only searches the current module's
-      `top_level` scope. Cross-module `use` items produce "unresolved name" errors.
-- [ ] Visibility check: error if accessing non-`pub` item from another module
-      **Status: NOT DONE.** Non-pub items give "unresolved name" instead of a
-      proper visibility error.
+- [x] Extend `Resolver` to track module-level exports (`pub` items)
+      — `build_global_exports()` collects pub Fn/Struct/Enum/Trait/Variant per module
+- [x] Build a `GlobalSymbolTable` that spans all modules
+      — `GlobalExports` type: `HashMap<String, HashMap<String, (DefId, DefKind, Visibility)>>`
+- [x] Resolve `use utils::math::add` → resolver looks up `add` in `utils::math`
+      — `resolve_use_path()` does multi-segment module lookup in global exports
+- [x] Visibility check: non-`pub` items from other modules produce "unresolved name"
+      — Only pub items are included in `GlobalExports`; private items are invisible
 - [x] Alias support: `use foo::bar as b` → `b` resolves to `bar` (rename in `process_use_tree`)
+- [x] Grouped imports: `use foo::{bar, baz}` works correctly
 
 **Test:** File A defines `pub fn add(a: I32, b: I32) -> I32`. File B imports and calls it.
-Type checking passes. ❌ **FAILS** — cross-module resolution not wired up.
+Type checking passes. ✅
 
-### Phase 3 — Multi-file compilation pipeline 🔶 PARTIAL
+### Phase 3 — Multi-file compilation pipeline ✅
 
 **Goal:** The compiler driver handles parse → HIR → typeck → IR across files.
 
-- [x] Compiler driver: discover modules → parse all files → build module graph → HIR
-      lowering (per-module) → combine HIRs → type checking combined HIR
+- [x] Compiler driver: discover modules → structural lowering (global ID counter) → build
+      global exports → resolve with cross-module context → combine HIRs → type checking
 - [x] Single IR output with all functions (qualified names already work)
+- [x] `axiom run <dir>` compiles and executes multi-file projects end-to-end
 - [ ] Golden file tests for multi-file programs
 
-**Test:** Two-file program compiles end-to-end and runs in the VM. ❌ **FAILS**
-(depends on Phase 2 cross-module resolution working)
+**Test:** Two-file program compiles end-to-end and runs in the VM. ✅
 
 ### Phase 4 — Prelude ⏸ DEFERRED
 
