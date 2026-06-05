@@ -1,6 +1,8 @@
 //! HIR item definitions: functions, structs, enums, traits, and impls.
 
-use super::{Block, CallingConvention, HirId, HirTy, HirTypeParam, NameRef, Visibility};
+use super::{
+    Block, CallingConvention, HirId, HirTraitBound, HirTy, HirTypeParam, NameRef, Visibility,
+};
 
 // ── Items ─────────────────────────────────────────────────────────────────────
 
@@ -79,6 +81,9 @@ pub struct TraitDef {
     pub name: String,
     pub visibility: Visibility,
     pub type_params: Vec<HirTypeParam>,
+    /// Supertraits declared as `trait X: A + B { .. }`. Every implementor of
+    /// this trait must also implement each supertrait.
+    pub supertraits: Vec<HirTraitBound>,
     pub methods: Vec<TraitMethod>,
 }
 

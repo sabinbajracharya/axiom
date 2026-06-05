@@ -318,6 +318,22 @@ fn lower_trait_def(t: &ast::TraitDef, ctx: &mut LowerCtx) -> TraitDef {
         Visibility::Private
     };
     let type_params = lower_generic_params(t.generic_param_list(), ctx);
+    let supertraits = t
+        .supertraits()
+        .map(|b| {
+            b.types()
+                .into_iter()
+                .map(|ty_node| {
+                    // Supertraits are type nodes (PathType), like trait bounds.
+                    let name = ast::PathType::cast(ty_node)
+                        .and_then(|pt| pt.path())
+                        .map(|p| NameRef::unresolved(path_last_segment(Some(p))))
+                        .unwrap_or_else(|| NameRef::unresolved(""));
+                    HirTraitBound { name }
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     let methods = t
         .item_list()
         .map(|il| il.methods())
@@ -339,6 +355,7 @@ fn lower_trait_def(t: &ast::TraitDef, ctx: &mut LowerCtx) -> TraitDef {
         name: tname,
         visibility,
         type_params,
+        supertraits,
         methods,
     }
 }

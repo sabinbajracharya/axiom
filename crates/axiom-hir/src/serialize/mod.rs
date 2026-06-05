@@ -62,6 +62,22 @@ fn fmt_type_params(params: &[HirTypeParam]) -> String {
     format!("<{}>", inner)
 }
 
+/// Render a trait's supertrait list as `: A→.. + B→..`, or empty if none.
+fn fmt_supertraits(supertraits: &[HirTraitBound]) -> String {
+    if supertraits.is_empty() {
+        return String::new();
+    }
+    let names = supertraits
+        .iter()
+        .map(|b| match &b.name {
+            NameRef::Resolved(r) => format!("{}→{}", r.text, r.def_id),
+            NameRef::Unresolved(u) => format!("{}→<unresolved>", u.text),
+        })
+        .collect::<Vec<_>>()
+        .join(" + ");
+    format!(": {names}")
+}
+
 fn serialize_fn_def(f: &FnDef, depth: usize, out: &mut String) {
     let type_params = fmt_type_params(&f.type_params);
     let params = f
@@ -98,10 +114,11 @@ fn serialize_struct_def(s: &StructDef, depth: usize, out: &mut String) {
 
 fn serialize_trait_def(t: &TraitDef, depth: usize, out: &mut String) {
     let type_params = fmt_type_params(&t.type_params);
+    let supertraits = fmt_supertraits(&t.supertraits);
     indent(out, depth);
     out.push_str(&format!(
-        "TraitDef({}) name={}{} vis={} methods=[\n",
-        t.id, t.name, type_params, t.visibility,
+        "TraitDef({}) name={}{}{} vis={} methods=[\n",
+        t.id, t.name, type_params, supertraits, t.visibility,
     ));
     for method in &t.methods {
         let params = method

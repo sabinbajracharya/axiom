@@ -1,0 +1,9 @@
+TraitDef(0) name=Equatable vis=private methods=[
+  Method(1) name=eq params=[let self: _, let other: Self→<unresolved>] return=Bool→<unresolved>
+]
+TraitDef(4) name=Hashable: Equatable→<unresolved> vis=private methods=[
+  Method(5) name=hash params=[let self: _] return=Int→<unresolved>
+]
+TraitDef(7) name=Ord: Equatable→<unresolved> + Hashable→<unresolved> vis=private methods=[
+  Method(8) name=lt params=[let self: _, let other: Self→<unresolved>] return=Bool→<unresolved>
+]
