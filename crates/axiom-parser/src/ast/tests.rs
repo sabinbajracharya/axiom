@@ -117,6 +117,7 @@ fn can_cast_pattern(kind: SyntaxKind) -> bool {
 
 fn can_cast_type(kind: SyntaxKind) -> bool {
     PathType::can_cast(kind)
+        || SliceType::can_cast(kind)
         || GenericArgList::can_cast(kind)
         || ErrorUnionType::can_cast(kind)
         || ErrorSetUnionType::can_cast(kind)

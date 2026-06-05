@@ -36,6 +36,32 @@ impl PathType {
     }
 }
 
+/// `[T]` — a slice type. The single child type node is the element type.
+pub struct SliceType(SyntaxNode);
+
+impl AstNode for SliceType {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::SliceType
+    }
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(node.kind()) {
+            Some(Self(node))
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.0
+    }
+}
+
+impl SliceType {
+    /// The element type `T` in `[T]`.
+    pub fn element_type(&self) -> Option<SyntaxNode> {
+        child_type_node(&self.0)
+    }
+}
+
 pub struct GenericArgList(SyntaxNode);
 
 impl AstNode for GenericArgList {

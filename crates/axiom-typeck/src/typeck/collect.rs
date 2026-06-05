@@ -382,6 +382,9 @@ impl TypeChecker {
                 }
             }
             HirTy::Instance(inst) => self.resolve_instance(inst),
+            // A slice `[T]` maps onto the runtime-sized buffer type the
+            // collection library already uses to store homogeneous elements.
+            HirTy::Slice(elem) => Ty::HeapBuffer(Box::new(self.resolve_hir_ty(elem))),
             HirTy::Error => Ty::Error,
         }
     }

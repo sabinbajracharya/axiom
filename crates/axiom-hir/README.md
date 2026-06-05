@@ -43,7 +43,8 @@ CST → axiom_parser::ast::* → axiom_hir::lower → Hir + diagnostics
 | `src/lower/pattern.rs` | Pattern lowering (7 pattern kinds) | `lower_pattern` + per-kind helpers |
 | `src/lower/ty.rs` | Type lowering | `lower_ty` |
 | `src/resolve.rs` | Two-pass name resolution (emits `UnresolvedName` diagnostics) | `resolve`, `Scope` |
-| `src/serialize.rs` | Canonical HIR dump (pure) | `serialize` |
+| `src/serialize/mod.rs` | Canonical HIR dump (pure) | `serialize` |
+| `src/serialize/types.rs` | Type formatting for the dump (`HirTy` → text) | `fmt_ty`, `fmt_ty_maybe` |
 | `examples/hir.rs` | Debug CLI (`cargo run -p axiom-hir --example hir -- file.ax`) | — |
 
 ## Invariants & gotchas

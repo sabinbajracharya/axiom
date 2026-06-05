@@ -65,6 +65,7 @@ pub(super) fn fmt_hir_ty(ty: &HirTy) -> String {
                 NameRef::Unresolved(u) => format!("{}→<unresolved><{}>", u.text, args),
             }
         }
+        HirTy::Slice(elem) => format!("[{}]", fmt_hir_ty(elem)),
         HirTy::Error => "<error>".to_string(),
     }
 }

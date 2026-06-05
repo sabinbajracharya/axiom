@@ -31,6 +31,13 @@ pub(super) fn lower_ty(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> H
         } else {
             HirTy::Named(nr)
         }
+    } else if let Some(slice) = ast::SliceType::cast(node.clone()) {
+        // `[T]` → Slice(T). A missing element type (recovery) lowers to Error.
+        let elem = slice
+            .element_type()
+            .map(|e| lower_ty(&e, ctx))
+            .unwrap_or(HirTy::Error);
+        HirTy::Slice(Box::new(elem))
     } else if let Some(_unit) = ast::UnitType::cast(node.clone()) {
         HirTy::Unit
     } else if let Some(_eu) = ast::ErrorUnionType::cast(node.clone()) {

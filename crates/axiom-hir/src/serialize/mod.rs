@@ -6,6 +6,9 @@
 
 use crate::hir::*;
 
+mod types;
+use types::{fmt_ty, fmt_ty_maybe};
+
 // ── Public entry point ─────────────────────────────────────────────────────────
 
 /// Serialize an HIR to the canonical dump format: one line per node, two-space
@@ -545,41 +548,6 @@ fn serialize_pattern_inline(pat: &Pattern, out: &mut String) {
                 out.push_str(&fmt_lit(e));
             }
         }
-    }
-}
-
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-fn fmt_ty(ty: &HirTy) -> String {
-    match ty {
-        HirTy::Named(nr) => match nr {
-            NameRef::Resolved(r) => format!("{}→{}", r.text, r.def_id),
-            NameRef::Unresolved(u) => format!("{}→<unresolved>", u.text),
-        },
-        HirTy::Unit => "()".to_string(),
-        HirTy::Tuple(ts) => {
-            format!("({})", ts.iter().map(fmt_ty).collect::<Vec<_>>().join(", "))
-        }
-        HirTy::Fn(f) => {
-            let params = f.params.iter().map(fmt_ty).collect::<Vec<_>>().join(", ");
-            format!("fn({}) -> {}", params, fmt_ty(&f.return_type))
-        }
-        HirTy::TypeParam(tp) => format!("{}→{}", tp.name, tp.id),
-        HirTy::Instance(inst) => {
-            let args = inst.args.iter().map(fmt_ty).collect::<Vec<_>>().join(", ");
-            match &inst.name {
-                NameRef::Resolved(r) => format!("{}→{}<{}>", r.text, r.def_id, args),
-                NameRef::Unresolved(u) => format!("{}→<unresolved><{}>", u.text, args),
-            }
-        }
-        HirTy::Error => "<error>".to_string(),
-    }
-}
-
-fn fmt_ty_maybe(ty: &Option<HirTy>) -> String {
-    match ty {
-        Some(t) => fmt_ty(t),
-        None => "_".to_string(),
     }
 }
 

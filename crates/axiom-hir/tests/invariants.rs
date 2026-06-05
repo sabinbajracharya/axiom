@@ -120,6 +120,7 @@ fn handles_type(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::PathType
+            | SyntaxKind::SliceType
             | SyntaxKind::UnitType
             | SyntaxKind::Error
             | SyntaxKind::ErrorUnionType

@@ -182,6 +182,9 @@ pub(super) fn resolve_ty_names(ty: &mut HirTy, bindings: &HashMap<String, (DefId
             }
             resolve_ty_names(&mut f.return_type, bindings);
         }
+        HirTy::Slice(elem) => {
+            resolve_ty_names(elem, bindings);
+        }
         HirTy::TypeParam(_) | HirTy::Unit | HirTy::Error => {}
     }
 }

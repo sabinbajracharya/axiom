@@ -129,6 +129,7 @@ pub fn is_type_kind(kind: SyntaxKind) -> bool {
     matches!(
         kind,
         SyntaxKind::PathType
+            | SyntaxKind::SliceType
             | SyntaxKind::ErrorUnionType
             | SyntaxKind::ErrorSetUnionType
             | SyntaxKind::UnitType

@@ -293,6 +293,7 @@ syntax_kinds! {
         TuplePatFieldList,
         // types
         PathType,
+        SliceType,
         GenericArgList,
         ErrorUnionType,
         ErrorSetUnionType,

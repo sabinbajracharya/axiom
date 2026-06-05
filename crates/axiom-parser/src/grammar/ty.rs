@@ -46,6 +46,7 @@ fn ty_inner(p: &mut Parser) -> CompletedMarker {
 fn type_primary(p: &mut Parser) -> CompletedMarker {
     match p.current() {
         K::LParen => paren_type(p),
+        K::LBracket => slice_type(p),
         K::Ident | K::KwSelfType => path_type(p),
         _ => {
             let m = p.start();
@@ -56,6 +57,16 @@ fn type_primary(p: &mut Parser) -> CompletedMarker {
             m.complete(p, K::Error)
         }
     }
+}
+
+/// `[T]` — a slice: a runtime-sized, borrowed view of homogeneous elements.
+/// The element type recurses, so `[[Int]]` and `[Pair<K, V>]` parse.
+fn slice_type(p: &mut Parser) -> CompletedMarker {
+    let m = p.start();
+    p.bump(); // [
+    ty(p);
+    p.expect(K::RBracket);
+    m.complete(p, K::SliceType)
 }
 
 /// `Name`, `Name::Seg`, optionally followed by `<args>`.
@@ -107,4 +118,52 @@ fn paren_type(p: &mut Parser) -> CompletedMarker {
             K::PathType
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    // Tests legitimately panic/assert on failure. RUST_CONVENTIONS §3.4.
+    #![allow(clippy::panic, clippy::expect_used)]
+    use crate::{parse, serialize};
+
+    /// Parse `src` as the annotated type of a parameter and return the tree dump.
+    fn dump_param_ty(src: &str) -> String {
+        let result = parse(&format!("fn f(x: {src}) {{ }}\n"));
+        assert!(
+            result.errors.is_empty(),
+            "unexpected parse errors for `{src}`: {:?}",
+            result.errors
+        );
+        serialize(&result.tree)
+    }
+
+    #[test]
+    fn test_slice_type_parses() {
+        let dump = dump_param_ty("[U8]");
+        assert!(
+            dump.contains("SliceType @"),
+            "expected SliceType node:\n{dump}"
+        );
+    }
+
+    #[test]
+    fn test_slice_type_element_is_path() {
+        // The element type `U8` parses as a normal PathType inside the slice.
+        let dump = dump_param_ty("[U8]");
+        let slice_pos = dump.find("SliceType @").expect("SliceType present");
+        assert!(
+            dump[slice_pos..].contains("PathType @"),
+            "slice element should be a PathType:\n{dump}"
+        );
+    }
+
+    #[test]
+    fn test_nested_slice_type_parses() {
+        let dump = dump_param_ty("[[Int]]");
+        assert_eq!(
+            dump.matches("SliceType @").count(),
+            2,
+            "expected two nested SliceType nodes:\n{dump}"
+        );
+    }
 }
