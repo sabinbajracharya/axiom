@@ -309,8 +309,14 @@ pub(crate) fn resolve_name_ref(
 const BUILTIN_HIR_ID_START: usize = 1_000_000;
 
 /// Built-in names that are always available (no module definition needed).
-/// Primitive types + `todo` (compiler-internal stub). `print`/`println`
-/// resolve through `stdlib/io.ax` via the module system.
+/// Primitive types + `todo` (compiler-internal stub) + `format` (the one
+/// variadic formatting intrinsic — see `docs/string-format-and-print-retire.md`).
+/// `print`/`println` resolve through `stdlib/io.ax` via the module system.
+///
+/// `format` is given a name here so a bare `format(...)` call (which is what
+/// `string::format(...)` lowers to — the call lowerer keeps only the last path
+/// segment) resolves to a definition and reaches the type checker, where it is
+/// special-cased as variadic → `String`, rather than erroring as unresolved.
 pub(crate) fn builtin_def_id(name: &str) -> Option<DefId> {
     let idx = match name {
         "Int" => 0,
@@ -319,6 +325,7 @@ pub(crate) fn builtin_def_id(name: &str) -> Option<DefId> {
         "String" => 3,
         "Unit" => 4,
         "todo" => 5,
+        "format" => 6,
         _ => return None,
     };
     Some(HirId(BUILTIN_HIR_ID_START + idx))

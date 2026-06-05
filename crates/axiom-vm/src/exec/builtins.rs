@@ -8,6 +8,9 @@
 //!   (`dlsym`) lands with the native backend.
 //! - **Method intrinsics** (`String::len`, `String::as_bytes`) are dispatched via
 //!   the method-call builtin check.
+//! - **`format`** is the one variadic formatting intrinsic (DESIGN_SPEC §11),
+//!   dispatched as a free-function builtin; it renders its template via the
+//!   `Value` Display impl.
 //!
 //! `print`/`println` are NOT builtins — they are real Axiom functions in
 //! `stdlib/io.ax` that call `core::platform::write`.
@@ -18,8 +21,12 @@ use crate::value::Value;
 
 /// Check if a method name is a compiler intrinsic dispatched in the VM.
 /// (Platform externs are dispatched via `is_extern`, not this check.)
+///
+/// `format` is the one variadic formatting intrinsic (the formatting primitive,
+/// DESIGN_SPEC §11). A `string::format(...)` call lowers to a bare `format` call
+/// (the lowerer keeps only the last path segment), so the VM matches `"format"`.
 pub fn is_builtin(name: &str) -> bool {
-    matches!(name, "String::len" | "String::as_bytes")
+    matches!(name, "String::len" | "String::as_bytes" | "format")
 }
 
 /// Call a method intrinsic.
@@ -31,9 +38,78 @@ pub fn call_builtin(
     match name {
         "String::len" => builtin_string_len(args),
         "String::as_bytes" => builtin_string_as_bytes(args),
+        "format" => builtin_format(args),
         _ => Err(VmError::BuiltinNotFound {
             name: name.to_string(),
         }),
+    }
+}
+
+/// `format(template, args...)` — the runtime side of the `format` intrinsic.
+/// The first argument is the template string; each subsequent argument fills
+/// one `{}` (Display) or `{:?}` (debug) placeholder, in order. `{{` and `}}`
+/// are literal-brace escapes. Built-in scalars render via the `Value` Display
+/// impl. Returns a `Value::String`.
+fn builtin_format(args: Vec<Value>) -> Result<Value, VmError> {
+    let template = match args.first() {
+        Some(Value::String(s)) => s.clone(),
+        other => {
+            return Err(VmError::TypeError {
+                expected: "String".to_string(),
+                got: other
+                    .map(|v| v.type_name())
+                    .unwrap_or("missing")
+                    .to_string(),
+            })
+        }
+    };
+    Ok(Value::String(format_template(&template, &args[1..])))
+}
+
+/// Render a `format` template, consuming `args` in order. Mirrors the proven
+/// Oxy template engine: `{}`/`{:?}` placeholders, `{{`/`}}` escapes.
+fn format_template(template: &str, args: &[Value]) -> String {
+    let mut out = String::new();
+    let mut arg_idx = 0;
+    let mut chars = template.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '{' if chars.peek() == Some(&'{') => {
+                chars.next();
+                out.push('{');
+            }
+            '}' if chars.peek() == Some(&'}') => {
+                chars.next();
+                out.push('}');
+            }
+            '{' => {
+                // Consume up to the closing `}`, noting `?` for debug form.
+                let mut is_debug = false;
+                for cc in chars.by_ref() {
+                    if cc == '}' {
+                        break;
+                    }
+                    if cc == '?' {
+                        is_debug = true;
+                    }
+                }
+                if let Some(v) = args.get(arg_idx) {
+                    out.push_str(&render_value(v, is_debug));
+                }
+                arg_idx += 1;
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+/// Render a single value for a placeholder. Debug form quotes strings; both
+/// forms otherwise use the `Value` Display impl.
+fn render_value(v: &Value, is_debug: bool) -> String {
+    match (is_debug, v) {
+        (true, Value::String(s)) => format!("{s:?}"),
+        _ => v.to_string(),
     }
 }
 
@@ -136,13 +212,76 @@ mod tests {
 
     #[test]
     fn test_is_builtin() {
-        // Only method intrinsics — print/println/write are NOT builtins.
+        // Method intrinsics + the `format` free-function intrinsic.
+        // print/println/write are NOT builtins.
         assert!(is_builtin("String::len"));
         assert!(is_builtin("String::as_bytes"));
+        assert!(is_builtin("format"));
         assert!(!is_builtin("print"));
         assert!(!is_builtin("println"));
         assert!(!is_builtin("write"));
         assert!(!is_builtin("main"));
+    }
+
+    #[test]
+    fn test_format_renders_scalars() {
+        let v = call_builtin(
+            "format",
+            vec![
+                Value::String("{} = {}".into()),
+                Value::String("x".into()),
+                Value::Int(42),
+            ],
+            &mut None,
+        )
+        .unwrap();
+        assert_eq!(v, Value::String("x = 42".into()));
+    }
+
+    #[test]
+    fn test_format_float_bool() {
+        let v = call_builtin(
+            "format",
+            vec![
+                Value::String("{} {}".into()),
+                Value::Float(3.5),
+                Value::Bool(true),
+            ],
+            &mut None,
+        )
+        .unwrap();
+        assert_eq!(v, Value::String("3.5 true".into()));
+    }
+
+    #[test]
+    fn test_format_brace_escapes_and_debug() {
+        let v = call_builtin(
+            "format",
+            vec![
+                Value::String("{{{}}} {:?}".into()),
+                Value::Int(1),
+                Value::String("hi".into()),
+            ],
+            &mut None,
+        )
+        .unwrap();
+        // `{{` and `}}` are literal braces; `{}` -> 1; `{:?}` quotes the string.
+        assert_eq!(v, Value::String("{1} \"hi\"".into()));
+    }
+
+    #[test]
+    fn test_format_no_template_args_leaves_placeholder_empty() {
+        // Missing arg for a placeholder renders as nothing (lenient, like Oxy).
+        let v = call_builtin("format", vec![Value::String("a{}b".into())], &mut None).unwrap();
+        assert_eq!(v, Value::String("ab".into()));
+    }
+
+    #[test]
+    fn test_format_non_string_template_errors() {
+        assert!(matches!(
+            call_builtin("format", vec![Value::Int(1)], &mut None),
+            Err(VmError::TypeError { .. })
+        ));
     }
 
     #[test]

@@ -210,6 +210,19 @@ impl TypeChecker {
     }
 
     fn infer_call(&mut self, call: &CallExpr) -> Ty {
+        // `format` is the one variadic intrinsic (the formatting primitive, §11).
+        // It accepts any number of arguments of any type and yields `String`;
+        // the runtime template engine decides how each is rendered. A user fn
+        // named `format` shadows it (handled by the `env.lookup` guard).
+        if self.is_format_intrinsic(&call.callee) {
+            for arg in &call.args {
+                self.infer_expr(arg);
+            }
+            let ty = Ty::String;
+            self.types.insert(call.id, ty.clone());
+            return ty;
+        }
+
         let callee_ty = self.resolve_callee(call);
         let arg_types: Vec<Ty> = call.args.iter().map(|a| self.infer_expr(a)).collect();
 
@@ -231,6 +244,16 @@ impl TypeChecker {
         };
         self.types.insert(call.id, ty.clone());
         ty
+    }
+
+    /// Is this call the `format` intrinsic? True when the callee names `format`
+    /// and no user/stdlib function of that name is in scope to shadow it.
+    fn is_format_intrinsic(&self, callee: &NameRef) -> bool {
+        let name = match callee {
+            NameRef::Resolved(r) => &r.text,
+            NameRef::Unresolved(u) => &u.text,
+        };
+        name == "format" && self.env.lookup(name).is_none()
     }
 
     fn resolve_callee(&mut self, call: &CallExpr) -> Ty {
