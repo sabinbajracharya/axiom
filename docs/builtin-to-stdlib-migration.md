@@ -190,9 +190,19 @@ stdlib/
       unification (generalised `val`/`var` annotation check from `==` to `unify`); added
       `Ty::HeapBuffer` arms to `unify`/`substitute`/`contains_type_param`. Tests:
       `axiom-typeck/tests/heap_buffer.rs` (incl. negatives) + `axiom-vm/tests/heap_buffer_e2e.rs`.
-- [ ] **D2.** Implement real `stdlib/std/collections/list.ax` bodies (`new`/`push`/`count`/
-      `is_empty`/`capacity`/subscript) on `HeapBuffer<T>`. Remove `register_list_methods`
-      (incl. the `push` intrinsic). Add list e2e tests. Regen. *(M6)*
+- [x] **D2.** Implemented real `stdlib/std/collections/list.ax`: `struct List<T> { buf: [T],
+      count, cap }` with `new`/`count`/`is_empty`/`capacity`/`push`/`grow`/subscript bodies on
+      the `HeapBuffer<T>` floor — `push` doubles the buffer when full. Removed
+      `register_list_methods` (incl. the `push` intrinsic) and its unit test. Added
+      `axiom-vm/tests/list_e2e.rs` (push/count/subscript, growth across boundaries, is_empty).
+      Regenerated multi-file HIR goldens. *(M6)*
+      Unblocking work landed alongside: **associated-function calls** (`List::new()`) now
+      resolve end-to-end — an additive `CallExpr.qualifier` (the path before the last segment;
+      enum constructors and module-qualified calls are untouched), typeck resolution of
+      associated fns in the impl's type-param scope, and IR qualification to `Type::method`;
+      `check_expr` adopts the expected type when the inferred one unifies modulo type
+      parameters (so `List::new`'s phantom `T` binds from the declared `List<Int>`). The IR
+      assignment-lowering cluster moved to `crates/axiom-ir/src/lower/assign.rs` (600-line cap).
 - [ ] **D3.** Implement real `stdlib/std/collections/map.ax` bodies on `HeapBuffer` +
       `Hashable` (needs B3). Remove `register_map_methods` (incl. the `set` intrinsic). Add
       map e2e tests. Regen. *(M7)*

@@ -11,6 +11,7 @@ use crate::ir::Ir;
 use axiom_typeck::mono::MonoResult;
 use axiom_typeck::Thir;
 
+pub(super) mod assign;
 pub(super) mod expr;
 pub(super) mod helpers;
 pub(super) mod item;

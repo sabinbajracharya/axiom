@@ -2,7 +2,7 @@
 
 use super::block::lower_block;
 use super::pattern::lower_pattern;
-use super::{path_last_segment, path_last_segment_from_node, LowerCtx};
+use super::{path_last_segment, path_last_segment_from_node, path_qualifier_from_node, LowerCtx};
 use crate::hir::*;
 use crate::HirDiagnostic;
 use axiom_parser::ast::{self, AstNode};
@@ -149,10 +149,12 @@ fn lower_prefix_expr(e: &ast::PrefixExpr, ctx: &mut LowerCtx) -> Expr {
 
 fn lower_call_expr(e: &ast::CallExpr, ctx: &mut LowerCtx) -> Expr {
     let id = ctx.alloc_id();
-    let callee = e
-        .callee()
-        .and_then(|n| path_last_segment_from_node(&n))
+    let callee_node = e.callee();
+    let callee = callee_node
+        .as_ref()
+        .and_then(path_last_segment_from_node)
         .unwrap_or_default();
+    let qualifier = callee_node.as_ref().and_then(path_qualifier_from_node);
     let args = e
         .arg_list()
         .map(|al| al.args().into_iter().map(|a| lower_expr(&a, ctx)).collect())
@@ -160,6 +162,7 @@ fn lower_call_expr(e: &ast::CallExpr, ctx: &mut LowerCtx) -> Expr {
     Expr::Call(CallExpr {
         id,
         callee: NameRef::unresolved(callee),
+        qualifier,
         args,
     })
 }

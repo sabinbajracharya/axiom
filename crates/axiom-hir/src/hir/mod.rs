@@ -324,6 +324,12 @@ impl fmt::Display for UnaryOp {
 pub struct CallExpr {
     pub id: HirId,
     pub callee: NameRef,
+    /// The path segment(s) before the callee, joined by `::` — e.g. `List` in
+    /// `List::new()`. `None` for an unqualified call. Used to resolve
+    /// associated functions (`Type::method`); enum constructors and
+    /// module-qualified calls continue to resolve off `callee` (the last
+    /// segment).
+    pub qualifier: Option<String>,
     pub args: Vec<Expr>,
 }
 

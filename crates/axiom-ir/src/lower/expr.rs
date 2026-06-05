@@ -2,7 +2,7 @@
 
 use super::helpers::FnLowerCtx;
 use crate::ir::{IrConst, IrInstr, Reg};
-use axiom_hir::{AssignTarget, Expr, LitKind, LoopKind, Pattern};
+use axiom_hir::{Expr, LitKind, LoopKind, Pattern};
 
 /// Lower an HIR expression to a register. Emits instructions into the current block.
 pub(super) fn lower_expr(expr: &Expr, ctx: &mut FnLowerCtx) -> Reg {
@@ -43,7 +43,7 @@ pub(super) fn lower_expr(expr: &Expr, ctx: &mut FnLowerCtx) -> Reg {
         Expr::If(e) => lower_if(e, ctx),
         Expr::Match(e) => lower_match(e, ctx),
         Expr::Loop(e) => lower_loop(e, ctx),
-        Expr::Assign(e) => lower_assign(e, ctx),
+        Expr::Assign(e) => super::assign::lower_assign(e, ctx),
     }
 }
 
@@ -77,16 +77,20 @@ fn lower_call(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
 
     // Try to resolve to a monomorphized mangled name.
     let resolved = ctx.resolve_call_name(callee_id, &arg_refs, ctx.types);
-    let function = if resolved.is_empty() {
-        let base = name_ref_text(&e.callee);
+    let base = name_ref_text(&e.callee);
+    let function = if !resolved.is_empty() {
+        resolved
+    } else if let Some(type_name) = assoc_method_type(e, ctx.hir_items) {
+        // Associated-function call (`List::new`): use the qualified IR name
+        // "Type::method", matching how impl methods are lowered.
+        format!("{type_name}::{base}")
+    } else {
         // Qualify with the callee FnDef's module_path so call target
         // matches the qualified IR function name.
         find_fn_module_path(callee_id, ctx.hir_items)
             .filter(|p| !p.is_empty())
             .map(|p| format!("{p}::{base}"))
             .unwrap_or(base)
-    } else {
-        resolved
     };
 
     let args: Vec<Reg> = e.args.iter().map(|a| lower_expr(a, ctx)).collect();
@@ -97,6 +101,27 @@ fn lower_call(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
         args,
     });
     dst
+}
+
+/// If this call is a qualified associated-function call (`Type::method(...)`)
+/// whose qualifier names a type with an inherent impl method of that name,
+/// return the type name. Returns `None` otherwise — enum constructors and
+/// module-qualified calls are left to ordinary resolution.
+fn assoc_method_type(e: &axiom_hir::CallExpr, items: &[axiom_hir::Item]) -> Option<String> {
+    let qualifier = e.qualifier.as_ref()?;
+    let method = name_ref_text(&e.callee);
+    for item in items {
+        if let axiom_hir::Item::ImplDef(impl_def) = item {
+            let type_name = match &impl_def.type_name {
+                axiom_hir::NameRef::Resolved(r) => &r.text,
+                axiom_hir::NameRef::Unresolved(u) => &u.text,
+            };
+            if type_name == qualifier && impl_def.methods.iter().any(|m| m.name == method) {
+                return Some(qualifier.clone());
+            }
+        }
+    }
+    None
 }
 
 /// Lower a `HeapBuffer<T>` floor-op call (`heap_alloc`/`heap_get`/`heap_set`/
@@ -403,122 +428,8 @@ fn lower_loop(e: &axiom_hir::LoopExpr, ctx: &mut FnLowerCtx) -> Reg {
     unit_reg(ctx)
 }
 
-fn lower_assign(e: &axiom_hir::AssignExpr, ctx: &mut FnLowerCtx) -> Reg {
-    match &e.target {
-        AssignTarget::Name(nr) => lower_assign_name(nr, e, ctx),
-        AssignTarget::Field { receiver, field } => lower_assign_field(receiver, field, e, ctx),
-        AssignTarget::Index { base, index } => lower_assign_index(base, index, e, ctx),
-    }
-    unit_reg(ctx)
-}
-
-/// Map a compound assignment operator (`+=`, …) to its binary operator.
-/// `Plain` (`=`) is never a compound op.
-fn assign_binop(op: axiom_hir::AssignOp) -> axiom_hir::BinOp {
-    match op {
-        axiom_hir::AssignOp::Add => axiom_hir::BinOp::Add,
-        axiom_hir::AssignOp::Sub => axiom_hir::BinOp::Sub,
-        axiom_hir::AssignOp::Mul => axiom_hir::BinOp::Mul,
-        axiom_hir::AssignOp::Div => axiom_hir::BinOp::Div,
-        axiom_hir::AssignOp::Mod => axiom_hir::BinOp::Mod,
-        axiom_hir::AssignOp::Plain => unreachable!("Plain is not a compound op"),
-    }
-}
-
-/// `name op= value`: combine the current register value (for compound ops) and
-/// copy the result back into the binding's register.
-fn lower_assign_name(nr: &axiom_hir::NameRef, e: &axiom_hir::AssignExpr, ctx: &mut FnLowerCtx) {
-    let value = lower_expr(&e.value, ctx);
-    let def_id = match nr {
-        axiom_hir::NameRef::Resolved(r) => Some(r.def_id),
-        axiom_hir::NameRef::Unresolved(_) => None,
-    };
-    let dst = ctx.resolve_name(def_id);
-    match e.op {
-        axiom_hir::AssignOp::Plain => ctx.emit(IrInstr::Copy { dst, src: value }),
-        compound => {
-            let tmp = ctx.fresh_reg();
-            ctx.emit(IrInstr::BinOp {
-                dst: tmp,
-                op: assign_binop(compound),
-                lhs: dst,
-                rhs: value,
-            });
-            ctx.emit(IrInstr::Copy { dst, src: tmp });
-        }
-    }
-}
-
-/// `receiver.field op= value`: emit a `FieldSet`, reading the current field
-/// first for compound ops.
-fn lower_assign_field(
-    receiver: &Expr,
-    field: &str,
-    e: &axiom_hir::AssignExpr,
-    ctx: &mut FnLowerCtx,
-) {
-    let base = lower_expr(receiver, ctx);
-    let value = lower_expr(&e.value, ctx);
-    let final_val = match e.op {
-        axiom_hir::AssignOp::Plain => value,
-        compound => {
-            let cur = ctx.fresh_reg();
-            ctx.emit(IrInstr::Field {
-                dst: cur,
-                base,
-                field: field.to_string(),
-            });
-            let tmp = ctx.fresh_reg();
-            ctx.emit(IrInstr::BinOp {
-                dst: tmp,
-                op: assign_binop(compound),
-                lhs: cur,
-                rhs: value,
-            });
-            tmp
-        }
-    };
-    ctx.emit(IrInstr::FieldSet {
-        base,
-        field: field.to_string(),
-        value: final_val,
-    });
-}
-
-/// `base[index] op= value`: emit an `IndexSet`, reading the current element
-/// first for compound ops.
-fn lower_assign_index(base: &Expr, index: &Expr, e: &axiom_hir::AssignExpr, ctx: &mut FnLowerCtx) {
-    let base_r = lower_expr(base, ctx);
-    let idx_r = lower_expr(index, ctx);
-    let value = lower_expr(&e.value, ctx);
-    let final_val = match e.op {
-        axiom_hir::AssignOp::Plain => value,
-        compound => {
-            let cur = ctx.fresh_reg();
-            ctx.emit(IrInstr::Index {
-                dst: cur,
-                base: base_r,
-                index: idx_r,
-            });
-            let tmp = ctx.fresh_reg();
-            ctx.emit(IrInstr::BinOp {
-                dst: tmp,
-                op: assign_binop(compound),
-                lhs: cur,
-                rhs: value,
-            });
-            tmp
-        }
-    };
-    ctx.emit(IrInstr::IndexSet {
-        base: base_r,
-        index: idx_r,
-        value: final_val,
-    });
-}
-
 /// Emit a Unit constant and return its register.
-fn unit_reg(ctx: &mut FnLowerCtx) -> Reg {
+pub(super) fn unit_reg(ctx: &mut FnLowerCtx) -> Reg {
     let dst = ctx.fresh_reg();
     ctx.emit(IrInstr::Const {
         dst,

@@ -345,6 +345,10 @@ fn serialize_unary_expr(e: &UnaryExpr, depth: usize, out: &mut String) {
 
 fn serialize_call_expr(e: &CallExpr, depth: usize, out: &mut String) {
     out.push_str(&format!("Call({}) ", e.id));
+    if let Some(qualifier) = &e.qualifier {
+        out.push_str(qualifier);
+        out.push_str("::");
+    }
     serialize_name_ref(&e.callee, out);
     out.push('(');
     for (i, arg) in e.args.iter().enumerate() {

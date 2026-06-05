@@ -101,22 +101,44 @@ TraitDef(7) name=Hashable: Equatable→<unresolved> vis=pub methods=[
 TraitDef(10) name=Ord: Equatable→<unresolved> vis=pub methods=[
   Method(11) name=lt params=[let self: _, let other: Self→<unresolved>] return=Bool→<unresolved>
 ]
-StructDef(0) name=List<T: Deinit→<unresolved>> vis=private fields=[private _placeholder: Int→<unresolved>]
-ImplDef(3) List→0<T: Deinit→<unresolved>> methods=[
-  FnDef(5) name=new vis=private params=[] return=List→0<T→4> {
-    tail: Call(8) todo→1000005()
+StructDef(0) name=List<T: Deinit→<unresolved>> vis=private fields=[private buf: [T→1], private count: Int→<unresolved>, private cap: Int→<unresolved>]
+ImplDef(5) List→0<T: Deinit→<unresolved>> methods=[
+  FnDef(7) name=new vis=private params=[] return=List→0<T→6> {
+    tail: StructLit(10) List→0 { buf: Call(11) heap_alloc→1000007(Lit(12) Int(0)), count: Lit(13) Int(0), cap: Lit(14) Int(0) }
   }
-  FnDef(9) name=count vis=private params=[let self: _] return=Int→<unresolved> {
-    tail: Call(13) todo→1000005()
+  FnDef(15) name=count vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(20) self→16.Field(19) count
   }
-  FnDef(14) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
-    tail: Call(18) todo→1000005()
+  FnDef(21) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
+    tail: Bin(25) ==(Path(27) self→22.Field(26) count, Lit(28) Int(0))
   }
-  FnDef(19) name=capacity vis=private params=[let self: _] return=Int→<unresolved> {
-    tail: Call(23) todo→1000005()
+  FnDef(29) name=capacity vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(34) self→30.Field(33) cap
   }
-  SubscriptDef(24) (index) -> T→<unresolved> body
-    tail: Call(28) todo→<unresolved>()
+  FnDef(35) name=push vis=private params=[inout self: _, sink element: T→6] return=_ {
+    ExprStmt(39) If(40) Bin(41) ==(Path(43) self→36.Field(42) count, Path(45) self→36.Field(44) cap) Block(46) {
+      tail: Path(49) self→36.Method(48) grow()
+    }
+    ExprStmt(50) Path(53) self→36.Field(52) buf[Path(55) self→36.Field(54) count] = Path(56) element→37
+    tail: Path(59) self→36.count = Bin(60) +(Path(62) self→36.Field(61) count, Lit(63) Int(1))
+  }
+  FnDef(64) name=grow vis=private params=[inout self: _] return=_ {
+    VarStmt(72) Ident(67) new_cap→67: _ = Bin(68) *(Path(70) self→65.Field(69) cap, Lit(71) Int(2))
+    ExprStmt(73) If(74) Bin(75) ==(Path(76) new_cap→67, Lit(77) Int(0)) Block(78) {
+      tail: new_cap→67 = Lit(81) Int(4)
+    }
+    VarStmt(85) Ident(82) new_buf→82: [T→<unresolved>] = Call(83) heap_alloc→1000007(Path(84) new_cap→67)
+    VarStmt(88) Ident(86) i→86: _ = Lit(87) Int(0)
+    ExprStmt(89) LoopCond(90) Bin(105) <(Path(106) i→86, Path(108) self→65.Field(107) count) Block(91) {
+      ExprStmt(92) Path(94) new_buf→82[Path(95) i→86] = Path(98) self→65.Field(97) buf[Path(99) i→86]
+      tail: i→86 = Bin(102) +(Path(103) i→86, Lit(104) Int(1))
+    }
+    ExprStmt(109) Call(110) heap_free→1000010(Path(112) self→65.Field(111) buf)
+    ExprStmt(113) Path(115) self→65.buf = Path(116) new_buf→82
+    tail: Path(119) self→65.cap = Path(120) new_cap→67
+  }
+  SubscriptDef(121) (index) -> T→<unresolved> body
+    tail: Path(127) self→<unresolved>.Field(126) buf[Path(128) index→<unresolved>]
 ]
 StructDef(0) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private _placeholder: Int→<unresolved>]
 ImplDef(4) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[
@@ -146,11 +168,11 @@ FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(12) Call(13) write→0(Lit(14) Int(1), Path(16) s→10.Method(15) as_bytes())
   ExprStmt(17) Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
 }
-UseItem(87) utils::greet
-FnDef(88) name=main vis=private params=[] return=_ {
-  tail: Call(91) greet→94(Lit(92) String("world"))
+UseItem(123) utils::greet
+FnDef(124) name=main vis=private params=[] return=_ {
+  tail: Call(127) greet→130(Lit(128) String("world"))
 }
-UseItem(93) std::io::print
-FnDef(94) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
-  tail: Call(98) print→1(Path(99) name→95)
+UseItem(129) std::io::print
+FnDef(130) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
+  tail: Call(134) print→1(Path(135) name→131)
 }

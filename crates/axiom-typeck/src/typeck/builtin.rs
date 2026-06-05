@@ -60,9 +60,12 @@ fn named_param(id: HirId, convention: CallingConvention, name: &str, ty: HirTy) 
 }
 
 impl TypeChecker {
-    /// Register inherent methods for built-in types (List, Map, String).
+    /// Register inherent methods for built-in types (Map, String).
+    ///
+    /// `List` has no entry here any more: it is real library code in
+    /// `stdlib/std/collections/list.ax`, built on the `HeapBuffer<T>` floor
+    /// ops (migration M6). `Map` follows in M7.
     pub(super) fn register_builtin_methods(&mut self) {
-        self.register_list_methods();
         self.register_map_methods();
         self.register_string_methods();
         self.register_hash_methods();
@@ -91,41 +94,6 @@ impl TypeChecker {
                 type_param_bounds: HashMap::new(),
             });
         }
-    }
-
-    fn register_list_methods(&mut self) {
-        let tp = HirTypeParam {
-            id: HirId(100),
-            name: "T".to_string(),
-            bounds: vec![],
-        };
-        let t_ty = HirTy::TypeParam(tp.clone());
-        let list_ty = HirTy::Instance(axiom_hir::InstanceTy {
-            name: axiom_hir::NameRef::unresolved("List"),
-            args: vec![t_ty.clone()],
-        });
-        let tps = vec![tp];
-
-        // Only `push` remains as a compiler intrinsic. The other List methods
-        // (count, is_empty, capacity, subscript) are defined in stdlib/std/collections/list.ax.
-        let methods = vec![make_fn(
-            "push",
-            tps,
-            vec![
-                self_param(CallingConvention::Inout, list_ty),
-                named_param(HirId(102), CallingConvention::Sink, "element", t_ty),
-            ],
-            None,
-        )];
-
-        self.impl_table.push(ImplInfo {
-            trait_name: None,
-            type_name: "List".to_string(),
-            methods,
-            subscripts: vec![],
-            type_params: vec![("T".to_string(), HirId(100))],
-            type_param_bounds: HashMap::new(),
-        });
     }
 
     fn register_map_methods(&mut self) {
@@ -275,18 +243,17 @@ mod tests {
     }
 
     #[test]
-    fn test_builtin_list_methods_registered() {
+    fn test_no_builtin_list_methods_registered() {
+        // `List` is fully library code now (M6): no compiler-registered methods.
         let mut checker = make_checker("fn main() {}");
         checker.register_builtin_methods();
-        let list_impl = checker
-            .impl_table
-            .iter()
-            .find(|i| i.trait_name.is_none() && i.type_name == "List")
-            .unwrap();
-        let names: Vec<_> = list_impl.methods.iter().map(|m| m.name.as_str()).collect();
-        // Only `push` remains as compiler intrinsic. count/is_empty/capacity
-        // are now defined in stdlib/std/collections/list.ax.
-        assert_eq!(names, vec!["push"]);
+        assert!(
+            !checker
+                .impl_table
+                .iter()
+                .any(|i| i.trait_name.is_none() && i.type_name == "List"),
+            "List should have no compiler-registered impl methods"
+        );
     }
 
     #[test]

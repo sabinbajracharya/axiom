@@ -36,8 +36,12 @@ impl TypeChecker {
         let inferred = self.infer_expr(expr);
         let result = if helpers::is_error(&inferred) || helpers::is_error(expected) {
             inferred.clone()
-        } else if inferred == *expected {
-            inferred
+        } else if inferred == *expected || self.unifies_either_way(&inferred, expected) {
+            // Adopt the expected type when it matches, or when the two unify
+            // modulo type parameters — e.g. a generic struct literal whose
+            // phantom parameters aren't pinned by its fields (`List::new`'s
+            // `List { buf: heap_alloc(0), … }`) takes the declared `List<T>`.
+            expected.clone()
         } else {
             self.emit(TypeDiagnostic::TypeMismatch {
                 expected: expected.to_string(),
@@ -48,6 +52,15 @@ impl TypeChecker {
         };
         self.types.insert(expr.id(), result.clone());
         result
+    }
+
+    /// Do `a` and `b` unify when type parameters on *either* side may bind? Used
+    /// by [`check_expr`] to accept a value whose type carries still-open type
+    /// parameters against an expected type (and vice versa). Each direction uses
+    /// a fresh substitution — this is a compatibility test, not a binding step.
+    fn unifies_either_way(&self, a: &Ty, b: &Ty) -> bool {
+        self.unify(a, b, &mut Substitution::new()).is_ok()
+            || self.unify(b, a, &mut Substitution::new()).is_ok()
     }
 
     fn infer_path(&mut self, name_ref: &NameRef, expr_id: HirId) -> Ty {
@@ -223,8 +236,17 @@ impl TypeChecker {
             return ty;
         }
 
-        let callee_ty = self.resolve_callee(call);
         let arg_types: Vec<Ty> = call.args.iter().map(|a| self.infer_expr(a)).collect();
+
+        // A qualified call may name an associated function (`List::new()`) — a
+        // method with no `self`. Enum constructors and module-qualified calls
+        // fall through to ordinary callee resolution below.
+        if let Some(ty) = self.try_assoc_fn_call(call, &arg_types) {
+            self.types.insert(call.id, ty.clone());
+            return ty;
+        }
+
+        let callee_ty = self.resolve_callee(call);
 
         let ty = if helpers::is_error(&callee_ty) {
             Ty::Error
@@ -281,7 +303,12 @@ impl TypeChecker {
         }
     }
 
-    fn check_call_args(&mut self, call: &CallExpr, fn_ty: &FnTy, arg_types: &[Ty]) -> Ty {
+    pub(super) fn check_call_args(
+        &mut self,
+        call: &CallExpr,
+        fn_ty: &FnTy,
+        arg_types: &[Ty],
+    ) -> Ty {
         if fn_ty.params.len() != arg_types.len() {
             let name = helpers::call_name(&call.callee);
             self.emit(TypeDiagnostic::CallArityMismatch {

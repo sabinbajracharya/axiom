@@ -7,6 +7,10 @@ use crate::types::{InstanceTy, Ty, TypeParamId};
 use super::unify::Substitution;
 use axiom_hir::*;
 
+/// A type-parameter scope: each parameter's name, defining `HirId`, and trait
+/// bounds — the shape [`TypeChecker::current_type_params`] expects.
+type TypeParamScope = Vec<(String, HirId, Vec<String>)>;
+
 impl TypeChecker {
     pub(super) fn infer_method_call(&mut self, mc: &MethodCallExpr) -> Ty {
         let receiver_ty = self.infer_expr(&mc.receiver);
@@ -70,6 +74,69 @@ impl TypeChecker {
         };
         self.types.insert(mc.id, ty.clone());
         ty
+    }
+
+    /// Resolve a qualified associated-function call (`Type::method(args)`) — a
+    /// method with no `self` parameter, such as a constructor (`List::new()`).
+    /// Returns its return type (with type parameters inferred from the args, or
+    /// left open for the caller's expected type to bind). Returns `None` when
+    /// the call is not a qualified associated function, so ordinary call
+    /// resolution (enum constructors, module-qualified functions) proceeds.
+    pub(super) fn try_assoc_fn_call(&mut self, call: &CallExpr, arg_types: &[Ty]) -> Option<Ty> {
+        let type_name = call.qualifier.clone()?;
+        let method_name = helpers::call_name(&call.callee);
+        let (type_params, fn_def) = self.assoc_fn_def(&type_name, &method_name)?;
+
+        // Resolve the signature in the impl's own type-param scope so a return
+        // type like `List<T>` comes back keyed by the impl's parameter.
+        let saved = std::mem::replace(&mut self.current_type_params, type_params);
+        let params: Vec<Ty> = fn_def
+            .params
+            .iter()
+            .map(|p| {
+                p.ty.as_ref()
+                    .map(|t| self.resolve_hir_ty(t))
+                    .unwrap_or(Ty::Error)
+            })
+            .collect();
+        let return_type = fn_def
+            .return_type
+            .as_ref()
+            .map(|t| self.resolve_hir_ty(t))
+            .unwrap_or(Ty::Unit);
+        self.current_type_params = saved;
+
+        let fn_ty = crate::types::FnTy {
+            params,
+            return_type: Box::new(return_type),
+        };
+        Some(self.check_call_args(call, &fn_ty, arg_types))
+    }
+
+    /// Find an inherent associated function (a method with no `self` parameter)
+    /// named `method_name` on `type_name`. Returns the impl's type-param scope
+    /// (name, def_id, bounds) and the function definition.
+    fn assoc_fn_def(&self, type_name: &str, method_name: &str) -> Option<(TypeParamScope, FnDef)> {
+        for info in &self.impl_table {
+            if info.trait_name.is_some() || info.type_name != type_name {
+                continue;
+            }
+            if let Some(m) = info.methods.iter().find(|m| m.name == method_name) {
+                if m.params.iter().all(|p| p.name != "self") {
+                    let scope = info
+                        .type_params
+                        .iter()
+                        .map(|(name, id)| {
+                            let bounds =
+                                info.type_param_bounds.get(id).cloned().unwrap_or_default();
+                            (name.clone(), *id, bounds)
+                        })
+                        .collect();
+                    return Some((scope, m.clone()));
+                }
+            }
+        }
+        None
     }
 
     /// Find an impl method matching the given type name and method name.

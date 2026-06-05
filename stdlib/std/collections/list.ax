@@ -1,25 +1,64 @@
+// std/collections/list.ax — the growable list.
+//
+// `List<T>` is real Axiom library code built on the `HeapBuffer<T>` floor
+// (`[T]`): a heap buffer plus a live element `count` and allocated `cap`.
+// `push` doubles the buffer when full. No compiler intrinsics remain for
+// `List` — every method below has a real body (migration M6; see
+// docs/builtin-to-stdlib-migration.md).
+
 struct List<T: Deinit> {
-    _placeholder: Int,
+    buf: [T],
+    count: Int,
+    cap: Int,
 }
 
 impl<T: Deinit> List<T> {
+    // An empty list. The backing buffer is allocated lazily on first `push`
+    // (capacity starts at 0), so `new` never needs an element witness.
     fn new() -> List<T> {
-        todo()
+        List { buf: heap_alloc(0), count: 0, cap: 0 }
     }
 
     fn count(self) -> Int {
-        todo()
+        self.count
     }
 
     fn is_empty(self) -> Bool {
-        todo()
+        self.count == 0
     }
 
     fn capacity(self) -> Int {
-        todo()
+        self.cap
+    }
+
+    // Append `element`, growing the buffer first if it is full.
+    fn push(inout self, sink element: T) {
+        if self.count == self.cap {
+            self.grow()
+        }
+        self.buf[self.count] = element
+        self.count = self.count + 1
+    }
+
+    // Double the capacity (starting at 4), copy the live elements across, and
+    // release the old buffer.
+    fn grow(inout self) {
+        var new_cap = self.cap * 2
+        if new_cap == 0 {
+            new_cap = 4
+        }
+        var new_buf: [T] = heap_alloc(new_cap)
+        var i = 0
+        loop if i < self.count {
+            new_buf[i] = self.buf[i]
+            i = i + 1
+        }
+        heap_free(self.buf)
+        self.buf = new_buf
+        self.cap = new_cap
     }
 
     subscript(index: Int) -> T {
-        todo()
+        self.buf[index]
     }
 }

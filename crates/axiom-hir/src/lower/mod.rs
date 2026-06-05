@@ -144,6 +144,23 @@ fn path_last_segment_from_node(node: &axiom_parser::SyntaxNode) -> Option<String
         .map(|p| path_last_segment(Some(p)))
 }
 
+/// The qualifier of a path expression: every segment *before* the last, joined
+/// by `::`. `List::new` → `Some("List")`, `a::b::c` → `Some("a::b")`, a bare
+/// `new` → `None`. Used to resolve associated-function calls.
+fn path_qualifier_from_node(node: &axiom_parser::SyntaxNode) -> Option<String> {
+    let path = ast::PathExpr::cast(node.clone()).and_then(|pe| pe.path())?;
+    let names: Vec<String> = path
+        .segments()
+        .into_iter()
+        .filter_map(|seg| seg.name_token())
+        .map(|t| t.text().to_string())
+        .collect();
+    if names.len() < 2 {
+        return None;
+    }
+    Some(names[..names.len() - 1].join("::"))
+}
+
 fn lit_kind_from_token(token: &axiom_parser::SyntaxToken) -> LitKind {
     use axiom_parser::SyntaxKind;
     match token.kind() {
