@@ -593,6 +593,14 @@ Layered to keep the core small (singular idiom + small budget). **The physical
 `stdlib/` tree mirrors the module path** (one file = one module, §10.1): `stdlib/core/
 string.ax` → `core::string`, `stdlib/std/collections/list.ax` → `std::collections::list`.
 
+> **Loading [Decided].** The stdlib is **embedded into the compiler at build time** (the
+> `axiom-stdlib` crate's `build.rs` walks `stdlib/` — single source of truth, drift-guarded,
+> no runtime disk dependency) and **every** compilation path — single file, project dir, and
+> tests — compiles the user modules + stdlib through one pipeline,
+> `axiom_typeck::check_modules`. A single deliberate *bare* mode (`check_source`, no stdlib)
+> exists only for compiler-isolation unit tests. See
+> [`docs/stdlib-loading-unification.md`](docs/stdlib-loading-unification.md).
+
 - **`core`** (always available — the implicit prelude): `Option`, `Result`, the core
   traits (`Deinit`, `Equatable`, `Hashable`, `Ord`, `Iterator` + adapters), primitive
   methods, and `String`. *(`core` is the minimal always-on layer. It is **not** strictly

@@ -1,6 +1,6 @@
 # Unifying stdlib Loading — one embedded source, one pipeline
 
-> **Status:** In progress. Prerequisite for
+> **Status:** ✅ Complete (S1–S5 landed). Prerequisite for
 > [`builtin-to-stdlib-migration.md`](builtin-to-stdlib-migration.md) (its P1). Collapses the
 > **four** divergent stdlib-loading behaviors into **one** loader + **one** compile pipeline,
 > with a deliberate, labeled bare mode for compiler-isolation unit tests.
@@ -60,17 +60,19 @@ single-file but would need an explicit `use` in dir mode.
 4. **Unify the resolve prelude.** Add the Pass 1.25 implicit-`io` injection to
    `resolve_with_globals` (shared helper) so every path resolves `print` the same way.
 
-### Layering (acyclic)
+### Layering (acyclic) — as built
 ```
 parser / hir ──> axiom-typeck    (check_modules, check_source [bare], check[raw Hir])
-                      ▲
-                 axiom-stdlib     (build.rs embed; modules(); check_with_stdlib(src)->Thir)
-                      ▲
-                 axiom-cli        (single-file + dir, both via check_modules)
-   axiom-stdlib is also a dev-dependency of axiom-typeck tests + axiom-vm tests.
+
+axiom-stdlib  (LEAF: build.rs embed; modules(); with_main(src) -> Vec<(name,source)>)
+                      │ composes the module list; the caller drives the pipeline
+   used by:  axiom-cli (dep), axiom-typeck tests (dev-dep), axiom-vm tests (dev-dep)
 ```
-`axiom-stdlib` depends on `axiom-typeck` (to offer `check_with_stdlib`); typeck does **not**
-depend on `axiom-stdlib` — no cycle, and the type checker stays stdlib-agnostic.
+**`axiom-stdlib` stays a pure leaf** — it has no dependency on `axiom-typeck`. It only
+*composes* the module list (`with_main` = embedded modules + one `""` user module); the
+caller passes that to `axiom_typeck::check_modules`. So the type checker stays
+stdlib-agnostic and there is no dependency cycle. (Earlier sketches put a
+`check_with_stdlib` on `axiom-stdlib` depending on typeck; the leaf design is cleaner.)
 
 ## 3. The bare-mode guarantee (why Option B can’t re-introduce divergence)
 
@@ -89,27 +91,38 @@ design removes both:
 
 ## 4. Work plan (each step ≈ one commit; TDD; gate must pass)
 
-- [ ] **S1 — `axiom-stdlib` crate (embed + drift guard).** New leaf crate; `build.rs` walks
-      `stdlib/`, emits `STDLIB`; `pub fn modules() -> &'static [(&'static str,&'static str)]`;
-      module-name derivation mirrors `discover_library`. Drift test: `modules()` name-set ==
-      `discover_library(stdlib/)` name-set (dev-dep on `axiom-modules`). Workspace member +
-      `[lints] workspace = true` + README. *(No behavior change yet — additive.)*
-- [ ] **S2 — `check_modules` driver + unified resolve prelude.** Lift the multi-module
-      pipeline into `axiom_typeck::check_modules`. Add the implicit-`io` injection to
-      `resolve_with_globals`. Redefine bare `check_source` over `check_modules`. Regenerate
-      any shifted bare `.thir` goldens (verify shifts are resolution-equivalent, not regressions).
-- [ ] **S3 — stdlib-backed convenience; retire Path A + `with_stdlib`.** `axiom-stdlib`
-      gains `check_with_stdlib(src) -> Thir = check_modules(modules() ++ [("", src)])`. Point
-      typeck tests + VM tests at it (add dev-deps). Delete `typeck::with_stdlib`,
-      `check_source_with_stdlib`, `stdlib.rs`. Regen VM/typeck goldens.
-- [ ] **S4 — CLI single-file + dir via `check_modules`; retire Path C.** Single-file:
-      `check_modules(modules() ++ [("", src)])` → IR/VM. Dir: discover *user* graph →
-      `check_modules(modules() ++ user_modules)`. Delete `build_stdlib_exports`, the
-      exports-only `compile_source` signature, and the `discover_library` stdlib merge. Regen
-      `features` corpus goldens.
-- [ ] **S5 — docs + spec.** Mark this doc complete; update `builtin-to-stdlib-migration.md`
-      P1, `extern-buffers-and-path-unification.md` §1, `io-design.md`; note the embedded-stdlib
-      + single-pipeline architecture in `DESIGN_SPEC.md` §11. Update per-crate READMEs.
+- [x] **S1 — `axiom-stdlib` crate (embed + drift guard).** Leaf crate; `build.rs` walks
+      `stdlib/`, emits `STDLIB`; `modules()`; module-name derivation mirrors
+      `discover_library`. Drift test `test_embedded_matches_disk` asserts the embedded set ==
+      `discover_library(stdlib/)` set. Workspace member + `[lints]` + README.
+- [x] **S2 — `check_modules` driver + unified resolve prelude.** Lifted the multi-module
+      pipeline into `axiom_typeck::check_modules`; added `check_source` (bare). Factored
+      `inject_prelude` and called it in BOTH `resolve` and `resolve_with_globals`. Routed the
+      internal typeck unit-test helper through `check_source` (76 tests green — bare
+      equivalence). No golden churn (`module_path` is not serialized in THIR).
+- [x] **S3 — retire Path A (`with_stdlib`).** Added `axiom_stdlib::with_main` (leaf).
+      Deleted `typeck::with_stdlib` + `check_source_with_stdlib` + `stdlib.rs`. Pointed the
+      typeck stdlib tests + VM harnesses at `check_modules(with_main(..))`. VM `.trace`
+      goldens regenerated: only fn-name qualification changed (`print` → `io::print`); every
+      `[fn output]` line (stdout) is byte-identical.
+- [x] **S4 — CLI single-file + dir via `check_modules`; retire Path C.** `compile_source`
+      now takes `with_stdlib: bool` and runs `check_modules` on the embedded stdlib. Dir mode
+      discovers only the user graph and prepends the embedded stdlib. Deleted
+      `build_stdlib_exports`, `stdlib_dir`, the `discover_library` merge, and the bespoke
+      `lower_all/resolve_all/typecheck_combined` phases. Corpus + check.rs tests pass;
+      single-file `forge run` smoke-tested end to end.
+- [x] **S5 — docs + spec.** This doc complete; `builtin-to-stdlib-migration.md` P1,
+      `extern-buffers-and-path-unification.md` §1, `DESIGN_SPEC.md` §11, and per-crate READMEs
+      updated.
+
+### Bare-mode note (as built)
+The internal typeck unit tests (`src/typeck/tests.rs`) route through `check_source`
+(= `check_modules` with empty stdlib). The integration **bare** helpers (`generics.rs`,
+`traits.rs`, `bounds.rs`, `builtin_traits.rs`, `mono.rs`) still call `lower(src, None) +
+check` directly — equivalent (`lower` = `lower_structural` + `resolve`, which now shares
+`inject_prelude`) and exercised by the hir crate's own tests. They can move to `check_source`
+opportunistically; the builtin-specific ones (`builtin_traits.rs`) will switch to the stdlib
+path as part of the builtin→stdlib migration.
 
 ## 5. Risks / watch-items
 - **Golden churn (S2/S3/S4).** Switching bare tests from `lower` to

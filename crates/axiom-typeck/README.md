@@ -17,7 +17,8 @@ Three properties define it:
 ## How it works (end-to-end flow)
 
 ```
-source → axiom_typeck::check_source_with_stdlib → parse(stdlib + source) → lower → check → Thir
+modules [(name, source)] → axiom_typeck::check_modules → lower_structural (linear DefIds)
+    → build_global_exports → resolve_with_globals → combine → check → Thir
 HIR (from axiom-hir) → axiom_typeck::check → Thir { hir, types, diagnostics }
 Thir → axiom_typeck::serialize → canonical THIR dump (String)
 Thir → axiom_typeck::check_all → coverage invariant check
@@ -29,16 +30,17 @@ Thir → axiom_typeck::check_all → coverage invariant check
 2. **Check pass:** Walk fn bodies, type-checking each expression against the
    environment. Type errors emit `TypeDiagnostic`s and assign `Ty::Error`.
 
-**Standard library:** `check_source_with_stdlib` prepends `stdlib/collections/list.ax`
-before parsing, so library types (List, etc.) are parsed and lowered as normal HIR
-rather than being compiler built-ins. Source concatenation avoids HirId collision.
+**Standard library:** `check_modules` compiles a set of `(name, source)` modules together
+(the **one** multi-module pipeline). The stdlib is embedded by the `axiom-stdlib` crate;
+callers build the module list with `axiom_stdlib::with_main(src)` (embedded stdlib + the
+unnamed user module) and pass it here. Bare `check_source(src)` is the deliberate no-stdlib
+mode for compiler-isolation tests. See `docs/stdlib-loading-unification.md`.
 
 ## Files
 
 | File | Responsibility | Key items |
 |---|---|---|
-| `src/lib.rs` | Crate root; public API (`check`, `check_source_with_stdlib`, `serialize`, `check_all`) | `check`, `check_source_with_stdlib`, `serialize`, `check_all` |
-| `src/stdlib.rs` | Standard library source embedding (`include_str!`) | `with_stdlib` |
+| `src/lib.rs` | Crate root; public API (`check`, `check_modules`, `check_source`, `serialize`, `check_all`) | `check`, `check_modules`, `check_source` |
 | `src/types.rs` | The type universe: `Ty`, `StructTy`, `EnumTy`, `FnTy`, Display impls | `Ty`, `label()` |
 | `src/error.rs` | Type-check diagnostics (`thiserror` enum) + render | `TypeDiagnostic` |
 | `src/thir.rs` | THIR wrapper (HIR + TypeMap + diagnostics) | `Thir`, `TypeMap` |

@@ -1,8 +1,9 @@
 //! Integration tests for collection types (List<T>, Map<K, V>).
 //!
-//! Uses `check_source_with_stdlib` which prepends stdlib/collections/list.ax
-//! before parsing, so List methods (count, is_empty, etc.) resolve from the
-//! library definition rather than compiler built-ins.
+//! Compiles each source on the embedded stdlib via
+//! `check_modules(axiom_stdlib::with_main(..))`, so List methods (count,
+//! is_empty, etc.) resolve from the library definition (loaded with bodies)
+//! rather than relying solely on compiler built-ins.
 
 #![allow(clippy::unwrap_used)]
 

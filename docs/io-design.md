@@ -5,13 +5,13 @@
 > `core::platform::write` (buffers are `Bytes` + `let`/`inout` convention — see
 > [`extern-buffers-and-path-unification.md`](extern-buffers-and-path-unification.md)).
 > The VM dispatches extern fns off `IrFunction.is_extern` through the closed
-> `PlatformFn` enum (no real FFI yet; no name-matched builtins). **Both** the
-> single-file path (`with_stdlib` now prepends `core/platform.ax`) and the multi-file
-> module path resolve `print`/`println` to the real `io.ax` functions; the VM has no
-> `print`/`println`/`write` builtins. The type checker no longer carries a stand-in for
-> them either: it seeds their **real `String`-only signatures** from the bundled
-> `stdlib/io.ax` into every path's environment (`collect.rs::inject_prelude_sigs`). Printing
-> a non-string goes through `string::format` — the one variadic formatting intrinsic. See
+> `PlatformFn` enum (no real FFI yet; no name-matched builtins). **Every** compilation
+> path resolves `print`/`println` to the real `io.ax` functions, because the stdlib is
+> embedded (`axiom-stdlib`) and every path compiles through the one
+> `axiom_typeck::check_modules` pipeline **with bodies** (see
+> [`stdlib-loading-unification.md`](stdlib-loading-unification.md)); the VM has no
+> `print`/`println`/`write` builtins. Printing a non-string goes through `string::format` —
+> the one variadic formatting intrinsic. See
 > [`string-format-and-print-retire.md`](string-format-and-print-retire.md).
 >
 > **Architecture:** Two layers following Go/Rust/Zig — `core::platform` owns the unsafe
@@ -49,8 +49,7 @@
 | Extern fns type-check (bodiless) | ✅ Done | Type checker records the signature and skips body/return reconciliation for `extern` fns |
 | Buffer type at the boundary | ✅ Done | `Bytes` value + `let`/`inout` convention (no reference types, no raw pointer); `read` uses `inout` |
 | `stdlib/io.ax` | ✅ Done | Real `pub fn print`/`println` calling `core::platform::write`; discard the `Int` via trailing `;` |
-| Single-file path loads `platform.ax` | ✅ Done | `typeck::with_stdlib` prepends `core/platform.ax` before `io.ax` |
-| CLI loads stdlib via module system | ✅ Done | Multi-file path: `discover_library()` + `merge()` |
+| All paths load the stdlib uniformly | ✅ Done | Embedded via `axiom-stdlib` (build.rs); single-file/dir/tests all compile through `axiom_typeck::check_modules`. See [`stdlib-loading-unification.md`](stdlib-loading-unification.md) |
 | `core/platform.ax` | ✅ Done | `pub extern "C" fn write`/`read`/`close` with `Bytes` buffers |
 | Remove `print`/`println`/`write` VM builtins | ✅ Done | None remain in the VM; `is_builtin` covers `String` method intrinsics + the `format` intrinsic |
 | Remove `print`/`println` from type checker | ✅ Done | Deleted from `builtin_fn`; real `String`-only sigs seeded from `io.ax` (`inject_prelude_sigs`). See [`string-format-and-print-retire.md`](string-format-and-print-retire.md) |

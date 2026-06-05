@@ -111,12 +111,14 @@ stdlib/
       them. Module paths become `std::io` / `std::collections::*`. Regen goldens; gate green.
       *(Pure move + path-rename; no semantics change. Do this first so later phases target the
       final paths.)*
-- [ ] **P1 — `core` bodies load and type-check in *every* path.** Today `with_stdlib`
-      concatenates `list.ax + map.ax + io.ax + platform.ax`; the exports-only path has no
-      bodies. Add `core/*.ax` to the bundled set and confirm it type-checks clean. Reuse
-      the prelude-injection pattern from `collect.rs::inject_prelude_sigs` if signatures
-      (not bodies) are needed in the exports-only path. *(Same machinery that retired
-      `print`.)*
+- [x] **P1 — `core` bodies load and type-check in *every* path.** ✅ Done by
+      [`stdlib-loading-unification.md`](stdlib-loading-unification.md): the four divergent
+      loaders are collapsed into one. The stdlib is **embedded** (`axiom-stdlib` build.rs) and
+      every path — single-file, project dir, tests — compiles through the one
+      `axiom_typeck::check_modules` pipeline **with bodies**. There is no longer an
+      exports-only/no-bodies path. Any new `core/*.ax` file is auto-embedded (drift-guarded)
+      and loaded everywhere; just add it to the implicit prelude if it should resolve without
+      `use`.
 - [ ] **P2 — core test/golden harness asserts clean.** Extend the VM golden + typeck
       harness (already tightened to assert `thir.diagnostics.is_empty()`) to cover the
       `core` modules, so a broken `core/*.ax` fails the build instead of silently falling

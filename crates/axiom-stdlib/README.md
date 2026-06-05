@@ -11,6 +11,13 @@ dependency.
 ## API
 - `modules() -> &'static [(&'static str, &'static str)]` — all bundled modules,
   sorted by module path.
+- `with_main(source) -> Vec<(&str, &str)>` — the embedded modules followed by one unnamed
+  (`""`) user module: the standard single-file/test module set to hand to
+  `axiom_typeck::check_modules`.
+
+This crate is a **pure leaf** — it composes the module list; the caller drives the
+compile pipeline. It does not depend on `axiom-typeck`, so the type checker stays
+stdlib-agnostic and there is no dependency cycle.
 
 ## Files
 - `build.rs` — walks `stdlib/`, emits `$OUT_DIR/stdlib_manifest.rs` (the `STDLIB` table) and
@@ -19,5 +26,4 @@ dependency.
   (`test_embedded_matches_disk`) asserting the embedded set equals `discover_library`'s view
   of disk.
 
-See `docs/stdlib-loading-unification.md` for the why and the full plan. Later steps add a
-`check_with_stdlib` convenience here (depends on `axiom-typeck`).
+See `docs/stdlib-loading-unification.md` for the why and the full design.

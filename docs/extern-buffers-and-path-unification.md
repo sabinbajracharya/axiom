@@ -28,6 +28,12 @@ This divergence violates Axiom's own "one obvious way" principle at the compiler
 is what lets the `&[U8]` bug and the premature "✅ Done" rows hide. Unifying the paths
 dissolves most of the debt.
 
+> **✅ Fully resolved (follow-up).** The divergent-loader root cause is now closed by
+> [`stdlib-loading-unification.md`](stdlib-loading-unification.md): all four paths collapse
+> into one embedded stdlib (`axiom-stdlib` build.rs) + one `axiom_typeck::check_modules`
+> pipeline, with a single deliberate bare mode for compiler-isolation unit tests. The
+> `with_stdlib` concat path and the exports-only single-file path are deleted.
+
 ## 2. The buffer-type question (the only deep one)
 
 The design spec (§4.1) forbids reference *types*: "you cannot declare, store, or return a
