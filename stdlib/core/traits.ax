@@ -1,0 +1,34 @@
+// core/traits.ax -- the core trait declarations
+//
+// These four traits are the always-available behavioral vocabulary of the
+// language. They were previously hand-registered in the compiler
+// (`register_builtin_traits`); they are now ordinary library declarations,
+// collected through the normal trait-resolution path like any user trait.
+//
+// They are pure declarations: the implementations for the primitive types
+// (Int, Float, Bool, String, Unit) live in `core/primitives.ax` and
+// `core/string.ax`. User types implement them explicitly (or, later, via a
+// `derive` mechanism).
+
+/// A type with a deinitializer, run deterministically when a value's lifetime
+/// ends (Perceus inserts the calls). Primitive types implement it as a no-op.
+trait Deinit {
+    fn drop(let self);
+}
+
+/// Types whose values can be compared for equality.
+trait Equatable {
+    fn eq(let self, other: Self) -> Bool;
+}
+
+/// Types whose values can be hashed. Equal values must hash equal, so every
+/// `Hashable` type is also `Equatable`.
+trait Hashable: Equatable {
+    fn hash(let self) -> Int;
+}
+
+/// Types with a total ordering. Comparison subsumes equality, so every `Ord`
+/// type is also `Equatable`.
+trait Ord: Equatable {
+    fn lt(let self, other: Self) -> Bool;
+}
