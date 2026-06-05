@@ -91,11 +91,12 @@ supplies the body).
    name list. (Implemented as an exhaustive enum rather than a `register_extern` table —
    simpler, no `dyn`, and a no-wildcard drift guard; signature correctness stays the type
    checker's job.) New `VmError::ExternNotImplemented`.
-6. ⚠️ **Cleanup (partial)** — removed all `print`/`println`/`write` *VM* builtins; fixed the
-   stale `helpers.rs` comment; corrected the `io-design.md` status table. **Kept**
-   `print`/`println` in the type checker's `builtin_fn`: it is *not* dead code but the interim
-   prelude for the module path, which has no prelude yet (modules Phase 4). Remove with the
-   real prelude.
+6. ✅ **Cleanup** — removed all `print`/`println`/`write` *VM* builtins. The `print`/`println`
+   stand-in in the type checker's `builtin_fn` was retired in a follow-up
+   ([`string-format-and-print-retire.md`](string-format-and-print-retire.md)): their real
+   `String`-only signatures are now seeded from `stdlib/io.ax`, and `string::format` (the one
+   variadic formatting intrinsic) bridges non-string values. Only `todo` remains in
+   `builtin_fn`.
 7. ✅ **Unify the paths** — `with_stdlib` now prepends `core/platform.ax` (before `io.ax`), so
    `write`/`read`/`close` resolve to real externs in single-file mode too; the VM trace harness
    prepends the stdlib via the now-public `typeck::with_stdlib`.

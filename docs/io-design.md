@@ -8,9 +8,11 @@
 > `PlatformFn` enum (no real FFI yet; no name-matched builtins). **Both** the
 > single-file path (`with_stdlib` now prepends `core/platform.ax`) and the multi-file
 > module path resolve `print`/`println` to the real `io.ax` functions; the VM has no
-> `print`/`println`/`write` builtins. The one remaining stand-in is `print`/`println`
-> in the type checker's `builtin_fn` — an **interim prelude** for the module path,
-> kept until the real prelude (modules Phase 4) lands.
+> `print`/`println`/`write` builtins. The type checker no longer carries a stand-in for
+> them either: it seeds their **real `String`-only signatures** from the bundled
+> `stdlib/io.ax` into every path's environment (`collect.rs::inject_prelude_sigs`). Printing
+> a non-string goes through `string::format` — the one variadic formatting intrinsic. See
+> [`string-format-and-print-retire.md`](string-format-and-print-retire.md).
 >
 > **Architecture:** Two layers following Go/Rust/Zig — `core::platform` owns the unsafe
 > platform boundary (extern "C" fns around libc), `std::io` builds safe user-facing APIs
@@ -50,8 +52,9 @@
 | Single-file path loads `platform.ax` | ✅ Done | `typeck::with_stdlib` prepends `core/platform.ax` before `io.ax` |
 | CLI loads stdlib via module system | ✅ Done | Multi-file path: `discover_library()` + `merge()` |
 | `core/platform.ax` | ✅ Done | `pub extern "C" fn write`/`read`/`close` with `Bytes` buffers |
-| Remove `print`/`println`/`write` VM builtins | ✅ Done | None remain in the VM; `is_builtin` covers only `String` method intrinsics |
-| Remove `print`/`println` from type checker | ⚠️ Partial | Kept in `builtin_fn` as an interim prelude stand-in until the prelude (modules Phase 4) exists |
+| Remove `print`/`println`/`write` VM builtins | ✅ Done | None remain in the VM; `is_builtin` covers `String` method intrinsics + the `format` intrinsic |
+| Remove `print`/`println` from type checker | ✅ Done | Deleted from `builtin_fn`; real `String`-only sigs seeded from `io.ax` (`inject_prelude_sigs`). See [`string-format-and-print-retire.md`](string-format-and-print-retire.md) |
+| `string::format` (the one formatting primitive) | ✅ Done | Variadic intrinsic: typeck `infer_call` → `String`; VM template engine renders via `Value` Display |
 | Safe wrappers (`pub fn print`/`println`) | ✅ Done | Real Axiom functions calling the `core::platform::write` extern |
 | Real FFI (`dlsym`/`libloading`) | ❌ Deferred | Needs the native backend; VM uses the `PlatformFn` callbacks |
 | `read` extern in the VM | ❌ Deferred | No stdin in the tree-walking VM — returns `ExternNotImplemented` |
@@ -248,8 +251,9 @@ use core::result::{Result, Ok, Err}
 
 | Feature | Status | Why |
 |---|---|---|
-| `string::format` | `[Deferred → alongside Display]` | Needs `Display` trait + format machinery — separate effort |
-| `Display` / `Debug` traits | `[Deferred → with traits impl]` | Requires traits to be fully working first |
+| `string::format` | ✅ Done | The one variadic formatting intrinsic — renders built-in scalars via the VM `Value` Display. See [`string-format-and-print-retire.md`](string-format-and-print-retire.md) |
+| `Display` / `Debug` *traits* (user types) | `[Deferred → with traits impl]` | `format` renders built-ins today; user-type `fmt` dispatch needs the trait-object story |
+| Format specs (`{:>8.2}` width/precision) | `[Deferred]` | Only `{}` / `{:?}` are supported now; extend the template engine on demand |
 | `dyn Writer` (trait objects) | `[Deferred → v1.1]` | Requires vtable generation — static dispatch is enough for now |
 | `BufWriter`, `BufReader` | `[Deferred → v2]` | Wrapping types — needs trait objects or generics to be ergonomic |
 | File I/O (`std::fs`) | `[Deferred → v2]` | Separate extern fn set (`open`, `read`, `write`, `close`) |

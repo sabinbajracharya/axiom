@@ -1,6 +1,6 @@
 # `string::format` & Retiring the `print`/`println` Type-Checker Stand-in
 
-> **Status:** In progress. Completes the I/O story begun in
+> **Status:** ✅ Complete. Completes the I/O story begun in
 > [`extern-buffers-and-path-unification.md`](extern-buffers-and-path-unification.md):
 > `print`/`println` become genuinely the `stdlib/io.ax` functions everywhere — the
 > type checker no longer carries a hand-written generic stand-in for them. The
@@ -112,16 +112,35 @@ forward. All affected `.thir` and `.trace` goldens are regenerated (`UPDATE_SNAP
 
 ## 5. Work plan (each step ≈ one commit; TDD; gate must pass)
 
-1. **docs + spec** — this file; `DESIGN_SPEC.md` §11/§15 record `format`-as-intrinsic and
+1. ✅ **docs + spec** — this file; `DESIGN_SPEC.md` §11/§15 record `format`-as-intrinsic and
    `print` String-only.
-2. **`string::format` intrinsic, end-to-end** — HIR `builtin_def_id += "format"`; typeck
+2. ✅ **`string::format` intrinsic, end-to-end** — HIR `builtin_def_id += "format"`; typeck
    `infer_call` variadic special-case → `String`; IR lowers the `format` call; VM
    `builtin_format` + template engine; tests. `builtin_fn` unchanged (no breakage yet).
-3. **Prelude injection + call-site rewrite** — seed `print`/`println` real sigs from
-   `io.ax`; rewrite all non-`String` `print` sites; regenerate `.thir`/`.trace` goldens;
-   VM harness asserts clean.
-4. **Delete `builtin_fn` `print`/`println`** (dead after step 3); update `io-design.md` and
-   the companion plan docs.
+3. ✅ **Prelude injection + call-site rewrite** — seed `print`/`println` real sigs from
+   `io.ax` (`collect.rs::inject_prelude_sigs`); rewrote all non-`String` `print` sites;
+   regenerated `.thir`/`.trace` goldens; VM harness asserts clean.
+4. ✅ **Delete `builtin_fn` `print`/`println`** (dead after step 3; only `todo` remains);
+   updated `io-design.md` and the companion plan docs.
+
+### Bugs surfaced en route (pre-existing, masked by the lenient VM harness)
+
+Tightening the VM golden harness to assert clean (step 3) exposed two latent bugs that the
+ignored-diagnostics path had hidden, both now fixed in the same step:
+
+- **`let` used for locals.** Several VM fixtures wrote `let x = …` for a *local* binding, but
+  `let` is a parameter borrow-convention (§4.2) — locals are `val`/`var`. The misuse left the
+  name unresolved. Fixtures corrected to `val`.
+- **Qualified enum patterns didn't bind.** `match s { Shape::Circle(r) => … }` failed to bind
+  `r` because `define_pattern_tuple_struct` compared the variant against the *full* path text
+  (`Shape::Circle`) rather than the last segment (`Circle`). Now matched on the last segment,
+  so qualified and bare variant patterns behave identically.
+
+## 7. Status: complete
+
+All four steps landed; `fmt` + `clippy -D warnings` + the full suite pass. The deferred items
+in §6 (user-type `Display` dispatch, interpolation, format specs, native `format`) remain
+tracked there.
 
 ## 6. Out of scope (deferred, with reason)
 

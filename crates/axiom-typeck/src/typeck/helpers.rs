@@ -31,27 +31,14 @@ pub(super) fn call_name(name_ref: &NameRef) -> String {
 /// Look up a compiler-intrinsic function by name. Returns `None` for unknown
 /// names.
 ///
-/// `print`/`println` are real functions in `stdlib/io.ax`. The paths that
-/// *prepend* the stdlib (`with_stdlib` — single-file check, VM) resolve them
-/// there and never reach this fallback. But the path that loads the stdlib as
-/// modules and expects a **prelude** to auto-import `print`/`println` has no
-/// prelude yet (it is a deferred prerequisite — see `modules-design.md` Phase 4
-/// and `extern-buffers-and-path-unification.md`). Until the prelude lands, these
-/// entries stand in for it so bare `print`/`println` resolve. **Remove once the
-/// prelude exists.**
+/// `print`/`println` are **not** here — they are the real `String`-only
+/// functions from `stdlib/io.ax`, whose signatures the type checker seeds into
+/// every path's environment (`collect.rs::inject_prelude_sigs`). The variadic
+/// `format` intrinsic is handled at the call site (`infer_call`), not as a
+/// `FnTy`. Only `todo` remains a true intrinsic here.
+/// See `docs/string-format-and-print-retire.md`.
 pub(super) fn builtin_fn(name: &str) -> Option<Ty> {
     match name {
-        // Interim prelude stand-in (see above). print/println accept any type —
-        // a type parameter lets the unifier bind it at each call site.
-        "print" | "println" => Some(Ty::Fn(crate::types::FnTy {
-            params: vec![Ty::TypeParam(crate::types::TypeParamId {
-                name: "T".to_string(),
-                index: 0,
-                // Sentinel HirId — builtins have no real definition site.
-                def_id: axiom_hir::HirId(usize::MAX),
-            })],
-            return_type: Box::new(Ty::Unit),
-        })),
         // `todo()` — stub for unimplemented functions. Returns Ty::Error which
         // suppresses type-mismatch diagnostics (both sides checked for is_error).
         "todo" => Some(Ty::Fn(crate::types::FnTy {
