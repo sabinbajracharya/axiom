@@ -175,30 +175,51 @@ impl TypeChecker {
             name: axiom_hir::NameRef::unresolved("String"),
             args: vec![],
         });
-        let int_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Int"));
         let bytes_ty = HirTy::Instance(axiom_hir::InstanceTy {
             name: axiom_hir::NameRef::unresolved("Bytes"),
             args: vec![],
         });
 
-        let methods = vec![
-            make_fn(
-                "len",
-                vec![],
-                vec![self_param(CallingConvention::Let, string_ty.clone())],
-                Some(int_ty),
-            ),
-            make_fn(
-                "as_bytes",
-                vec![],
-                vec![self_param(CallingConvention::Let, string_ty)],
-                Some(bytes_ty),
-            ),
-        ];
+        // `as_bytes` is the irreducible String→Bytes floor. `len` is no longer
+        // here — it is library code in core/string.ax that calls
+        // `self.as_bytes().len()`, bottoming out on the `Bytes::len` floor below.
+        let methods = vec![make_fn(
+            "as_bytes",
+            vec![],
+            vec![self_param(CallingConvention::Let, string_ty)],
+            Some(bytes_ty),
+        )];
 
         self.impl_table.push(ImplInfo {
             trait_name: None,
             type_name: "String".to_string(),
+            methods,
+            subscripts: vec![],
+            type_params: vec![],
+            type_param_bounds: HashMap::new(),
+        });
+
+        self.register_bytes_methods();
+    }
+
+    /// Register the `Bytes::len` floor method: `fn len(let self: Bytes) -> Int`.
+    /// `Bytes` is the platform byte-buffer; its length is the irreducible length
+    /// floor that `String::len` (library code) builds on.
+    fn register_bytes_methods(&mut self) {
+        let bytes_ty = HirTy::Instance(axiom_hir::InstanceTy {
+            name: axiom_hir::NameRef::unresolved("Bytes"),
+            args: vec![],
+        });
+        let int_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Int"));
+        let methods = vec![make_fn(
+            "len",
+            vec![],
+            vec![self_param(CallingConvention::Let, bytes_ty)],
+            Some(int_ty),
+        )];
+        self.impl_table.push(ImplInfo {
+            trait_name: None,
+            type_name: "Bytes".to_string(),
             methods,
             subscripts: vec![],
             type_params: vec![],

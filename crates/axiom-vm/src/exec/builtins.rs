@@ -6,8 +6,9 @@
 //!   off the `IrFunction.is_extern` flag through the closed [`PlatformFn`] enum —
 //!   never by ad-hoc name matching. The Rust bodies here stand in until real FFI
 //!   (`dlsym`) lands with the native backend.
-//! - **Method intrinsics** (`String::len`, `String::as_bytes`) are dispatched via
-//!   the method-call builtin check.
+//! - **Method intrinsics** (`String::as_bytes`, `Bytes::len`, `<Prim>::hash_raw`)
+//!   are dispatched via the method-call builtin check. `String::len` is *not*
+//!   here — it is library code (`core/string.ax`) calling `as_bytes().len()`.
 //! - **`format`** is the one variadic formatting intrinsic (DESIGN_SPEC §11),
 //!   dispatched as a free-function builtin; it renders its template via the
 //!   `Value` Display impl.
@@ -28,7 +29,7 @@ use crate::value::Value;
 pub fn is_builtin(name: &str) -> bool {
     matches!(
         name,
-        "String::len"
+        "Bytes::len"
             | "String::as_bytes"
             | "format"
             | "Int::hash_raw"
@@ -45,7 +46,7 @@ pub fn call_builtin(
     _trace: &mut Option<ExecutionTrace>,
 ) -> Result<Value, VmError> {
     match name {
-        "String::len" => builtin_string_len(args),
+        "Bytes::len" => builtin_bytes_len(args),
         "String::as_bytes" => builtin_string_as_bytes(args),
         "format" => builtin_format(args),
         "Int::hash_raw" | "Float::hash_raw" | "Bool::hash_raw" | "String::hash_raw" => {
@@ -211,10 +212,20 @@ fn builtin_write(args: Vec<Value>, trace: &mut Option<ExecutionTrace>) -> Result
     Ok(Value::Unit)
 }
 
-/// `String::len` — returns the byte length of a string.
-fn builtin_string_len(args: Vec<Value>) -> Result<Value, VmError> {
-    let s = extract_string_arg(&args, 0)?;
-    Ok(Value::Int(s.len() as i64))
+/// `Bytes::len` — returns the length of a byte buffer. The irreducible length
+/// floor; `String::len` is library code (core/string.ax) that calls
+/// `self.as_bytes().len()`.
+fn builtin_bytes_len(args: Vec<Value>) -> Result<Value, VmError> {
+    match args.first() {
+        Some(Value::Bytes(b)) => Ok(Value::Int(b.len() as i64)),
+        other => Err(VmError::TypeError {
+            expected: "Bytes".to_string(),
+            got: other
+                .map(|v| v.type_name())
+                .unwrap_or("missing")
+                .to_string(),
+        }),
+    }
 }
 
 /// `String::as_bytes` — returns the raw bytes of a string.
@@ -260,9 +271,11 @@ mod tests {
     fn test_is_builtin() {
         // Method intrinsics + the `format` free-function intrinsic.
         // print/println/write are NOT builtins.
-        assert!(is_builtin("String::len"));
+        assert!(is_builtin("Bytes::len"));
         assert!(is_builtin("String::as_bytes"));
         assert!(is_builtin("format"));
+        assert!(is_builtin("Int::hash_raw"));
+        assert!(!is_builtin("String::len"));
         assert!(!is_builtin("print"));
         assert!(!is_builtin("println"));
         assert!(!is_builtin("write"));
@@ -379,20 +392,19 @@ mod tests {
     }
 
     #[test]
-    fn test_string_len() {
+    fn test_bytes_len() {
         let result = call_builtin(
-            "String::len",
-            vec![Value::String("hello".into())],
+            "Bytes::len",
+            vec![Value::Bytes(vec![104, 101, 108])],
             &mut None,
         )
         .unwrap();
-        assert_eq!(result, Value::Int(5));
+        assert_eq!(result, Value::Int(3));
     }
 
     #[test]
-    fn test_string_len_empty() {
-        let result =
-            call_builtin("String::len", vec![Value::String("".into())], &mut None).unwrap();
+    fn test_bytes_len_empty() {
+        let result = call_builtin("Bytes::len", vec![Value::Bytes(vec![])], &mut None).unwrap();
         assert_eq!(result, Value::Int(0));
     }
 

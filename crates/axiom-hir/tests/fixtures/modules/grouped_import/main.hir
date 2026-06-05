@@ -65,23 +65,28 @@ ImplDef(84) Hashable→7 for Bool→1000002 methods=[
     tail: Path(90) self→86.Method(89) hash_raw()
   }
 ]
-ImplDef(0) Deinit→0 for String→1000003 methods=[
-  FnDef(1) name=drop vis=private params=[let self: _] return=_ {
+ImplDef(0) String→1000003 methods=[
+  FnDef(1) name=len vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(7) self→2.Method(6) as_bytes().Method(5) len()
   }
 ]
-ImplDef(4) Equatable→3 for String→1000003 methods=[
-  FnDef(5) name=eq vis=private params=[let self: _, let other: String→<unresolved>] return=Bool→<unresolved> {
-    tail: Bin(10) ==(Path(11) self→6, Path(12) other→7)
+ImplDef(8) Deinit→0 for String→1000003 methods=[
+  FnDef(9) name=drop vis=private params=[let self: _] return=_ {
   }
 ]
-ImplDef(13) Ord→10 for String→1000003 methods=[
-  FnDef(14) name=lt vis=private params=[let self: _, let other: String→<unresolved>] return=Bool→<unresolved> {
-    tail: Bin(19) <(Path(20) self→15, Path(21) other→16)
+ImplDef(12) Equatable→3 for String→1000003 methods=[
+  FnDef(13) name=eq vis=private params=[let self: _, let other: String→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(18) ==(Path(19) self→14, Path(20) other→15)
   }
 ]
-ImplDef(22) Hashable→7 for String→1000003 methods=[
-  FnDef(23) name=hash vis=private params=[let self: _] return=Int→<unresolved> {
-    tail: Path(28) self→24.Method(27) hash_raw()
+ImplDef(21) Ord→10 for String→1000003 methods=[
+  FnDef(22) name=lt vis=private params=[let self: _, let other: String→<unresolved>] return=Bool→<unresolved> {
+    tail: Bin(27) <(Path(28) self→23, Path(29) other→24)
+  }
+]
+ImplDef(30) Hashable→7 for String→1000003 methods=[
+  FnDef(31) name=hash vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(36) self→32.Method(35) hash_raw()
   }
 ]
 TraitDef(0) name=Deinit vis=pub methods=[

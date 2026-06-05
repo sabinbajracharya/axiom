@@ -5,6 +5,15 @@
 // rather than in core/primitives.ax. String methods (`len`, …) will land here
 // in later migration phases, bottoming out on the `as_bytes` floor primitive.
 
+// ── Inherent methods ──
+impl String {
+    /// The length of the string in bytes. Bottoms out on the `as_bytes` →
+    /// `Bytes::len` floor primitives.
+    fn len(let self) -> Int {
+        self.as_bytes().len()
+    }
+}
+
 // ── Deinit (the backing buffer's release is handled by the runtime) ──
 impl Deinit for String {
     fn drop(let self) {}

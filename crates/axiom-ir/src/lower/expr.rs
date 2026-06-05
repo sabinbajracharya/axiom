@@ -129,6 +129,10 @@ fn type_name_from_ty(ty: &axiom_typeck::Ty) -> Option<String> {
         axiom_typeck::Ty::Int => Some("Int".to_string()),
         axiom_typeck::Ty::Float => Some("Float".to_string()),
         axiom_typeck::Ty::Bool => Some("Bool".to_string()),
+        // Named instances (Bytes, List<T>, Map<K,V>, generic structs) qualify by
+        // their base name — matching the typeck side and the "Type::method"
+        // impl-method IR names, so intrinsic calls like `Bytes::len` dispatch.
+        axiom_typeck::Ty::Instance(inst) => Some(inst.name.clone()),
         _ => None,
     }
 }
