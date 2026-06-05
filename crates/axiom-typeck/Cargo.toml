@@ -14,6 +14,9 @@ axiom-lexer = { path = "../axiom-lexer" }
 axiom-parser = { path = "../axiom-parser" }
 thiserror = { workspace = true }
 
+[dev-dependencies]
+axiom-modules = { path = "../axiom-modules" }
+
 [[example]]
 name = "typeck"
 path = "examples/typeck.rs"

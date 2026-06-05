@@ -46,12 +46,31 @@ pub fn build_global_exports(modules: &[(String, Vec<Def>)]) -> GlobalExports {
 /// Mutates the HIR in-place: resolves `NameRef::Unresolved` entries
 /// to `NameRef::Resolved` where names are found, and emits diagnostics
 /// where they are not.
-pub fn resolve(ctx: &mut crate::lower::LowerCtx) {
+///
+/// When `global_exports` is provided, pub items from the `"io"` module are
+/// injected into scope at lowest priority — an implicit `use io::*` so that
+/// single-file programs can call `println` without an explicit import.
+pub fn resolve(ctx: &mut crate::lower::LowerCtx, global_exports: Option<&GlobalExports>) {
     // Pass 1: top-level item defs are already collected in ctx.defs during lowering.
     let mut top_level = build_top_level(&ctx.defs, &mut ctx.diagnostics);
 
+    // Pass 1.25: inject io pub items at lowest priority (before explicit `use`).
+    if let Some(exports) = global_exports {
+        if let Some(io_items) = exports.get("io") {
+            for (name, &(def_id, kind, _vis)) in io_items {
+                top_level.entry(name.clone()).or_insert((def_id, kind));
+            }
+        }
+    }
+
     // Pass 1.5: process `use` items to add imported names to the top-level scope.
-    process_use_items(&ctx.items, &mut top_level, &mut ctx.diagnostics, None, "");
+    process_use_items(
+        &ctx.items,
+        &mut top_level,
+        &mut ctx.diagnostics,
+        global_exports,
+        "",
+    );
 
     // Pass 2: resolve name references in all items.
     for item in &mut ctx.items {
@@ -282,18 +301,17 @@ pub(crate) fn resolve_name_ref(
 /// Reserved HirId range for builtins. Real definitions start above this.
 const BUILTIN_HIR_ID_START: usize = 1_000_000;
 
-/// Built-in names that are always available, mapped to reserved HirIds.
-/// `print`/`println` are here until the CLI pipeline uses `with_stdlib()`
-/// (then they resolve through `stdlib/io.ax` and these entries can be removed).
+/// Built-in names that are always available (no module definition needed).
+/// Primitive types + `todo` (compiler-internal stub). `print`/`println`
+/// resolve through `stdlib/io.ax` via the module system.
 pub(crate) fn builtin_def_id(name: &str) -> Option<DefId> {
     let idx = match name {
-        "print" => 0,
-        "println" => 1,
-        "Int" => 2,
-        "Float" => 3,
-        "Bool" => 4,
-        "String" => 5,
-        "Unit" => 6,
+        "Int" => 0,
+        "Float" => 1,
+        "Bool" => 2,
+        "String" => 3,
+        "Unit" => 4,
+        "todo" => 5,
         _ => return None,
     };
     Some(HirId(BUILTIN_HIR_ID_START + idx))

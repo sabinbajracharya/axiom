@@ -3,22 +3,51 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::path::Path;
+
 use axiom_hir::lower;
 use axiom_parser::ast::AstNode;
 use axiom_typeck::{check, monomorphize, serialize};
 
+/// Build global exports from stdlib so `print`/`println` resolve.
+fn stdlib_exports() -> Option<axiom_hir::GlobalExports> {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest.parent()?.parent()?;
+    let stdlib = workspace.join("stdlib");
+    if !stdlib.exists() {
+        return None;
+    }
+    let graph = axiom_modules::discover::discover_library(&stdlib).ok()?;
+    let mut module_data = Vec::new();
+    for module_id in graph.topo_order() {
+        let module = graph.get(module_id);
+        if module.source.is_empty() {
+            continue;
+        }
+        let parse_result = axiom_parser::parse(&module.source);
+        let Some(root) = axiom_parser::ast::SourceFile::cast(parse_result.tree) else {
+            continue;
+        };
+        let (_items, defs, _diags, _nid) = axiom_hir::lower_structural(&root, &module.source, 0);
+        module_data.push((module.name.clone(), defs));
+    }
+    Some(axiom_hir::build_global_exports(&module_data))
+}
+
 fn typeck_source(source: &str) -> String {
+    let exports = stdlib_exports();
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source);
+    let hir = lower(&root, source, exports.as_ref());
     let thir = check(hir);
     serialize(&thir, None)
 }
 
 fn typeck_source_with_mono(source: &str) -> String {
+    let exports = stdlib_exports();
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source);
+    let hir = lower(&root, source, exports.as_ref());
     let thir = check(hir);
     let mono = monomorphize(&thir);
     serialize(&thir, Some(&mono))

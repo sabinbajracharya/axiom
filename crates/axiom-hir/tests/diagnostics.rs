@@ -33,7 +33,7 @@ fn ax_files(dir: &Path) -> Vec<PathBuf> {
 fn render(source: &str) -> String {
     let result = parse(source);
     let root = SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source);
+    let hir = lower(&root, source, None);
     let mut out = String::new();
     for diag in &hir.diagnostics {
         out.push_str(&HirDiagnostic::render(diag, source));

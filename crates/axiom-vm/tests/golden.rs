@@ -19,7 +19,7 @@ fn normalize(s: &str) -> String {
 fn run_with_trace(source: &str) -> String {
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = axiom_hir::lower(&root, source);
+    let hir = axiom_hir::lower(&root, source, None);
 
     let thir = axiom_typeck::check(hir);
     let mono = axiom_typeck::monomorphize(&thir);

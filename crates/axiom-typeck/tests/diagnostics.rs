@@ -10,7 +10,7 @@ use axiom_typeck::check;
 fn typeck_diagnostics(source: &str) -> Vec<String> {
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source);
+    let hir = lower(&root, source, None);
     let thir = check(hir);
     thir.diagnostics.iter().map(|d| d.render(source)).collect()
 }

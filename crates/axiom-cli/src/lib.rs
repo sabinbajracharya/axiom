@@ -7,7 +7,7 @@
 //!
 //! ```
 //! use axiom_cli::check_source;
-//! let report = check_source("fn main() { print(\"hi\") }");
+//! let report = check_source("fn main() { val x = 1 + 2 }");
 //! assert!(report.is_clean());
 //! ```
 
@@ -83,7 +83,8 @@ fn run_check(path: &Path) -> ExitCode {
             return ExitCode::from(EXIT_USAGE);
         }
     };
-    let report = check_source(&source);
+    let stdlib_exports = build_stdlib_exports();
+    let report = compile_source(&source, stdlib_exports.as_ref()).report;
     print!(
         "{}\n{}\n{}",
         report.tree_dump, report.hir_dump, report.thir_dump
@@ -232,7 +233,8 @@ fn run_run(path: &Path) -> ExitCode {
             return ExitCode::from(EXIT_USAGE);
         }
     };
-    let compiled = compile_source(&source);
+    let stdlib_exports = build_stdlib_exports();
+    let compiled = compile_source(&source, stdlib_exports.as_ref());
     for diagnostic in &compiled.report.diagnostics {
         eprintln!("{diagnostic}");
     }
@@ -331,6 +333,29 @@ fn stdlib_dir() -> Option<PathBuf> {
     } else {
         None
     }
+}
+
+/// Build global exports from stdlib modules. Used by the single-file
+/// compilation path so `println` (and other stdlib items) resolve without
+/// an explicit `use` statement.
+pub fn build_stdlib_exports() -> Option<axiom_hir::GlobalExports> {
+    let stdlib = stdlib_dir()?;
+    let graph = axiom_modules::discover::discover_library(&stdlib).ok()?;
+    let mut module_data = Vec::new();
+    for module_id in graph.topo_order() {
+        let module = graph.get(module_id);
+        if module.source.is_empty() {
+            continue;
+        }
+        let parse_result = axiom_parser::parse(&module.source);
+        let Some(root) = axiom_parser::ast::SourceFile::cast(parse_result.tree) else {
+            continue;
+        };
+        let (items, defs, _diags, _nid) = axiom_hir::lower_structural(&root, &module.source, 0);
+        let _ = items; // only defs needed for exports
+        module_data.push((module.name.clone(), defs));
+    }
+    Some(axiom_hir::build_global_exports(&module_data))
 }
 
 /// Report a recognized-but-not-yet-built command and the milestone that lands it.

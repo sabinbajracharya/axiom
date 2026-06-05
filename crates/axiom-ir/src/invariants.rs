@@ -186,15 +186,16 @@ fn check_call_targets(
     prefix: &str,
     errors: &mut Vec<String>,
 ) {
-    // Built-in functions and enum variant constructors — not expected to have IR definitions.
-    const BUILTINS: &[&str] = &["print", "println"];
+    // Extern functions and enum variant constructors — may not have IR definitions
+    // in single-file mode (extern fn defs come from stdlib modules).
+    const EXTERNS: &[&str] = &["print", "println"];
     let fn_names: HashSet<&str> = ir.functions.iter().map(|f| f.name.as_str()).collect();
     let enum_names: HashSet<&str> = ir.enum_variants.keys().map(|k| k.as_str()).collect();
     for block in &func.blocks {
         for instr in &block.instrs {
             if let IrInstr::Call { function, .. } = instr {
                 if !fn_names.contains(function.as_str())
-                    && !BUILTINS.contains(&function.as_str())
+                    && !EXTERNS.contains(&function.as_str())
                     && !enum_names.contains(function.as_str())
                 {
                     errors.push(format!(

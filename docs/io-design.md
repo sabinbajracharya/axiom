@@ -1,9 +1,10 @@
 # std::io Design — Writer Trait, Extern Fn & Removing Builtins
 
-> **Status:** Layer 1 partially implemented. `extern "C" fn` syntax works through
-> lexer→parser→HIR→IR→VM. `stdlib/io.ax` exists with `extern "C" fn print/println`.
-> VM dispatches extern fns via builtin table (no real FFI). `print`/`println` remain
-> hardcoded builtins in resolver + type checker until CLI pipeline loads stdlib.
+> **Status:** Layer 1 implemented. `extern "C" fn` syntax works through
+> lexer→parser→HIR→IR→VM. `stdlib/io.ax` exists with `pub extern "C" fn print/println`.
+> VM dispatches extern fns via builtin table (no real FFI). Both single-file and
+> multi-file paths resolve `print`/`println` through the stdlib module system —
+> no hardcoded builtins in resolver or type checker.
 >
 > **Architecture:** Two layers following Go/Rust/Zig — `core::platform` owns the unsafe
 > platform boundary (extern "C" fns around libc), `std::io` builds safe user-facing APIs
@@ -40,7 +41,7 @@
 | `stdlib/io.ax` | ✅ Done | `pub extern "C" fn print(s: String); pub extern "C" fn println(s: String);` |
 | CLI loads stdlib via module system | ✅ Done | Multi-file path: `discover_library()` + `merge()` |
 | `core/platform.ax` | ✅ Done | Design target created — extern fns stay in io.ax until safe wrappers |
-| Remove `print`/`println` builtins | ⏸ Not started | Single-file path still needs builtins; multi-file resolves via stdlib |
+| Remove `print`/`println` builtins | ✅ Done | Both paths resolve via stdlib module system; no hardcoded builtins in resolver/typeck |
 | Safe wrappers (`pub fn print`) | ⏸ Not started | Layer 2 — wraps `core::platform::write` with safe API |
 | Real FFI (`dlsym`/`libloading`) | ❌ Deferred | Needs Cranelift JIT backend; VM uses builtin dispatch table |
 | `unsafe` blocks | ❌ Deferred | Keywords exist, grammar not implemented |

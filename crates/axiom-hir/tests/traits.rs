@@ -9,7 +9,7 @@ use axiom_parser::parse;
 fn lower_source(source: &str) -> axiom_hir::Hir {
     let result = parse(source);
     let root = SourceFile::cast(result.tree).unwrap();
-    axiom_hir::lower(&root, source)
+    axiom_hir::lower(&root, source, None)
 }
 
 // ── Trait declarations ───────────────────────────────────────────────────────

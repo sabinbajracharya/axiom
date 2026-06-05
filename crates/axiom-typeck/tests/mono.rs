@@ -8,7 +8,7 @@ use axiom_typeck::Ty;
 fn check_source(source: &str) -> axiom_typeck::Thir {
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source);
+    let hir = lower(&root, source, None);
     axiom_typeck::check(hir)
 }
 

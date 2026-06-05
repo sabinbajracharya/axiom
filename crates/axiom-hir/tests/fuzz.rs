@@ -18,7 +18,7 @@ use std::collections::HashSet;
 fn lower_source(source: &str) -> axiom_hir::Hir {
     let result = parse(source);
     let root = SourceFile::cast(result.tree).unwrap();
-    lower(&root, source)
+    lower(&root, source, None)
 }
 
 fn hir_ids_are_unique(hir: &axiom_hir::Hir) -> bool {

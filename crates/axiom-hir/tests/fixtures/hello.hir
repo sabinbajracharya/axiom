@@ -1,3 +1,3 @@
 FnDef(0) name=main vis=private params=[] return=_ {
-  tail: Call(3) print→1000000(Lit(4) String("Hello, Axiom!"))
+  tail: Call(3) print→0(Lit(4) String("Hello, Axiom!"))
 }

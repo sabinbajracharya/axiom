@@ -29,8 +29,9 @@ pub(super) fn call_name(name_ref: &NameRef) -> String {
 }
 
 /// Look up a builtin function by name. Returns `None` for unknown names.
-/// `print`/`println` will move to `stdlib/io.ax` once the CLI pipeline uses
-/// `with_stdlib()` (then they resolve through HIR and these entries can go).
+/// `print`/`println` are needed here because the single-file compilation path
+/// doesn't include stdlib HIR items — the type checker needs type info for
+/// extern fns even when their definitions aren't in the HIR.
 pub(super) fn builtin_fn(name: &str) -> Option<Ty> {
     match name {
         // print/println accept any type — use a type parameter so the unifier

@@ -1,1 +1,3 @@
+use io::print;
+
 pub fn greet(name: String) { print(name) }

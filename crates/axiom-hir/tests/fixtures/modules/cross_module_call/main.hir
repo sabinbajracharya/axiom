@@ -1,7 +1,55 @@
-UseItem(1) utils::greet
-FnDef(2) name=main vis=private params=[] return=_ {
-  tail: Call(5) greet→7(Lit(6) String("world"))
+StructDef(0) name=List<T: Deinit→<unresolved>> vis=private fields=[private _placeholder: Int→<unresolved>]
+ImplDef(3) List→0<T: Deinit→<unresolved>> methods=[
+  FnDef(5) name=new vis=private params=[] return=List→0<T→4> {
+    tail: Call(8) todo→1000005()
+  }
+  FnDef(9) name=count vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Call(13) todo→1000005()
+  }
+  FnDef(14) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
+    tail: Call(18) todo→1000005()
+  }
+  FnDef(19) name=capacity vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Call(23) todo→1000005()
+  }
+  SubscriptDef(24) (index) -> T→<unresolved> body
+    tail: Call(28) todo→<unresolved>()
+]
+StructDef(0) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private _placeholder: Int→<unresolved>]
+ImplDef(4) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[
+  FnDef(7) name=new vis=private params=[] return=Map→0<K→5, V→6> {
+    tail: Call(10) todo→1000005()
+  }
+  FnDef(11) name=get vis=private params=[let self: _, let key: K→5] return=V→6 {
+    tail: Call(16) todo→1000005()
+  }
+  FnDef(17) name=has vis=private params=[let self: _, let key: K→5] return=Bool→<unresolved> {
+    tail: Call(22) todo→1000005()
+  }
+  FnDef(23) name=count vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Call(27) todo→1000005()
+  }
+  FnDef(28) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
+    tail: Call(32) todo→1000005()
+  }
+  SubscriptDef(33) (key) -> V→<unresolved> body
+    tail: Call(37) todo→<unresolved>()
+]
+FnDef(0) name=write vis=private params=[let fd: Int→<unresolved>, let buf: <error>] return=_ {
 }
-FnDef(7) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
-  tail: Call(11) print→1000000(Path(12) name→8)
+FnDef(4) name=read vis=private params=[let fd: Int→<unresolved>, let buf: <error>] return=_ {
+}
+FnDef(8) name=close vis=private params=[let fd: Int→<unresolved>] return=Int→<unresolved> {
+}
+FnDef(0) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
+}
+FnDef(3) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
+}
+UseItem(35) utils::greet
+FnDef(36) name=main vis=private params=[] return=_ {
+  tail: Call(39) greet→42(Lit(40) String("world"))
+}
+UseItem(41) io::print
+FnDef(42) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
+  tail: Call(46) print→0(Path(47) name→43)
 }

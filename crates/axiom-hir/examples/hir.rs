@@ -22,7 +22,7 @@ fn main() -> ExitCode {
         eprintln!("parse produced no SourceFile root");
         return ExitCode::FAILURE;
     };
-    let hir = axiom_hir::lower(&root, &source);
+    let hir = axiom_hir::lower(&root, &source, None);
     print!("{}", axiom_hir::serialize(&hir));
     for diag in &hir.diagnostics {
         eprintln!("{}", diag.render(&source));

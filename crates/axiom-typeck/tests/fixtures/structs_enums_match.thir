@@ -32,5 +32,5 @@ Ident(31) a→31 : Float
       Call(32) callee=area→4 : Float
         Path(33) c→27 : Shape
 
-    Call(36) callee=print→1000000 : Unit
+    Call(36) callee=print→0 : Unit
       Path(37) a→31 : Float

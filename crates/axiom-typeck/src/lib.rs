@@ -15,7 +15,7 @@
 //!
 //! let result = parse("fn main() { val x = 1 + 2 }");
 //! let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-//! let hir = lower(&root, "fn main() { val x = 1 + 2 }");
+//! let hir = lower(&root, "fn main() { val x = 1 + 2 }", None);
 //! let thir = check(hir);
 //! let dump = serialize(&thir, None);
 //! assert!(dump.contains("Bin"));
@@ -49,6 +49,6 @@ pub fn check_source_with_stdlib(source: &str) -> Thir {
     let combined = stdlib::with_stdlib(source);
     let result = axiom_parser::parse(&combined);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).expect("valid parse tree");
-    let hir = axiom_hir::lower(&root, &combined);
+    let hir = axiom_hir::lower(&root, &combined, None);
     check(hir)
 }

@@ -31,9 +31,35 @@ fn normalize(s: &str) -> String {
     s.replace("\r\n", "\n")
 }
 
+/// Build global exports from stdlib modules so `print`/`println` resolve.
+fn stdlib_exports() -> Option<axiom_hir::GlobalExports> {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest.parent()?.parent()?;
+    let stdlib = workspace.join("stdlib");
+    if !stdlib.exists() {
+        return None;
+    }
+    let graph = axiom_modules::discover::discover_library(&stdlib).ok()?;
+    let mut module_data = Vec::new();
+    for module_id in graph.topo_order() {
+        let module = graph.get(module_id);
+        if module.source.is_empty() {
+            continue;
+        }
+        let parse_result = axiom_parser::parse(&module.source);
+        let Some(root) = axiom_parser::ast::SourceFile::cast(parse_result.tree) else {
+            continue;
+        };
+        let (_items, defs, _diags, _nid) = axiom_hir::lower_structural(&root, &module.source, 0);
+        module_data.push((module.name.clone(), defs));
+    }
+    Some(axiom_hir::build_global_exports(&module_data))
+}
+
 #[test]
 fn golden_hir_snapshots() {
     let update = std::env::var_os("UPDATE_SNAPSHOTS").is_some();
+    let exports = stdlib_exports();
     let dir = fixtures_dir();
     let files = ax_files(&dir);
     assert!(!files.is_empty(), "no .ax fixtures in {}", dir.display());
@@ -48,7 +74,7 @@ fn golden_hir_snapshots() {
             result.errors
         );
         let root = SourceFile::cast(result.tree).unwrap();
-        let hir = lower(&root, &source);
+        let hir = lower(&root, &source, exports.as_ref());
         assert!(
             hir.diagnostics.is_empty(),
             "fixture {} produced unexpected HIR diagnostics: {:?}",

@@ -17,7 +17,7 @@ fn main() {
         eprintln!("Failed to parse source");
         return;
     };
-    let hir = axiom_hir::lower(&root, source);
+    let hir = axiom_hir::lower(&root, source, None);
     let thir = axiom_typeck::check(hir);
     let mono = axiom_typeck::monomorphize(&thir);
     let ir = axiom_ir::lower(&thir, &mono);

@@ -247,7 +247,7 @@ mod tests {
     fn make_checker(source: &str) -> TypeChecker {
         let result = axiom_parser::parse(source);
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-        let hir = lower(&root, source);
+        let hir = lower(&root, source, None);
         TypeChecker::new(hir)
     }
 

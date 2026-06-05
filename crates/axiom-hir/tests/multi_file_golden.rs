@@ -28,6 +28,60 @@ fn normalize(s: &str) -> String {
     s.replace("\r\n", "\n")
 }
 
+/// Load stdlib module defs for cross-module resolution.
+fn load_stdlib_defs() -> Option<Vec<(String, Vec<axiom_hir::Def>)>> {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest.parent()?.parent()?;
+    let stdlib = workspace.join("stdlib");
+    if !stdlib.exists() {
+        return None;
+    }
+    let graph = axiom_modules::discover::discover_library(&stdlib).ok()?;
+    let mut result = Vec::new();
+    let mut topo = graph.topo_order();
+    topo.sort_by_key(|id| graph.get(*id).name.clone());
+    for module_id in topo {
+        let module = graph.get(module_id);
+        if module.source.is_empty() {
+            continue;
+        }
+        let parse_result = parse(&module.source);
+        let Some(root) = axiom_parser::ast::SourceFile::cast(parse_result.tree) else {
+            continue;
+        };
+        let (_items, defs, _diags, _nid) = lower_structural(&root, &module.source, 0);
+        result.push((module.name.clone(), defs));
+    }
+    Some(result)
+}
+
+/// Load stdlib module items for merging into the test module graph.
+fn load_stdlib_modules() -> Option<Vec<ModuleData>> {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest.parent()?.parent()?;
+    let stdlib = workspace.join("stdlib");
+    if !stdlib.exists() {
+        return None;
+    }
+    let graph = axiom_modules::discover::discover_library(&stdlib).ok()?;
+    let mut result = Vec::new();
+    let mut topo = graph.topo_order();
+    topo.sort_by_key(|id| graph.get(*id).name.clone());
+    for module_id in topo {
+        let module = graph.get(module_id);
+        if module.source.is_empty() {
+            continue;
+        }
+        let parse_result = parse(&module.source);
+        let Some(root) = axiom_parser::ast::SourceFile::cast(parse_result.tree) else {
+            continue;
+        };
+        let (items, defs, diags, _nid) = lower_structural(&root, &module.source, 0);
+        result.push((module.name.clone(), items, defs, diags));
+    }
+    Some(result)
+}
+
 /// Discover all `.ax` files in a directory, sorted by name.
 fn ax_files_in(dir: &Path) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = fs::read_dir(dir)
@@ -52,6 +106,15 @@ fn compile_multi_file(dir: &Path) -> (Hir, HashMap<String, Vec<HirDiagnostic>>) 
     let mut all_module_data: Vec<ModuleData> = Vec::new();
     let mut next_id: usize = 1;
 
+    // Include stdlib modules so io::print/println are available.
+    if let Some(stdlib_modules) = load_stdlib_modules() {
+        for (name, items, defs, diags) in stdlib_modules {
+            let max_id = defs.iter().map(|d| d.def_id.0).max().unwrap_or(0);
+            next_id = next_id.max(max_id + 1);
+            all_module_data.push((name, items, defs, diags));
+        }
+    }
+
     for path in &files {
         let source = fs::read_to_string(path).expect("read .ax");
         let result = parse(&source);
@@ -68,11 +131,15 @@ fn compile_multi_file(dir: &Path) -> (Hir, HashMap<String, Vec<HirDiagnostic>>) 
         all_module_data.push((module_name, items, defs, diagnostics));
     }
 
-    // Phase 2: build global exports from all modules.
-    let module_defs: Vec<(String, Vec<axiom_hir::Def>)> = all_module_data
+    // Phase 2: build global exports from all modules + stdlib.
+    let mut module_defs: Vec<(String, Vec<axiom_hir::Def>)> = all_module_data
         .iter()
         .map(|(name, _, defs, _)| (name.clone(), defs.clone()))
         .collect();
+    // Include stdlib modules so io::print/println resolve.
+    if let Some(stdlib_data) = load_stdlib_defs() {
+        module_defs.extend(stdlib_data);
+    }
     let global_exports = build_global_exports(&module_defs);
 
     // Phase 3: resolve each module with cross-module context.

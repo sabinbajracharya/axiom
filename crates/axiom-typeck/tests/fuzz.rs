@@ -23,7 +23,7 @@ fn test_typeck_no_panic_on_well_formed() {
     for source in sources {
         let result = axiom_parser::parse(source);
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-        let hir = lower(&root, source);
+        let hir = lower(&root, source, None);
         let _ = check(hir); // Must not panic.
     }
 }
@@ -35,14 +35,14 @@ fn test_typeck_deterministic() {
     let result1 = {
         let result = axiom_parser::parse(source);
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-        let hir = lower(&root, source);
+        let hir = lower(&root, source, None);
         let thir = check(hir);
         serialize(&thir, None)
     };
     let result2 = {
         let result = axiom_parser::parse(source);
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-        let hir = lower(&root, source);
+        let hir = lower(&root, source, None);
         let thir = check(hir);
         serialize(&thir, None)
     };

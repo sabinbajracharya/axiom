@@ -15,7 +15,7 @@
 //!
 //! let result = parse("fn main() { val x = 1 }");
 //! let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-//! let hir = lower(&root, "fn main() { val x = 1 }");
+//! let hir = lower(&root, "fn main() { val x = 1 }", None);
 //! assert!(hir.diagnostics.is_empty());
 //! let dump = serialize(&hir);
 //! assert!(dump.contains("FnDef"));
@@ -215,7 +215,7 @@ mod tests {
     fn lower_source(source: &str) -> Hir {
         let result = axiom_parser::parse(source);
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-        lower(&root, source)
+        lower(&root, source, None)
     }
 
     #[test]
@@ -290,33 +290,15 @@ mod tests {
     }
 
     #[test]
-    fn test_resolve_builtin() {
-        let hir = lower_source("fn main() { print(\"hi\") }");
+    fn test_resolve_builtin_type() {
+        // Primitive types (Int, Bool, etc.) resolve through builtin_def_id.
+        // print/println resolve through the stdlib module system, not builtins.
+        let hir = lower_source("fn main() { val x: Int = 1 }");
         assert!(
             hir.diagnostics.is_empty(),
             "unexpected diagnostics: {:?}",
             hir.diagnostics
         );
-        match &hir.items[0] {
-            Item::FnDef(f) => {
-                assert!(
-                    f.body.stmts.is_empty(),
-                    "single-expr block should have empty stmts"
-                );
-                match f.body.tail.as_deref() {
-                    Some(Expr::Call(c)) => match &c.callee {
-                        NameRef::Resolved(r) => {
-                            assert_eq!(r.text, "print");
-                        }
-                        NameRef::Unresolved(u) => {
-                            panic!("print should resolve as builtin, got: {}", u.text)
-                        }
-                    },
-                    _ => panic!("expected Call in tail"),
-                }
-            }
-            _ => panic!("expected FnDef"),
-        }
     }
 
     #[test]
@@ -361,7 +343,7 @@ mod tests {
     fn test_hir_empty_source() {
         let result = axiom_parser::parse("");
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-        let hir = lower(&root, "");
+        let hir = lower(&root, "", None);
         assert!(hir.items.is_empty());
     }
 
@@ -370,8 +352,8 @@ mod tests {
         let source = "fn f() { val x = 1 }";
         let result = axiom_parser::parse(source);
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-        let hir1 = lower(&root, source);
-        let hir2 = lower(&root, source);
+        let hir1 = lower(&root, source, None);
+        let hir2 = lower(&root, source, None);
         assert_eq!(serialize(&hir1), serialize(&hir2));
     }
 

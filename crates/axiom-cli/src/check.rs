@@ -9,7 +9,7 @@
 //! At **M2** the `check` command runs the full pipeline through type checking.
 //! Type errors produce `TypeDiagnostic`s in the report alongside HIR diagnostics.
 
-use axiom_hir::{lower, serialize as hir_serialize, HirDiagnostic};
+use axiom_hir::{lower, serialize as hir_serialize, GlobalExports, HirDiagnostic};
 use axiom_parser::ast::AstNode;
 use axiom_parser::{parse, serialize as cst_serialize};
 use axiom_typeck::{check as typeck_check, serialize as thir_serialize, Thir, TypeDiagnostic};
@@ -44,7 +44,10 @@ pub struct CompileResult {
 
 /// Lex + parse + lower + type-check `source`, returning both the diagnostic
 /// report and the THIR (for downstream IR lowering / execution).
-pub fn compile_source(source: &str) -> CompileResult {
+///
+/// When `global_exports` is provided, stdlib items (e.g. `println` from `io`)
+/// are available for resolution — used by the single-file compilation path.
+pub fn compile_source(source: &str, global_exports: Option<&GlobalExports>) -> CompileResult {
     let result = parse(source);
     let mut diagnostics: Vec<String> = result.errors.iter().map(|e| e.render(source)).collect();
     let tree_dump = cst_serialize(&result.tree);
@@ -63,7 +66,7 @@ pub fn compile_source(source: &str) -> CompileResult {
             };
         }
     };
-    let hir = lower(&root, source);
+    let hir = lower(&root, source, global_exports);
     for diag in &hir.diagnostics {
         diagnostics.push(HirDiagnostic::render(diag, source));
     }
@@ -89,7 +92,7 @@ pub fn compile_source(source: &str) -> CompileResult {
 /// Lex + parse + lower + type-check `source`, returning the CST dump, HIR dump,
 /// THIR dump, and any rendered diagnostics (parse errors + HIR + type).
 pub fn check_source(source: &str) -> CheckReport {
-    compile_source(source).report
+    compile_source(source, None).report
 }
 
 #[cfg(test)]

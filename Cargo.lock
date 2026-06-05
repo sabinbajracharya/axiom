@@ -26,6 +26,7 @@ name = "axiom-hir"
 version = "0.0.0"
 dependencies = [
  "axiom-lexer",
+ "axiom-modules",
  "axiom-parser",
  "thiserror",
 ]
@@ -71,6 +72,7 @@ version = "0.0.0"
 dependencies = [
  "axiom-hir",
  "axiom-lexer",
+ "axiom-modules",
  "axiom-parser",
  "thiserror",
 ]

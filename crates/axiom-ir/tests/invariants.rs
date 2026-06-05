@@ -11,7 +11,7 @@ use std::path::Path;
 fn lower_fixture(source: &str) -> axiom_ir::Ir {
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = axiom_hir::lower(&root, source);
+    let hir = axiom_hir::lower(&root, source, None);
     let thir = axiom_typeck::check(hir);
     let mono = axiom_typeck::monomorphize(&thir);
     axiom_ir::lower(&thir, &mono)

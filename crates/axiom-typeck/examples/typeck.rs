@@ -35,7 +35,7 @@ fn main() {
         }
     };
 
-    let hir = lower(&root, &source);
+    let hir = lower(&root, &source, None);
     let thir = check(hir);
 
     let dump = serialize(&thir, None);

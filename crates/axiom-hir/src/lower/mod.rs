@@ -18,7 +18,11 @@ use crate::HirDiagnostic;
 use axiom_lexer::Span;
 use axiom_parser::ast::{self, AstNode};
 
-pub fn lower(root: &ast::SourceFile, source: &str) -> Hir {
+pub fn lower(
+    root: &ast::SourceFile,
+    source: &str,
+    global_exports: Option<&crate::resolve::GlobalExports>,
+) -> Hir {
     let mut ctx = LowerCtx::new(source);
     for item_node in root.items() {
         let item = match item::lower_item(item_node, &mut ctx) {
@@ -27,7 +31,7 @@ pub fn lower(root: &ast::SourceFile, source: &str) -> Hir {
         };
         ctx.items.push(item);
     }
-    crate::resolve::resolve(&mut ctx);
+    crate::resolve::resolve(&mut ctx, global_exports);
     Hir {
         items: ctx.items,
         diagnostics: ctx.diagnostics,

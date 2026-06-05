@@ -7,7 +7,7 @@ use axiom_parser::ast::AstNode;
 fn check_source(source: &str) -> Thir {
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source);
+    let hir = lower(&root, source, None);
     check(hir)
 }
 
