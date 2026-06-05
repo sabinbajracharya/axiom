@@ -32,16 +32,16 @@ const HELP: &str = "\
 axiom — the Axiom compiler driver
 
 USAGE:
-    axiom <command> [file.ax]
+    axiom <command> <path>
 
 COMMANDS:
-    check <file>    Lex, parse, and type-check; report diagnostics
-    run <file>      Execute a program via the register-IR interpreter
-    build <file>    Build a native executable (not yet implemented)
+    check <path>    Lex, parse, and type-check; report diagnostics
+    run <path>      Execute a program via the register-IR interpreter
+    build <path>    Build a native executable (not yet implemented)
     help            Show this help
     version         Show the version
 
-The package manager/build tool `forge` is a separate v2 concern.
+<path> may be a single .ax file or a source directory (with main.ax).
 ";
 
 /// Parse `args`, dispatch the command, and return the process exit code. This is
@@ -72,6 +72,9 @@ pub fn run(args: &[String]) -> ExitCode {
 /// Read the file, check it, print the CST, HIR, and THIR to stdout and
 /// diagnostics to stderr.
 fn run_check(path: &Path) -> ExitCode {
+    if path.is_dir() {
+        return run_check_dir(path);
+    }
     let source = match std::fs::read_to_string(path) {
         Ok(text) => text,
         Err(err) => {
@@ -91,6 +94,36 @@ fn run_check(path: &Path) -> ExitCode {
         ExitCode::SUCCESS
     } else {
         ExitCode::from(EXIT_DIAGNOSTICS)
+    }
+}
+
+/// Multi-file check: build the module graph from the directory and print it.
+fn run_check_dir(path: &Path) -> ExitCode {
+    let src_dir = path.join("src");
+    let search_dir = if src_dir.exists() { &src_dir } else { path };
+    match axiom_modules::discover::discover(search_dir) {
+        Ok(graph) => {
+            println!("module graph ({} modules):", graph.modules.len());
+            for (i, module) in graph.modules.iter().enumerate() {
+                let parent = module.parent.map_or(String::from("-"), |p| p.0.to_string());
+                let children: Vec<String> =
+                    module.children.iter().map(|c| c.0.to_string()).collect();
+                println!(
+                    "  [{i}] {} (parent={parent}, children=[{}])",
+                    if module.name.is_empty() {
+                        "<root>"
+                    } else {
+                        &module.name
+                    },
+                    children.join(", ")
+                );
+            }
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("error: {err}");
+            ExitCode::from(EXIT_USAGE)
+        }
     }
 }
 

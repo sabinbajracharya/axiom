@@ -39,6 +39,8 @@ const KEYWORDS: &[(&str, Keyword)] = &[
     ("false", Keyword::False),
     ("self", Keyword::SelfValue),
     ("Self", Keyword::SelfType),
+    ("super", Keyword::Super),
+    ("crate", Keyword::Crate),
     ("as", Keyword::As),
     ("in", Keyword::In),
     ("is", Keyword::Is),
@@ -117,6 +119,8 @@ pub fn keyword_label(kw: Keyword) -> &'static str {
         Keyword::Is => "KwIs",
         Keyword::Subscript => "KwSubscript",
         Keyword::Yield => "KwYield",
+        Keyword::Super => "KwSuper",
+        Keyword::Crate => "KwCrate",
     }
 }
 

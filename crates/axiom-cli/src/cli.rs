@@ -13,11 +13,14 @@ use std::path::PathBuf;
 /// A fully-parsed invocation of the `axiom` driver.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
-    /// `axiom check <file>` — lex + parse, then report diagnostics (M0).
+    /// `axiom check <path>` — lex + parse, then report diagnostics.
+    /// `<path>` may be a single `.ax` file or a source directory.
     Check { path: PathBuf },
-    /// `axiom run <file>` — execute via the IR interpreter (arrives in M4).
+    /// `axiom run <path>` — execute via the IR interpreter.
+    /// `<path>` may be a single `.ax` file or a source directory.
     Run { path: PathBuf },
-    /// `axiom build <file>` — compile to a native executable (arrives in M5).
+    /// `axiom build <path>` — compile to a native executable (future).
+    /// `<path>` may be a single `.ax` file or a source directory.
     Build { path: PathBuf },
     /// `axiom help` / `-h` / `--help`.
     Help,
@@ -32,9 +35,9 @@ pub enum CliError {
     NoCommand,
     #[error("unknown command `{0}`")]
     UnknownCommand(String),
-    #[error("`{0}` needs a file path, e.g. `axiom {0} hello.ax`")]
+    #[error("`{0}` needs a path, e.g. `axiom {0} hello.ax` or `axiom {0} src/`")]
     MissingPath(&'static str),
-    #[error("`{command}` takes one file path, but got an extra argument `{extra}`")]
+    #[error("`{command}` takes one path, but got an extra argument `{extra}`")]
     UnexpectedArg {
         command: &'static str,
         extra: String,

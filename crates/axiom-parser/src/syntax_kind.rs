@@ -181,6 +181,8 @@ syntax_kinds! {
         KwFalse,
         KwSelf,
         KwSelfType,
+        KwSuper,
+        KwCrate,
         KwAs,
         KwIn,
         KwIs,
@@ -366,6 +368,8 @@ fn keyword_kind(kw: Keyword) -> SyntaxKind {
         Keyword::Is => SyntaxKind::KwIs,
         Keyword::Subscript => SyntaxKind::KwSubscript,
         Keyword::Yield => SyntaxKind::KwYield,
+        Keyword::Super => SyntaxKind::KwSuper,
+        Keyword::Crate => SyntaxKind::KwCrate,
     }
 }
 

@@ -15,6 +15,7 @@ path = "src/main.rs"
 [dependencies]
 axiom-hir = { path = "../axiom-hir" }
 axiom-ir = { path = "../axiom-ir" }
+axiom-modules = { path = "../axiom-modules" }
 axiom-parser = { path = "../axiom-parser" }
 axiom-typeck = { path = "../axiom-typeck" }
 axiom-vm = { path = "../axiom-vm" }
