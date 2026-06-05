@@ -1,0 +1,11 @@
+// core/platform.ax — the platform boundary
+//
+// Extern "C" fn declarations wrapping libc. This is the ONLY place where
+// Axiom meets the OS. All stdlib modules (io, fs, net) import from here.
+//
+// These are unsafe primitives. Users should never import core::platform
+// directly — use std::io, std::fs, etc. instead.
+
+extern "C" fn write(fd: Int, buf: &[U8], len: Int) -> Int;
+extern "C" fn read(fd: Int, buf: &mut [U8], len: Int) -> Int;
+extern "C" fn close(fd: Int) -> Int;

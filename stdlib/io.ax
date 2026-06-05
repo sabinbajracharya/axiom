@@ -1,2 +1,13 @@
+// std/io.ax — safe I/O API
+//
+// These extern "C" fns are the platform boundary. Once the CLI pipeline
+// loads stdlib through the module system (not concatenation), they move
+// to core/platform.ax and this file imports from there:
+//
+//   use core::platform::write
+//   pub fn print(s: String) { write(1, s.bytes, s.len) }
+//
+// Until then, extern fns live here directly.
+
 extern "C" fn print(s: String);
 extern "C" fn println(s: String);
