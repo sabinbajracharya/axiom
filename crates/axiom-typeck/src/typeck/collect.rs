@@ -318,16 +318,18 @@ impl TypeChecker {
                 // Resolve the type name.
                 let type_name_text = name_text(&impl_def.type_name);
 
-                // Look up the type in the environment.
-                let _type_def_id = if let Some(info) = self.env.lookup(&type_name_text) {
-                    info._def_id
-                } else {
+                // The impl target must name a known type: a user-defined type in
+                // the environment, or a builtin primitive. Primitives are real
+                // types and carry trait impls (Deinit/Equatable/… in
+                // `core/primitives.ax` and `core/string.ax`).
+                let known = self.env.lookup(&type_name_text).is_some()
+                    || is_builtin_type_name(&type_name_text);
+                if !known {
                     self.emit(TypeDiagnostic::TypeNotFoundForImpl {
                         name: type_name_text.clone(),
                         span: self.span_for(impl_def.id),
                     });
-                    HirId(0)
-                };
+                }
 
                 // If this is a trait impl, verify the trait exists.
                 if let Some(ref tn) = trait_name {
@@ -491,4 +493,11 @@ pub(super) fn name_text(nr: &NameRef) -> String {
         NameRef::Resolved(r) => r.text.clone(),
         NameRef::Unresolved(u) => u.text.clone(),
     }
+}
+
+/// Whether `name` is a builtin primitive type. These are real types (resolved
+/// by `resolve_named_type`) that live outside the environment, so impl-target
+/// validation must recognize them explicitly.
+pub(super) fn is_builtin_type_name(name: &str) -> bool {
+    matches!(name, "Int" | "Float" | "Bool" | "String" | "Unit")
 }
