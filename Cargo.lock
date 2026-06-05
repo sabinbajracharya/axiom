@@ -16,6 +16,7 @@ dependencies = [
  "axiom-ir",
  "axiom-modules",
  "axiom-parser",
+ "axiom-stdlib",
  "axiom-typeck",
  "axiom-vm",
  "thiserror",

@@ -17,6 +17,7 @@ axiom-hir = { path = "../axiom-hir" }
 axiom-ir = { path = "../axiom-ir" }
 axiom-modules = { path = "../axiom-modules" }
 axiom-parser = { path = "../axiom-parser" }
+axiom-stdlib = { path = "../axiom-stdlib" }
 axiom-typeck = { path = "../axiom-typeck" }
 axiom-vm = { path = "../axiom-vm" }
 thiserror = { workspace = true }

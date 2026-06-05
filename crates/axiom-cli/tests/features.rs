@@ -19,12 +19,11 @@ fn test_corpus_is_non_empty() {
 
 #[test]
 fn test_every_corpus_file_matches_expected_outcome() {
-    let stdlib_exports = axiom_cli::build_stdlib_exports();
     let files = harness::discover(&harness::corpus_dir()).expect("read corpus dir");
     for path in files {
         let source = std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("read {}: {e}", path.display()));
-        let report = compile_source(&source, stdlib_exports.as_ref()).report;
+        let report = compile_source(&source, true).report;
         // A tree is always produced — parsing is total — and it's a well-formed
         // root (the dump leads with the `SourceFile` node and its byte span).
         assert!(

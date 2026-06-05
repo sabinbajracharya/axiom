@@ -9,10 +9,9 @@
 //! At **M2** the `check` command runs the full pipeline through type checking.
 //! Type errors produce `TypeDiagnostic`s in the report alongside HIR diagnostics.
 
-use axiom_hir::{lower, serialize as hir_serialize, GlobalExports, HirDiagnostic};
-use axiom_parser::ast::AstNode;
+use axiom_hir::{serialize as hir_serialize, HirDiagnostic};
 use axiom_parser::{parse, serialize as cst_serialize};
-use axiom_typeck::{check as typeck_check, serialize as thir_serialize, Thir, TypeDiagnostic};
+use axiom_typeck::{serialize as thir_serialize, Thir, TypeDiagnostic};
 
 /// The outcome of checking one source string.
 pub struct CheckReport {
@@ -47,35 +46,30 @@ pub struct CompileResult {
 ///
 /// When `global_exports` is provided, stdlib items (e.g. `println` from `io`)
 /// are available for resolution — used by the single-file compilation path.
-pub fn compile_source(source: &str, global_exports: Option<&GlobalExports>) -> CompileResult {
+pub fn compile_source(source: &str, with_stdlib: bool) -> CompileResult {
     let result = parse(source);
     let mut diagnostics: Vec<String> = result.errors.iter().map(|e| e.render(source)).collect();
     let tree_dump = cst_serialize(&result.tree);
 
-    let root = match axiom_parser::ast::SourceFile::cast(result.tree) {
-        Some(r) => r,
-        None => {
-            return CompileResult {
-                report: CheckReport {
-                    tree_dump,
-                    hir_dump: String::new(),
-                    thir_dump: String::new(),
-                    diagnostics,
-                },
-                thir: None,
-            };
-        }
+    // One unified pipeline: the user source as the unnamed (`""`) module,
+    // optionally on top of the embedded stdlib. No exports-only path, no disk
+    // discovery. See `docs/stdlib-loading-unification.md`.
+    let modules: Vec<(&str, &str)> = if with_stdlib {
+        axiom_stdlib::with_main(source)
+    } else {
+        vec![("", source)]
     };
-    let hir = lower(&root, source, global_exports);
-    for diag in &hir.diagnostics {
+    let thir = axiom_typeck::check_modules(&modules);
+
+    // Render HIR (lower + resolve) then type diagnostics against the user source.
+    // stdlib modules are clean, so every real diagnostic is user-side.
+    for diag in &thir.hir.diagnostics {
         diagnostics.push(HirDiagnostic::render(diag, source));
     }
-    let hir_dump = hir_serialize(&hir);
-
-    let thir = typeck_check(hir);
     for diag in &thir.diagnostics {
         diagnostics.push(TypeDiagnostic::render(diag, source));
     }
+    let hir_dump = hir_serialize(&thir.hir);
     let thir_dump = thir_serialize(&thir, None);
 
     CompileResult {
@@ -92,7 +86,7 @@ pub fn compile_source(source: &str, global_exports: Option<&GlobalExports>) -> C
 /// Lex + parse + lower + type-check `source`, returning the CST dump, HIR dump,
 /// THIR dump, and any rendered diagnostics (parse errors + HIR + type).
 pub fn check_source(source: &str) -> CheckReport {
-    compile_source(source, None).report
+    compile_source(source, false).report
 }
 
 #[cfg(test)]
