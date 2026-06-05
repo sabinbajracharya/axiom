@@ -58,6 +58,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "axiom-vm"
+version = "0.1.0"
+dependencies = [
+ "axiom-hir",
+ "axiom-ir",
+ "axiom-typeck",
+ "thiserror",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
