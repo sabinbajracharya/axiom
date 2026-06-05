@@ -141,6 +141,7 @@ language's load-bearing bet — has passed its de-risking spike.
 | Parse | [`crates/axiom-parser`](crates/axiom-parser) — tokens → lossless CST (rust-analyzer-shaped green/red tree) | ✅ Done; total recovery, recovery-set-aware |
 | Name resolution (HIR) | [`crates/axiom-hir`](crates/axiom-hir) — CST → desugared, ID-keyed HIR with name resolution | ✅ Done (M1); golden + diagnostic snapshot tested |
 | Type checking (THIR) | [`crates/axiom-typeck`](crates/axiom-typeck) — HIR → THIR via bidirectional type checker | ✅ Done (M2); golden + diagnostic + invariant tested |
+| Generics + traits | [`crates/axiom-typeck`](crates/axiom-typeck) — unification, inference, trait checking, monomorphization | ✅ Done (M2); ~50 tests; not yet wired through IR/VM |
 | IR generation | [`crates/axiom-ir`](crates/axiom-ir) — THIR → register IR (basic blocks, SSA-lite registers) | ✅ Done (M3); golden traces + invariants |
 | Register-IR interpreter | [`crates/axiom-vm`](crates/axiom-vm) — executes IR: structs, enums, match, control flow, calls | ✅ Done (M3); 56 tests + 9 golden traces |
 | Cranelift codegen | — | ⬜ Not started |
@@ -158,8 +159,10 @@ end-to-end pipeline `lex → parse → resolve → typecheck → IR → Cranelif
 *naive* memory (no exclusivity) — to prove the pipeline runs end to end. The
 front-end and IR are complete, and the register-IR interpreter runs basic
 programs. The next frontier is a minimal **Cranelift backend** to produce native
-executables. The real memory model (ownership pass + Perceus), generics, and
-full error handling land in **v1**, where the language identity arrives.
+executables. Generics and traits are implemented in the type checker (including
+monomorphization) but not yet wired through IR → VM execution. The real memory
+model (ownership pass + Perceus) and full error handling land in **v1**, where
+the language identity arrives.
 
 ---
 
