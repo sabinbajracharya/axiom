@@ -59,11 +59,13 @@ fn lower_ident_pattern(p: &ast::IdentPat, ctx: &mut LowerCtx) -> Pattern {
         name: name.clone(),
         def_id: id,
         kind: DefKind::Local,
+        span: ctx.span_of(p.syntax()),
     });
     Pattern::Ident(IdentPat {
         id,
         name,
         binding: Some(id),
+        span: ctx.span_of(p.syntax()),
     })
 }
 

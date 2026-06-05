@@ -338,9 +338,9 @@ fn lower_stmt_expr(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> Optio
     }
     if ast::ContinueStmt::cast(node.clone()).is_some() {
         let id = ctx.alloc_id();
-        let cont = ContinueStmt { id: ctx.alloc_id() };
+        let cont = ContinueStmt { id };
         return Some(Expr::Block(Block {
-            id,
+            id: ctx.alloc_id(),
             stmts: vec![Stmt::ContinueStmt(cont)],
             tail: None,
         }));

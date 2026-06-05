@@ -36,6 +36,7 @@ fn lower_fn_def(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
         name: result.name.clone(),
         def_id: result.id,
         kind: DefKind::Fn,
+        span: ctx.span_of(f.syntax()),
     });
     result
 }
@@ -100,6 +101,7 @@ fn lower_params(param_list: Option<ast::ParamList>, ctx: &mut LowerCtx) -> Vec<P
             name: "self".to_string(),
             def_id: id,
             kind: DefKind::Param,
+            span: ctx.span_of(sp.syntax()),
         });
         result.push(Param {
             id,
@@ -125,6 +127,7 @@ fn lower_params(param_list: Option<ast::ParamList>, ctx: &mut LowerCtx) -> Vec<P
             name: pname.clone(),
             def_id: id,
             kind: DefKind::Param,
+            span: ctx.span_of(param.syntax()),
         });
 
         Param {
@@ -170,6 +173,7 @@ fn lower_generic_params(
                 name: pname.clone(),
                 def_id: id,
                 kind: DefKind::TypeParam,
+                span: ctx.span_of(p.syntax()),
             });
             HirTypeParam {
                 id,
@@ -210,6 +214,7 @@ fn lower_struct_def(s: &ast::StructDef, ctx: &mut LowerCtx) -> StructDef {
                 name: fname.clone(),
                 def_id: fid,
                 kind: DefKind::Field,
+                span: ctx.span_of(f.syntax()),
             });
             FieldDef {
                 id: fid,
@@ -224,6 +229,7 @@ fn lower_struct_def(s: &ast::StructDef, ctx: &mut LowerCtx) -> StructDef {
         name: sname.clone(),
         def_id: id,
         kind: DefKind::Struct,
+        span: ctx.span_of(s.syntax()),
     });
 
     StructDef {
@@ -265,6 +271,7 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
                 name: vname.clone(),
                 def_id: vid,
                 kind: DefKind::Variant,
+                span: ctx.span_of(v.syntax()),
             });
             VariantDef {
                 id: vid,
@@ -278,6 +285,7 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
         name: ename.clone(),
         def_id: id,
         kind: DefKind::Enum,
+        span: ctx.span_of(e.syntax()),
     });
 
     EnumDef {
@@ -310,6 +318,7 @@ fn lower_trait_def(t: &ast::TraitDef, ctx: &mut LowerCtx) -> TraitDef {
         name: tname.clone(),
         def_id: id,
         kind: DefKind::Trait,
+        span: ctx.span_of(t.syntax()),
     });
 
     TraitDef {

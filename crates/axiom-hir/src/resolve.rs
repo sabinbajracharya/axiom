@@ -25,10 +25,16 @@ pub fn resolve(ctx: &mut crate::lower::LowerCtx) {
             def.kind,
             DefKind::Fn | DefKind::Struct | DefKind::Enum | DefKind::Trait | DefKind::Variant
         ) {
-            if top_level.contains_key(&def.name) {
+            if let Some((prev_def_id, _)) = top_level.get(&def.name) {
+                let prev_def = ctx.defs.iter().find(|d| &d.def_id == prev_def_id);
+                let prev_span = prev_def.map(|d| d.span).unwrap_or(def.span);
                 ctx.diagnostics.push(HirDiagnostic::DuplicateDefinition {
                     name: def.name.clone(),
-                    span: Span { lo: 0, hi: 0 },
+                    span: def.span,
+                });
+                ctx.diagnostics.push(HirDiagnostic::DuplicateDefinition {
+                    name: format!("{} (previous definition here)", def.name),
+                    span: prev_span,
                 });
             } else {
                 top_level.insert(def.name.clone(), (def.def_id, def.kind));
@@ -280,7 +286,7 @@ fn define_pattern_bindings(
             if scope.define(p.name.clone(), p.id, DefKind::Local) {
                 diagnostics.push(HirDiagnostic::DuplicateDefinition {
                     name: p.name.clone(),
-                    span: Span { lo: 0, hi: 0 },
+                    span: p.span,
                 });
             }
             p.binding = Some(p.id);

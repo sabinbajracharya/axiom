@@ -179,11 +179,13 @@ mod tests {
                 id: HirId(0),
                 name: "A".into(),
                 binding: None,
+                span: span(),
             }),
             Pattern::Ident(IdentPat {
                 id: HirId(1),
                 name: "B".into(),
                 binding: None,
+                span: span(),
             }),
         ]);
         let is_unit = |name: &str| name == "A" || name == "B";
@@ -197,6 +199,7 @@ mod tests {
             id: HirId(0),
             name: "x".into(),
             binding: Some(HirId(1)),
+            span: span(),
         })]);
         let diags =
             check_match_exhaustiveness(&arms, &["A".into(), "B".into()], &|_| false, span());

@@ -47,6 +47,7 @@ pub(crate) struct Def {
     pub name: String,
     pub def_id: DefId,
     pub kind: DefKind,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

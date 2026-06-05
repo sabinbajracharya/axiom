@@ -6,6 +6,7 @@ mod ty;
 pub use items::*;
 pub use ty::*;
 
+use axiom_lexer::Span;
 use std::fmt;
 
 // ── Stable IDs ────────────────────────────────────────────────────────────────
@@ -488,6 +489,7 @@ pub struct IdentPat {
     pub id: HirId,
     pub name: String,
     pub binding: Option<DefId>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
