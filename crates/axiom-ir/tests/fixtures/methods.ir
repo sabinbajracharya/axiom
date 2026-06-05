@@ -1,14 +1,19 @@
-fn double(x: Int) -> fn(Int) -> Int {
+fn Point::dist(self: Point, other: Point) -> fn(Point, Point) -> Float {
   entry:
-  %1 = BinOp + %0 %0
-  Return %1
+  %2 = Field %0 x
+  Return %2
 }
 
-fn run() -> fn() -> Unit {
+fn main() -> fn() -> Unit {
   entry:
-  %0 = Const Int(1)
-  %1 = Call double [%0]
-  %2 = Const Unit
-  Return %2
+  %0 = Const Float(3)
+  %1 = Const Float(4)
+  %2 = StructNew Point {x: %0, y: %1}
+  %3 = Const Float(1)
+  %4 = Const Float(2)
+  %5 = StructNew Point {x: %3, y: %4}
+  %6 = MethodCall %2 Point::dist [%5]
+  %7 = Const Unit
+  Return %7
 }
 

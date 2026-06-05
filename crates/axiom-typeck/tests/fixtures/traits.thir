@@ -1,29 +1,32 @@
-TraitDef(0) name=Shape vis=private
-  Method(1) name=area
-    Param(2) self : _
+StructDef(0) name=Circle vis=private fields=[private r: Float]
+TraitDef(2) name=Shape vis=private
+  Method(3) name=area
+    Param(4) self : _
     Return : Float→<unresolved>
-StructDef(3) name=Circle vis=private fields=[private radius: Float]
-ImplDef(5) trait=Shape for=Circle
-  FnDef(6) name=area vis=private params=[let self: Circle] return=Float→<unresolved> : (Circle) -> Float
-    Block(8) stmts=[0] tail=Some : Float
-      Bin(10) op=* : Float
-        Bin(11) op=* : Float
-          Lit(12) Float(3.14) : Float
-          Field(13) radius : Float
-            Path(14) self→7 : Circle
-        Field(15) radius : Float
-          Path(16) self→7 : Circle
-FnDef(17) name=main vis=private params=[] return=() : () -> Unit
-  Block(18) stmts=[2] tail=Some : Unit
-    ValStmt(22) : Unit
-Ident(19) c→19 : Circle
-      StructLit(20) Circle→3 : Circle
-        radius:         Lit(21) Float(5) : Float
+  Method(5) name=name DEFAULT
+    Param(6) self : _
+    Return : String→<unresolved>
+ImplDef(10) trait=Shape for=Circle
+  FnDef(11) name=area vis=private params=[let self: Circle] return=Float→<unresolved> : (Circle) -> Float
+    Block(13) stmts=[0] tail=Some : Float
+      Bin(15) op=* : Float
+        Bin(16) op=* : Float
+          Lit(17) Float(3.14159) : Float
+          Field(18) r : Float
+            Path(19) self→12 : Circle
+        Field(20) r : Float
+          Path(21) self→12 : Circle
+FnDef(22) name=main vis=private params=[] return=() : () -> Unit
+  Block(23) stmts=[2] tail=Some : Unit
+    ValStmt(27) : Unit
+Ident(24) c→24 : Circle
+      StructLit(25) Circle→0 : Circle
+        r:         Lit(26) Float(3) : Float
 
-    ValStmt(26) : Unit
-Ident(23) a→23 : Float
-      MethodCall(24) method=area : Float
-        Path(25) c→19 : Circle
+    ValStmt(31) : Unit
+Ident(28) a→28 : Float
+      MethodCall(29) method=area : Float
+        Path(30) c→24 : Circle
 
-    Call(28) callee=print→1000000 : Unit
-      Path(29) a→23 : Float
+    Call(33) callee=print→1000000 : Unit
+      Path(34) a→28 : Float

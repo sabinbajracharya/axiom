@@ -1,4 +1,4 @@
-fn origin() -> fn() -> Point {
+fn Point::origin() -> fn() -> Point {
   entry:
   %0 = Const Float(0)
   %1 = Const Float(0)
@@ -6,7 +6,7 @@ fn origin() -> fn() -> Point {
   Return %2
 }
 
-fn translate(self: Point, dx: Float, dy: Float) -> fn(Point, Float, Float) -> Unit {
+fn Point::translate(self: Point, dx: Float, dy: Float) -> fn(Point, Float, Float) -> Unit {
   entry:
   %3 = Field %0 x
   %4 = BinOp + %3 %1

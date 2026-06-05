@@ -1,3 +1,5 @@
+struct Circle { r: Float }
+
 trait Shape {
     fn area(let self) -> Float;
     fn name(let self) -> String {

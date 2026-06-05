@@ -1,5 +1,16 @@
-struct Wrapper { value: Int }
-fn main() {
-    val w = Wrapper { value: 42 }
-    w.value
+struct Point {
+    x: Float,
+    y: Float,
+}
+
+impl Point {
+    fn dist(let self, other: Point) -> Float {
+        self.x
+    }
+}
+
+fn run() {
+    val p = Point { x: 3.0, y: 4.0 }
+    val q = Point { x: 1.0, y: 2.0 }
+    val d = p.dist(q)
 }

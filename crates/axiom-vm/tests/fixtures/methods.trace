@@ -1,8 +1,13 @@
-[fn main] %0 = Const(Int(5))
-[fn main] Call double(%0)
-[fn double] %1 = BinOp Add(%0, %0)
-[fn double] Return %1
-[fn builtin] print(10) => ()
-[fn output] 10
+[fn main] %0 = Const(Float(3.0))
+[fn main] %1 = Const(Float(4.0))
+[fn main] %2 = StructNew Point(...)
+[fn main] %3 = Const(Float(1.0))
+[fn main] %4 = Const(Float(2.0))
+[fn main] %5 = StructNew Point(...)
+[fn main] MethodCall %2.Point::dist(%5)
+[fn Point::dist] %2 = Field %0.x
+[fn Point::dist] Return %2
+[fn builtin] print(3) => ()
+[fn output] 3
 [fn main] 
-[fn main] Return %2
+[fn main] Return %7

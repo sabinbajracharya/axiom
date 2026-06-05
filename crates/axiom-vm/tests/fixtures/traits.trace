@@ -1,1 +1,13 @@
 [fn main] %0 = Const(Float(3.0))
+[fn main] %1 = StructNew Circle(...)
+[fn main] MethodCall %1.Circle::area()
+[fn Circle::area] %1 = Const(Float(3.14159))
+[fn Circle::area] %2 = Field %0.r
+[fn Circle::area] %3 = BinOp Mul(%1, %2)
+[fn Circle::area] %4 = Field %0.r
+[fn Circle::area] %5 = BinOp Mul(%3, %4)
+[fn Circle::area] Return %5
+[fn builtin] print(28.274309999999996) => ()
+[fn output] 28.274309999999996
+[fn main] 
+[fn main] Return %3

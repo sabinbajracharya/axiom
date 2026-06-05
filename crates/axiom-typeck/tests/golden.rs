@@ -167,10 +167,20 @@ fn test_golden_assignments() {
 fn test_golden_methods() {
     check_golden(
         "methods",
-        "struct Wrapper { value: Int }
+        "struct Point {
+    x: Float,
+    y: Float,
+}
+impl Point {
+    fn dist(let self, other: Point) -> Float {
+        self.x
+    }
+}
 fn main() {
-    val w = Wrapper { value: 42 }
-    w.value
+    val p = Point { x: 3.0, y: 4.0 }
+    val q = Point { x: 1.0, y: 2.0 }
+    val d = p.dist(q)
+    print(d)
 }",
     );
 }
@@ -289,15 +299,20 @@ fn main() {
 
 #[test]
 fn test_golden_traits() {
-    let source = "trait Shape {
+    let source = "struct Circle { r: Float }
+trait Shape {
     fn area(let self) -> Float;
+    fn name(let self) -> String {
+        \"shape\"
+    }
 }
-struct Circle { radius: Float }
 impl Shape for Circle {
-    fn area(let self) -> Float { 3.14 * self.radius * self.radius }
+    fn area(let self) -> Float {
+        3.14159 * self.r * self.r
+    }
 }
 fn main() {
-    val c = Circle { radius: 5.0 }
+    val c = Circle { r: 3.0 }
     val a = c.area()
     print(a)
 }";

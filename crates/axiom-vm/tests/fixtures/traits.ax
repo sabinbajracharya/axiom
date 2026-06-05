@@ -9,7 +9,7 @@ impl Shape for Circle {
 }
 
 fn main() {
-    val c = Circle(3.0)
+    val c = Circle { r: 3.0 }
     val a = c.area()
     print(a)
 }

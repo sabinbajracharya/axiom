@@ -1,12 +1,16 @@
+struct Circle { r: Float }
+
 trait Shape {
     fn area(let self) -> Float;
-    fn name(let self) -> String {
-        "shape"
-    }
+    fn name(let self) -> String { "shape" }
 }
 
 impl Shape for Circle {
-    fn area(let self) -> Float {
-        3.14159 * self.r * self.r
-    }
+    fn area(let self) -> Float { 3.14159 * self.r * self.r }
+}
+
+fn main() {
+    val c = Circle { r: 3.0 }
+    val a = c.area()
+    print(a)
 }

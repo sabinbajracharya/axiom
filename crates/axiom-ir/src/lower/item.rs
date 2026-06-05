@@ -22,7 +22,7 @@ pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
             if !f.type_params.is_empty() {
                 return;
             }
-            lower_fn_def(f, ctx, None);
+            lower_fn_def(f, ctx, None, None);
         }
         Item::EnumDef(e) => {
             for v in &e.variants {
@@ -30,12 +30,13 @@ pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
                     .insert(v.name.clone(), (e.name.clone(), v.payload.len()));
             }
         }
-        // ImplDef methods are handled via lower_mono_instances for generic ones,
-        // or via collect_impl_methods for non-generic ones.
+        // ImplDef methods are registered with qualified names ("Type::method")
+        // to avoid collisions when two impls define the same method name.
         Item::ImplDef(impl_def) => {
+            let type_name = name_ref_text(&impl_def.type_name);
             for m in &impl_def.methods {
                 if m.type_params.is_empty() {
-                    lower_fn_def(m, ctx, None);
+                    lower_fn_def(m, ctx, None, Some(&type_name));
                 }
             }
         }
@@ -55,6 +56,7 @@ pub(super) fn lower_mono_instances(ctx: &mut LowerCtx) {
             fndef,
             ctx,
             Some((&inst.name, &subst, &inst.param_types, &inst.return_type)),
+            None,
         );
     }
 }
@@ -96,12 +98,22 @@ fn build_subst(fndef: &FnDef, type_args: &[Ty]) -> Substitution {
     subst
 }
 
+/// Extract the text from a NameRef (resolved or unresolved).
+fn name_ref_text(nr: &axiom_hir::NameRef) -> String {
+    match nr {
+        axiom_hir::NameRef::Resolved(r) => r.text.clone(),
+        axiom_hir::NameRef::Unresolved(u) => u.text.clone(),
+    }
+}
+
 /// Lower a function definition. For monomorphized instances, `mono_info` carries
 /// the mangled name, substitution, concrete param types, and return type.
+/// For impl methods, `type_prefix` qualifies the name as "Type::method".
 fn lower_fn_def(
     fndef: &FnDef,
     ctx: &mut LowerCtx,
     mono_info: Option<(&str, &Substitution, &[Ty], &Ty)>,
+    type_prefix: Option<&str>,
 ) {
     let (name, subst, mono_param_tys, mono_ret_ty) = match &mono_info {
         Some((name, subst, param_tys, ret_ty)) => (
@@ -110,7 +122,14 @@ fn lower_fn_def(
             Some(*param_tys),
             Some(*ret_ty),
         ),
-        None => (fndef.name.clone(), None, None, None),
+        None => {
+            let base = fndef.name.clone();
+            let qualified = match type_prefix {
+                Some(prefix) => format!("{prefix}::{base}"),
+                None => base,
+            };
+            (qualified, None, None, None)
+        }
     };
 
     let mut fn_ctx = FnLowerCtx::new(&ctx.thir.types, &ctx.mono_lookup, subst);

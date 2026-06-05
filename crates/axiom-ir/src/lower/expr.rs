@@ -90,13 +90,35 @@ fn lower_method_call(e: &axiom_hir::MethodCallExpr, ctx: &mut FnLowerCtx) -> Reg
     let receiver = lower_expr(&e.receiver, ctx);
     let args: Vec<Reg> = e.args.iter().map(|a| lower_expr(a, ctx)).collect();
     let dst = ctx.fresh_reg();
+
+    // Qualify the method name as "Type::method" to avoid collisions
+    // when two impls define the same method name.
+    let method = if let Some(ty) = ctx.types.get(&e.receiver.id()) {
+        if let Some(type_name) = type_name_from_ty(ty) {
+            format!("{type_name}::{}", e.method)
+        } else {
+            e.method.clone()
+        }
+    } else {
+        e.method.clone()
+    };
+
     ctx.emit(IrInstr::MethodCall {
         dst,
         receiver,
-        method: e.method.clone(),
+        method,
         args,
     });
     dst
+}
+
+/// Extract the type name from a Ty for method name qualification.
+fn type_name_from_ty(ty: &axiom_typeck::Ty) -> Option<String> {
+    match ty {
+        axiom_typeck::Ty::Struct(s) => Some(s.name.clone()),
+        axiom_typeck::Ty::Enum(e) => Some(e.name.clone()),
+        _ => None,
+    }
 }
 
 fn lower_field(e: &axiom_hir::FieldExpr, ctx: &mut FnLowerCtx) -> Reg {

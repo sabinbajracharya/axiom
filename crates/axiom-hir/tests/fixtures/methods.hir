@@ -1,6 +1,11 @@
-FnDef(0) name=double vis=private params=[let x: Int→<unresolved>] return=Int→<unresolved> {
-  tail: Bin(4) +(Path(5) x→1, Path(6) x→1)
-}
-FnDef(7) name=run vis=private params=[] return=_ {
-  ValStmt(12) Ident(9) y→9: _ = Call(10) double→0(Lit(11) Int(1))
+StructDef(0) name=Point vis=private fields=[private x: Float→<unresolved>, private y: Float→<unresolved>]
+ImplDef(3) Point→0 methods=[
+  FnDef(4) name=dist vis=private params=[let self: _, let other: Point→0] return=Float→<unresolved> {
+    tail: Path(10) self→5.Field(9) x
+  }
+]
+FnDef(11) name=run vis=private params=[] return=_ {
+  ValStmt(17) Ident(13) p→13: _ = StructLit(14) Point→0 { x: Lit(15) Float(3), y: Lit(16) Float(4) }
+  ValStmt(22) Ident(18) q→18: _ = StructLit(19) Point→0 { x: Lit(20) Float(1), y: Lit(21) Float(2) }
+  ValStmt(27) Ident(23) d→23: _ = Path(25) p→13.Method(24) dist(Path(26) q→18)
 }

@@ -1,10 +1,28 @@
-StructDef(0) name=Wrapper vis=private fields=[private value: Int]
-FnDef(2) name=main vis=private params=[] return=() : () -> Unit
-  Block(3) stmts=[1] tail=Some : ///error///
-    ValStmt(7) : Unit
-Ident(4) w→4 : Wrapper
-      StructLit(5) Wrapper→0 : Wrapper
-        value:         Lit(6) Int(42) : Int
+StructDef(0) name=Point vis=private fields=[private x: Float, private y: Float]
+ImplDef(3) for=Point
+  FnDef(4) name=dist vis=private params=[let self: Point, let other: Point] return=Float→<unresolved> : (Point, Point) -> Float
+    Block(7) stmts=[0] tail=Some : Float
+      Field(9) x : Float
+        Path(10) self→5 : Point
+FnDef(11) name=main vis=private params=[] return=() : () -> Unit
+  Block(12) stmts=[3] tail=Some : Unit
+    ValStmt(17) : Unit
+Ident(13) p→13 : Point
+      StructLit(14) Point→0 : Point
+        x:         Lit(15) Float(3) : Float
+        y:         Lit(16) Float(4) : Float
 
-    Field(9) value : ///error///
-      Path(10) w→4 : Wrapper
+    ValStmt(22) : Unit
+Ident(18) q→18 : Point
+      StructLit(19) Point→0 : Point
+        x:         Lit(20) Float(1) : Float
+        y:         Lit(21) Float(2) : Float
+
+    ValStmt(27) : Unit
+Ident(23) d→23 : Float
+      MethodCall(24) method=dist : Float
+        Path(25) p→13 : Point
+        Path(26) q→18 : Point
+
+    Call(29) callee=print→1000000 : Unit
+      Path(30) d→23 : Float
