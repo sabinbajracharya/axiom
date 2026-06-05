@@ -589,10 +589,27 @@ Glob imports (`use foo::*`) are **discouraged/lint-warned** (singular idiom: exp
 
 ## 11. Standard Library (surface)
 
-Layered to keep the core small (singular idiom + small budget):
+Layered to keep the core small (singular idiom + small budget). **The physical
+`stdlib/` tree mirrors the module path** (one file = one module, §10.1): `stdlib/core/
+string.ax` → `core::string`, `stdlib/std/collections/list.ax` → `std::collections::list`.
 
-- **`core`** (always available, no_std-able): `Option`, `Result`, primitive methods, `Iterator` trait + adapters (`map`/`filter`/`fold`/`take`/`zip`/...), `String`, `List`, `Map`, `Set`, `OrderedMap`/`OrderedSet`, `Box`, `Weak`.
-- **`std`** (hosted): `io` (`print`, `println`, `read_line`, `dbg`), `string` (`format`), `fs`, `env`, `process`, `path`, `time`, `math`, `rand`, `json`, `net`/`http`, `db`. *(Mirrors Oxy's stdlib surface — proven useful, reuse the shape.)*
+- **`core`** (always available — the implicit prelude): `Option`, `Result`, the core
+  traits (`Deinit`, `Equatable`, `Hashable`, `Ord`, `Iterator` + adapters), primitive
+  methods, and `String`. *(`core` is the minimal always-on layer. It is **not** strictly
+  allocation-free like Rust's `core`: `String` is the deliberate exception — it is the
+  one string type, backs every literal and `format`, and has no borrowed `&str`
+  counterpart to live below it. The growable general-purpose containers are **not** in
+  `core` — see below.)*
+- **`std`** (hosted): `io` (`print`, `println`, `read_line`, `dbg`), `string` (`format`),
+  **`collections`** (`List`, `Map`, `Set`, `OrderedMap`/`OrderedSet`, `Box`, `Weak`),
+  `fs`, `env`, `process`, `path`, `time`, `math`, `rand`, `json`, `net`/`http`, `db`.
+  *(Mirrors Oxy's stdlib surface — proven useful, reuse the shape.)*
+  - **Collections live in `std::collections`, not `core`** [Decided] — they require a heap
+    allocator (Rust keeps `Vec`/`HashMap` in `alloc`/`std`, never `core`), and §10.2
+    already imports them as `use std::collections::{Map, Set}`. This resolves the earlier
+    `core`-vs-`std` contradiction toward `std`. Migration of these from compiler built-ins
+    to real `std::collections` `.ax` code is tracked in
+    [`docs/builtin-to-stdlib-migration.md`](docs/builtin-to-stdlib-migration.md).
 - **Formatting:** `string::format("{} = {}", k, v)` — **one** formatting mechanism. String interpolation is **not** added unless we drop `format` (singular idiom forbids both; §15).
   - **`print`/`println` are `String`-only** (`fn print(s: String)`); the idiomatic way to
     print a non-string is `println(string::format("{}", x))`. They are ordinary
