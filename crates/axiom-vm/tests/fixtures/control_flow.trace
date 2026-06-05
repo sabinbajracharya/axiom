@@ -12,4 +12,4 @@
 [fn main] %6 = Copy %5
 [fn main] Jump if_merge_1
 [fn main] %10 = Copy %6
-[fn main] Return
+[fn main] Return %10

@@ -31,8 +31,15 @@ pub(super) fn call_name(name_ref: &NameRef) -> String {
 /// Look up a builtin function by name. Returns `None` for unknown names.
 pub(super) fn builtin_fn(name: &str) -> Option<Ty> {
     match name {
+        // print/println accept any type — use a type parameter so the unifier
+        // binds T to the actual argument type at each call site.
         "print" | "println" => Some(Ty::Fn(crate::types::FnTy {
-            params: vec![Ty::String],
+            params: vec![Ty::TypeParam(crate::types::TypeParamId {
+                name: "T".to_string(),
+                index: 0,
+                // Sentinel HirId — builtins have no real definition site.
+                def_id: axiom_hir::HirId(usize::MAX),
+            })],
             return_type: Box::new(Ty::Unit),
         })),
         // `todo()` — stub for unimplemented functions. Returns Ty::Error which

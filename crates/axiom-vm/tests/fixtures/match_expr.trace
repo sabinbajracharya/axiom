@@ -9,4 +9,4 @@
 [fn main] 
 [fn main] %2 = Copy %6
 [fn main] Jump match_merge_0
-[fn main] Return
+[fn main] Return %2

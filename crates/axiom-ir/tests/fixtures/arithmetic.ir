@@ -7,6 +7,6 @@ fn main() -> fn() -> Unit {
   %4 = BinOp * %2 %3
   %5 = UnaryOp - %4
   %6 = Const Unit
-  Return Unit
+  Return %6
 }
 

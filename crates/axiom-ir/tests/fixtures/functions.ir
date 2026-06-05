@@ -1,7 +1,7 @@
 fn add(a: Int, b: Int) -> fn(Int, Int) -> Int {
   entry:
   %2 = BinOp + %0 %1
-  Return Unit
+  Return %2
 }
 
 fn main() -> fn() -> Unit {
@@ -10,6 +10,6 @@ fn main() -> fn() -> Unit {
   %1 = Const Int(2)
   %2 = Call add [%0, %1]
   %3 = Const Unit
-  Return Unit
+  Return %3
 }
 

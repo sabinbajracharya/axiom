@@ -49,10 +49,10 @@ fn lower_fn_def(fndef: &FnDef, ctx: &mut LowerCtx) {
     let entry_label = "entry".to_string();
     fn_ctx.start_block(entry_label);
 
-    super::stmt::lower_block_expr(&fndef.body, &mut fn_ctx);
+    let tail_reg = super::stmt::lower_block_expr(&fndef.body, &mut fn_ctx);
 
-    // Add implicit return if the last block doesn't have a terminator.
-    fn_ctx.ensure_return();
+    // Add implicit return carrying the tail expression's value.
+    fn_ctx.ensure_return(Some(tail_reg));
 
     let func = IrFunction {
         name: fndef.name.clone(),

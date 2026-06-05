@@ -15,7 +15,7 @@ mod check;
 pub mod cli;
 pub mod harness;
 
-pub use check::{check_source, CheckReport};
+pub use check::{check_source, compile_source, CheckReport, CompileResult};
 pub use cli::{parse_args, CliError, Command};
 
 use std::path::Path;
@@ -35,9 +35,9 @@ USAGE:
     axiom <command> [file.ax]
 
 COMMANDS:
-    check <file>    Lex and parse a source file; report diagnostics
-    run <file>      Run a program (arrives in M4 — the IR interpreter)
-    build <file>    Build a native executable (arrives in M5 — Cranelift)
+    check <file>    Lex, parse, and type-check; report diagnostics
+    run <file>      Execute a program via the register-IR interpreter
+    build <file>    Build a native executable (not yet implemented)
     help            Show this help
     version         Show the version
 
@@ -49,7 +49,7 @@ The package manager/build tool `forge` is a separate v2 concern.
 pub fn run(args: &[String]) -> ExitCode {
     match parse_args(args) {
         Ok(Command::Check { path }) => run_check(&path),
-        Ok(Command::Run { .. }) => unimplemented_command("run", "M4 (the IR interpreter)"),
+        Ok(Command::Run { path }) => run_run(&path),
         Ok(Command::Build { .. }) => {
             unimplemented_command("build", "M5 (the Cranelift native backend)")
         }
@@ -91,6 +91,37 @@ fn run_check(path: &Path) -> ExitCode {
         ExitCode::SUCCESS
     } else {
         ExitCode::from(EXIT_DIAGNOSTICS)
+    }
+}
+
+/// Read the file, compile through IR, and execute in the VM.
+fn run_run(path: &Path) -> ExitCode {
+    let source = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(err) => {
+            eprintln!("error: cannot read {}: {err}", path.display());
+            return ExitCode::from(EXIT_USAGE);
+        }
+    };
+    let compiled = compile_source(&source);
+    for diagnostic in &compiled.report.diagnostics {
+        eprintln!("{diagnostic}");
+    }
+    if !compiled.report.is_clean() {
+        return ExitCode::from(EXIT_DIAGNOSTICS);
+    }
+    let thir = match compiled.thir {
+        Some(t) => t,
+        None => return ExitCode::from(EXIT_DIAGNOSTICS),
+    };
+    let ir = axiom_ir::lower(&thir);
+    let mut vm = axiom_vm::Vm::new(ir);
+    match vm.run() {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(err) => {
+            eprintln!("error: {err}");
+            ExitCode::from(EXIT_DIAGNOSTICS)
+        }
     }
 }
 

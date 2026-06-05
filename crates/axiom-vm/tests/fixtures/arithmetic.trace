@@ -17,4 +17,4 @@
 [fn output] 0 0 0
 
 [fn main] 
-[fn main] Return
+[fn main] Return %10

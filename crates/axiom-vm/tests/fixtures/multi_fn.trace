@@ -3,7 +3,16 @@
 [fn main] Call sum_of_squares(%0, %1)
 [fn sum_of_squares] Call square(%0)
 [fn square] %1 = BinOp Mul(%0, %0)
-[fn square] Return
+[fn square] Return %1
 [fn sum_of_squares] Call square(%1)
 [fn square] %1 = BinOp Mul(%0, %0)
-[fn square] Return
+[fn square] Return %1
+[fn sum_of_squares] %4 = BinOp Add(%2, %3)
+[fn sum_of_squares] Return %4
+[fn main] %4294967295 = Copy %2
+[fn main] %3 = Const(Unit)
+[fn builtin] println(25) => ()
+[fn output] 25
+
+[fn main] 
+[fn main] Return %4

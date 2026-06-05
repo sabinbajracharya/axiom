@@ -7,8 +7,10 @@ name = "axiom-cli"
 version = "0.0.0"
 dependencies = [
  "axiom-hir",
+ "axiom-ir",
  "axiom-parser",
  "axiom-typeck",
+ "axiom-vm",
  "thiserror",
 ]
 

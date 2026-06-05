@@ -12,7 +12,7 @@
 use axiom_hir::{lower, serialize as hir_serialize, HirDiagnostic};
 use axiom_parser::ast::AstNode;
 use axiom_parser::{parse, serialize as cst_serialize};
-use axiom_typeck::{check as typeck_check, serialize as thir_serialize, TypeDiagnostic};
+use axiom_typeck::{check as typeck_check, serialize as thir_serialize, Thir, TypeDiagnostic};
 
 /// The outcome of checking one source string.
 pub struct CheckReport {
@@ -34,9 +34,17 @@ impl CheckReport {
     }
 }
 
-/// Lex + parse + lower + type-check `source`, returning the CST dump, HIR dump,
-/// THIR dump, and any rendered diagnostics (parse errors + HIR + type).
-pub fn check_source(source: &str) -> CheckReport {
+/// Full pipeline result: the check report plus the typed IR (if parse/lower/typecheck succeeded).
+pub struct CompileResult {
+    pub report: CheckReport,
+    /// The THIR, present when parse + HIR lowering + type checking all succeeded
+    /// (diagnostics may still be non-empty from earlier stages).
+    pub thir: Option<Thir>,
+}
+
+/// Lex + parse + lower + type-check `source`, returning both the diagnostic
+/// report and the THIR (for downstream IR lowering / execution).
+pub fn compile_source(source: &str) -> CompileResult {
     let result = parse(source);
     let mut diagnostics: Vec<String> = result.errors.iter().map(|e| e.render(source)).collect();
     let tree_dump = cst_serialize(&result.tree);
@@ -44,12 +52,14 @@ pub fn check_source(source: &str) -> CheckReport {
     let root = match axiom_parser::ast::SourceFile::cast(result.tree) {
         Some(r) => r,
         None => {
-            diagnostics.push("error: parse result is not a SourceFile root".to_string());
-            return CheckReport {
-                tree_dump,
-                hir_dump: String::new(),
-                thir_dump: String::new(),
-                diagnostics,
+            return CompileResult {
+                report: CheckReport {
+                    tree_dump,
+                    hir_dump: String::new(),
+                    thir_dump: String::new(),
+                    diagnostics,
+                },
+                thir: None,
             };
         }
     };
@@ -65,12 +75,21 @@ pub fn check_source(source: &str) -> CheckReport {
     }
     let thir_dump = thir_serialize(&thir, None);
 
-    CheckReport {
-        tree_dump,
-        hir_dump,
-        thir_dump,
-        diagnostics,
+    CompileResult {
+        report: CheckReport {
+            tree_dump,
+            hir_dump,
+            thir_dump,
+            diagnostics,
+        },
+        thir: Some(thir),
     }
+}
+
+/// Lex + parse + lower + type-check `source`, returning the CST dump, HIR dump,
+/// THIR dump, and any rendered diagnostics (parse errors + HIR + type).
+pub fn check_source(source: &str) -> CheckReport {
+    compile_source(source).report
 }
 
 #[cfg(test)]

@@ -24,6 +24,6 @@ fn main() -> fn() -> Unit {
   loop_exit_5:
   %9 = Const Unit
   %10 = Const Unit
-  Return Unit
+  Return %10
 }
 

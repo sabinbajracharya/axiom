@@ -19,4 +19,4 @@
 [fn output] 50
 
 [fn main] 
-[fn main] Return
+[fn main] Return %10

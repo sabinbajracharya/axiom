@@ -3,4 +3,4 @@
 [fn output] hello world
 
 [fn main] 
-[fn main] Return
+[fn main] Return %1

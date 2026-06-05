@@ -130,10 +130,11 @@ impl<'a> FnLowerCtx<'a> {
     }
 
     /// Ensure the current block ends with a return terminator.
-    pub fn ensure_return(&mut self) {
+    /// If `value` is `Some(reg)`, the return carries that register's value.
+    pub fn ensure_return(&mut self, value: Option<Reg>) {
         let block = &mut self.func.blocks[self.current_block];
         if matches!(block.terminator, Terminator::Unreachable) {
-            block.terminator = Terminator::Return(None);
+            block.terminator = Terminator::Return(value);
         }
     }
 }

@@ -2,11 +2,11 @@
 [fn main] %1 = Const(Int(4))
 [fn main] Call add(%0, %1)
 [fn add] %2 = BinOp Add(%0, %1)
-[fn add] Return
+[fn add] Return %2
 [fn main] %4294967295 = Copy %2
 [fn main] %3 = Const(Unit)
-[fn builtin] println(()) => ()
-[fn output] ()
+[fn builtin] println(7) => ()
+[fn output] 7
 
 [fn main] 
-[fn main] Return
+[fn main] Return %4

@@ -15,6 +15,8 @@ pub(super) fn lower_pattern(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx)
         lower_literal_pattern(&p, ctx)
     } else if let Some(p) = ast::TupleStructPat::cast(node.clone()) {
         lower_tuple_struct_pattern(&p, ctx)
+    } else if let Some(p) = ast::PathPat::cast(node.clone()) {
+        lower_path_pattern(&p, ctx)
     } else if let Some(p) = ast::StructPat::cast(node.clone()) {
         lower_struct_pattern(&p, ctx)
     } else if let Some(p) = ast::OrPat::cast(node.clone()) {
@@ -92,6 +94,20 @@ fn lower_tuple_struct_pattern(p: &ast::TupleStructPat, ctx: &mut LowerCtx) -> Pa
         .map(|n| lower_pattern(&n, ctx))
         .collect::<Vec<_>>();
     Pattern::TupleStruct(TupleStructPat { id, path, fields })
+}
+
+/// Lower a `PathPat` (e.g. `Shape::Empty`) as a `TupleStruct` with no fields.
+fn lower_path_pattern(p: &ast::PathPat, ctx: &mut LowerCtx) -> Pattern {
+    let id = ctx.alloc_id();
+    let path = p
+        .path()
+        .map(|path_node| NameRef::unresolved(path_last_segment(Some(path_node))))
+        .unwrap_or_else(|| NameRef::unresolved(""));
+    Pattern::TupleStruct(TupleStructPat {
+        id,
+        path,
+        fields: vec![],
+    })
 }
 
 fn lower_struct_pattern(p: &ast::StructPat, ctx: &mut LowerCtx) -> Pattern {

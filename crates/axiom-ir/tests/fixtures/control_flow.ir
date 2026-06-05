@@ -16,6 +16,6 @@ fn main() -> fn() -> Unit {
   Jump if_merge_1
   if_merge_1:
   %9 = Copy %5
-  Return Unit
+  Return %9
 }
 

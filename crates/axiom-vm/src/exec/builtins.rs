@@ -22,15 +22,17 @@ pub fn call_builtin(
                 .map(|v| v.to_string())
                 .collect::<Vec<_>>()
                 .join(" ");
+            if name == "println" {
+                println!("{text}");
+            } else {
+                print!("{text}");
+            }
             // Record in trace if active.
             if let Some(t) = trace {
                 let suffix = if name == "println" { "\n" } else { "" };
                 t.record("builtin", format!("{name}({text})"), Some(Value::Unit));
-                // Also capture the output for golden tests.
                 t.record("output", format!("{text}{suffix}"), None);
             }
-            // For now, we don't actually print to stdout in the VM —
-            // output goes through the trace. Tests verify the trace.
             Ok(Value::Unit)
         }
         _ => Err(VmError::BuiltinNotFound {
