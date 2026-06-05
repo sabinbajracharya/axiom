@@ -8,5 +8,5 @@ fn describe(let x: Int) -> Float {
 
 fn main() {
     val r = describe(0)
-    print(r)
+    print(string::format("{}", r))
 }

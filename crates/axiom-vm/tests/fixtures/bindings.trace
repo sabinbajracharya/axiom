@@ -1,5 +1,14 @@
 [fn main] %0 = Const(Int(1))
 [fn main] %1 = Const(Int(2))
 [fn main] %2 = BinOp Add(%0, %1)
-[fn main] Call print(%2)
+[fn main] %3 = Const(String("{}"))
+[fn main] 
+[fn main] Call print(%4)
 [fn print] %1 = Const(Int(1))
+[fn print] 
+[fn extern] write(3) => ()
+[fn output] 3
+[fn print] 
+[fn print] %4 = Const(Unit)
+[fn print] Return %4
+[fn main] Return %5

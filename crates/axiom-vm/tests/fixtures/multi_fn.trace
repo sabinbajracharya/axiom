@@ -9,7 +9,20 @@
 [fn square] Return %1
 [fn sum_of_squares] %4 = BinOp Add(%2, %3)
 [fn sum_of_squares] Return %4
-[fn main] %4294967295 = Copy %2
-[fn main] %3 = Const(Unit)
-[fn main] Call println(%4294967295)
+[fn main] %3 = Const(String("{}"))
+[fn main] 
+[fn main] Call println(%4)
 [fn println] %1 = Const(Int(1))
+[fn println] 
+[fn extern] write(25) => ()
+[fn output] 25
+[fn println] 
+[fn println] %4 = Const(Int(1))
+[fn println] %5 = Const(String("\\n"))
+[fn println] 
+[fn extern] write(\n) => ()
+[fn output] \n
+[fn println] 
+[fn println] %8 = Const(Unit)
+[fn println] Return %8
+[fn main] Return %5

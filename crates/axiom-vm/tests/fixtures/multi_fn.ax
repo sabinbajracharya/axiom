@@ -7,6 +7,6 @@ fn sum_of_squares(a: Int, b: Int) -> Int {
 }
 
 fn main() {
-    let result = sum_of_squares(3, 4)
-    println(result)
+    val result = sum_of_squares(3, 4)
+    println(string::format("{}", result))
 }

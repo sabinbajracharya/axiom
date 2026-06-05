@@ -15,5 +15,5 @@ fn area(let s: Shape) -> Float {
 fn main() {
     val c = Circle(3.0)
     val a = area(c)
-    print(a)
+    print(string::format("{}", a))
 }

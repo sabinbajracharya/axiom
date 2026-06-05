@@ -5,5 +5,5 @@ fn add(let a: Int, let b: Int) -> Int {
 
 fn main() {
     val result = add(1, 2)
-    print(result)
+    print(string::format("{}", result))
 }

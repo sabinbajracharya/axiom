@@ -5,5 +5,5 @@ fn double(let x: Int) -> Int {
 
 fn main() {
     val y = double(5)
-    print(y)
+    print(string::format("{}", y))
 }

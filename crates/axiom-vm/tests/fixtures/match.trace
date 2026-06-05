@@ -7,5 +7,14 @@
 [fn describe] %4 = Copy %5
 [fn describe] Jump match_merge_0
 [fn describe] Return %4
-[fn main] Call print(%2)
+[fn main] %3 = Const(String("{}"))
+[fn main] 
+[fn main] Call print(%4)
 [fn print] %1 = Const(Int(1))
+[fn print] 
+[fn extern] write(9) => ()
+[fn output] 9
+[fn print] 
+[fn print] %4 = Const(Unit)
+[fn print] Return %4
+[fn main] Return %5

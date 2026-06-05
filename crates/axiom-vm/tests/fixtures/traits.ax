@@ -11,5 +11,5 @@ impl Shape for Circle {
 fn main() {
     val c = Circle { r: 3.0 }
     val a = c.area()
-    print(a)
+    print(string::format("{}", a))
 }

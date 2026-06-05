@@ -29,4 +29,6 @@ Ident(28) a→28 : Float
         Path(30) c→24 : Circle
 
     Call(33) callee=print→1 : Unit
-      Path(34) a→28 : Float
+      Call(34) callee=format→1000006 : String
+        Lit(35) String("{}") : String
+        Path(36) a→28 : Float

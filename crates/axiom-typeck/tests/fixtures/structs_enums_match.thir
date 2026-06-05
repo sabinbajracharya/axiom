@@ -33,4 +33,6 @@ Ident(31) a→31 : Float
         Path(33) c→27 : Shape
 
     Call(36) callee=print→1 : Unit
-      Path(37) a→31 : Float
+      Call(37) callee=format→1000006 : String
+        Lit(38) String("{}") : String
+        Path(39) a→31 : Float

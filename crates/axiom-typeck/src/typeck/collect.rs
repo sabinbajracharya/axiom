@@ -8,6 +8,7 @@ use super::{
 use crate::error::TypeDiagnostic;
 use crate::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 use axiom_hir::*;
+use axiom_parser::ast::AstNode;
 use std::collections::HashMap;
 
 impl TypeChecker {
@@ -152,50 +153,84 @@ impl TypeChecker {
     }
 
     fn collect_fn_sigs(&mut self) {
-        for item in &self.hir.items {
-            match item {
-                Item::FnDef(f) => {
-                    // Set type param scope so resolve_hir_ty can resolve T, U, etc.
-                    self.current_type_params = f
-                        .type_params
-                        .iter()
-                        .map(|tp| {
-                            let bounds = tp.bounds.iter().map(|b| name_text(&b.name)).collect();
-                            (tp.name.clone(), tp.id, bounds)
-                        })
-                        .collect();
-                    // Store bounds by type param HirId for bound checking at call sites.
-                    for (_, tp_id, bounds) in &self.current_type_params {
-                        self.type_param_bounds.insert(*tp_id, bounds.clone());
-                    }
-                    let param_types: Vec<Ty> = f
-                        .params
-                        .iter()
-                        .map(|p| {
-                            p.ty.as_ref()
-                                .map(|t| self.resolve_hir_ty(t))
-                                .unwrap_or(Ty::Error)
-                        })
-                        .collect();
-                    let return_type = f
-                        .return_type
-                        .as_ref()
-                        .map(|t| self.resolve_hir_ty(t))
-                        .unwrap_or(Ty::Unit);
-                    let fn_ty = Ty::Fn(FnTy {
-                        params: param_types,
-                        return_type: Box::new(return_type),
-                    });
-                    self.env
-                        .define(f.name.clone(), fn_ty, f.id, Mutability::Immutable);
-                    self.current_type_params.clear();
-                }
-                Item::StructDef(_) | Item::EnumDef(_) => {}
-                Item::TraitDef(_) | Item::ImplDef(_) => {
-                    // Handled by collect_trait_defs / collect_impl_defs.
-                }
-                Item::SubscriptDef(_) => {}
-                Item::UseItem(_) => {}
+        // The prelude's `print`/`println` signatures are seeded first so they are
+        // available in every compilation path — including the single-file check
+        // path, whose unit does *not* contain the `stdlib/io.ax` FnDef bodies
+        // (it resolves their names through module exports only). User or
+        // in-unit definitions of the same name override these below.
+        // See `docs/string-format-and-print-retire.md`.
+        self.inject_prelude_sigs();
+        // Clone out the in-unit FnDefs first: `register_fn_sig` borrows `self`
+        // mutably, which can't coexist with iterating `&self.hir.items`. These
+        // are registered after the prelude so an in-unit definition overrides it.
+        let fn_defs: Vec<FnDef> = self
+            .hir
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                Item::FnDef(f) => Some(f.clone()),
+                _ => None,
+            })
+            .collect();
+        for f in &fn_defs {
+            self.register_fn_sig(f);
+        }
+    }
+
+    /// Register one function's signature in the type environment. Shared by the
+    /// in-unit collection pass and the prelude injection.
+    fn register_fn_sig(&mut self, f: &FnDef) {
+        // Set type param scope so resolve_hir_ty can resolve T, U, etc.
+        self.current_type_params = f
+            .type_params
+            .iter()
+            .map(|tp| {
+                let bounds = tp.bounds.iter().map(|b| name_text(&b.name)).collect();
+                (tp.name.clone(), tp.id, bounds)
+            })
+            .collect();
+        // Store bounds by type param HirId for bound checking at call sites.
+        for (_, tp_id, bounds) in &self.current_type_params {
+            self.type_param_bounds.insert(*tp_id, bounds.clone());
+        }
+        let param_types: Vec<Ty> = f
+            .params
+            .iter()
+            .map(|p| {
+                p.ty.as_ref()
+                    .map(|t| self.resolve_hir_ty(t))
+                    .unwrap_or(Ty::Error)
+            })
+            .collect();
+        let return_type = f
+            .return_type
+            .as_ref()
+            .map(|t| self.resolve_hir_ty(t))
+            .unwrap_or(Ty::Unit);
+        let fn_ty = Ty::Fn(FnTy {
+            params: param_types,
+            return_type: Box::new(return_type),
+        });
+        self.env
+            .define(f.name.clone(), fn_ty, f.id, Mutability::Immutable);
+        self.current_type_params.clear();
+    }
+
+    /// Seed the prelude's function signatures (`print`/`println`) into the
+    /// environment from the bundled `stdlib/io.ax`. This makes them genuinely
+    /// the stdlib functions — `String`-only — in every path, retiring the old
+    /// hand-written generic stand-in. Signatures only: the bodies are *not*
+    /// added to `hir.items`, so THIR dumps stay focused on user code.
+    fn inject_prelude_sigs(&mut self) {
+        const PRELUDE_IO: &str = include_str!("../../../../stdlib/io.ax");
+        let result = axiom_parser::parse(PRELUDE_IO);
+        let Some(root) = axiom_parser::ast::SourceFile::cast(result.tree) else {
+            return;
+        };
+        let (items, _defs, _diags, _next) = axiom_hir::lower_structural(&root, PRELUDE_IO, 0);
+        for item in &items {
+            if let Item::FnDef(f) = item {
+                self.register_fn_sig(f);
             }
         }
     }

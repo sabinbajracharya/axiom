@@ -143,10 +143,15 @@ impl TypeChecker {
     fn define_pattern_tuple_struct(&mut self, ts: &TupleStructPat, scrutinee_ty: &Ty) {
         if let Ty::Enum(enum_ty) = scrutinee_ty {
             if let Some(variants) = self.lookup_enum_variants(&enum_ty.name) {
-                if let Some(variant) = variants.iter().find(|v| match &ts.path {
-                    NameRef::Resolved(r) => v.name == r.text,
-                    NameRef::Unresolved(u) => v.name == u.text,
-                }) {
+                // Match on the last path segment so a qualified pattern
+                // (`Shape::Circle(r)`) binds its fields just like the bare form
+                // (`Circle(r)`) — variant names are unqualified.
+                let pat_name = match &ts.path {
+                    NameRef::Resolved(r) => &r.text,
+                    NameRef::Unresolved(u) => &u.text,
+                };
+                let pat_variant = pat_name.rsplit("::").next().unwrap_or(pat_name);
+                if let Some(variant) = variants.iter().find(|v| v.name == pat_variant) {
                     for (i, field_pat) in ts.fields.iter().enumerate() {
                         let field_ty = variant.payload.get(i).cloned().unwrap_or(Ty::Error);
                         self.define_pattern(field_pat, &field_ty, Mutability::Immutable);

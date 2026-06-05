@@ -4,6 +4,6 @@ struct Point {
 }
 
 fn main() {
-    let p = Point { x: 10, y: 20 }
-    println(p.x)
+    val p = Point { x: 10, y: 20 }
+    println(string::format("{}", p.x))
 }

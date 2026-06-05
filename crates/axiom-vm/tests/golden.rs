@@ -26,6 +26,15 @@ fn run_with_trace(source: &str) -> String {
     let hir = axiom_hir::lower(&root, &combined, None);
 
     let thir = axiom_typeck::check(hir);
+    // Execution fixtures must type-check cleanly. This guard is what surfaces
+    // bugs like passing a non-`String` to the `String`-only `print` — previously
+    // such diagnostics were silently ignored here. See
+    // `docs/string-format-and-print-retire.md`.
+    assert!(
+        thir.diagnostics.is_empty(),
+        "fixture has type diagnostics: {:?}",
+        thir.diagnostics
+    );
     let mono = axiom_typeck::monomorphize(&thir);
     let ir = axiom_ir::lower(&thir, &mono);
 

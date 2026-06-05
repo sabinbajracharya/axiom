@@ -1,5 +1,20 @@
 [fn main] %0 = Const(Int(42))
 [fn main] Call id__Int(%0)
 [fn id__Int] Return %0
-[fn main] Call println(%1)
+[fn main] %2 = Const(String("{}"))
+[fn main] 
+[fn main] Call println(%3)
 [fn println] %1 = Const(Int(1))
+[fn println] 
+[fn extern] write(42) => ()
+[fn output] 42
+[fn println] 
+[fn println] %4 = Const(Int(1))
+[fn println] %5 = Const(String("\\n"))
+[fn println] 
+[fn extern] write(\n) => ()
+[fn output] \n
+[fn println] 
+[fn println] %8 = Const(Unit)
+[fn println] Return %8
+[fn main] Return %4

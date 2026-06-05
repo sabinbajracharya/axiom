@@ -16,5 +16,5 @@ fn describe(let s: Shape) -> Float {
 fn main() {
     val c = Circle(3.0)
     val a = describe(c)
-    print(a)
+    print(string::format("{}", a))
 }

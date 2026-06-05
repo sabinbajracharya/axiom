@@ -1,8 +1,8 @@
 fn main() {
-    let x = 10
-    let y = 3
-    let sum = x + y
-    let diff = x - y
-    let prod = x * y
-    println(sum, diff, prod)
+    val x = 10
+    val y = 3
+    val sum = x + y
+    val diff = x - y
+    val prod = x * y
+    println(string::format("{} {} {}", sum, diff, prod))
 }

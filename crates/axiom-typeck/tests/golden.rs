@@ -209,7 +209,7 @@ fn main() {
     val p = Point { x: 3.0, y: 4.0 }
     val q = Point { x: 1.0, y: 2.0 }
     val d = p.dist(q)
-    print(d)
+    print(string::format(\"{}\", d))
 }",
     );
 }
@@ -235,7 +235,7 @@ fn area(s: Shape) -> Float {
 fn main() {
     val c = Circle(3.0)
     val a = area(c)
-    print(a)
+    print(string::format(\"{}\", a))
 }",
     );
 }
@@ -343,7 +343,7 @@ impl Shape for Circle {
 fn main() {
     val c = Circle { r: 3.0 }
     val a = c.area()
-    print(a)
+    print(string::format(\"{}\", a))
 }";
     let actual = typeck_source(source);
     let golden_path = "tests/fixtures/traits.thir";

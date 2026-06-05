@@ -1,8 +1,23 @@
 [fn main] %0 = Const(Int(5))
 [fn main] %1 = Circle(...)
-[fn main] %4294967295 = Copy %1
-[fn main] %2 = Const(Unit)
-[fn main] Match %4294967295 => match_arm_1
-[fn main] VariantPayload %4294967295 [0]
-[fn main] Call println(%3)
+[fn main] Match %1 => match_arm_1
+[fn main] VariantPayload %1 [0]
+[fn main] %6 = Const(String("{}"))
+[fn main] 
+[fn main] Call println(%7)
 [fn println] %1 = Const(Int(1))
+[fn println] 
+[fn extern] write(5) => ()
+[fn output] 5
+[fn println] 
+[fn println] %4 = Const(Int(1))
+[fn println] %5 = Const(String("\\n"))
+[fn println] 
+[fn extern] write(\n) => ()
+[fn output] \n
+[fn println] 
+[fn println] %8 = Const(Unit)
+[fn println] Return %8
+[fn main] %5 = Copy %8
+[fn main] Jump match_merge_0
+[fn main] Return %5

@@ -5,10 +5,10 @@ enum Shape {
 }
 
 fn main() {
-    let s = Shape::Circle(5)
+    val s = Shape::Circle(5)
     match s {
-        Shape::Circle(r) => println(r),
-        Shape::Rect(w, h) => println(w),
-        Shape::Empty => println(0),
+        Shape::Circle(r) => println(string::format("{}", r)),
+        Shape::Rect(w, h) => println(string::format("{}", w)),
+        Shape::Empty => println(string::format("{}", 0)),
     }
 }

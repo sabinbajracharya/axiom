@@ -1,5 +1,5 @@
 fn main() {
-    let x = 42
+    val x = 42
     if x > 10 {
         println("big")
     } else {

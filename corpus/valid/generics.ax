@@ -6,5 +6,5 @@ fn id<T>(x: T) -> T {
 fn main() {
     val a = id(42)
     val b = id(true)
-    println(a)
+    println(string::format("{}", a))
 }

@@ -1,5 +1,5 @@
 fn main() {
-    let x = 42
+    val x = 42
     match x {
         0 => println("zero"),
         42 => println("the answer"),

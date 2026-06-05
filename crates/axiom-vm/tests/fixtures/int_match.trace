@@ -1,9 +1,7 @@
 [fn main] %0 = Const(Int(42))
-[fn main] %4294967295 = Copy %0
-[fn main] %1 = Const(Unit)
-[fn main] Match %4294967295 => match_arm_2
-[fn main] %5 = Const(String("the answer"))
-[fn main] Call println(%5)
+[fn main] Match %0 => match_arm_2
+[fn main] %4 = Const(String("the answer"))
+[fn main] Call println(%4)
 [fn println] %1 = Const(Int(1))
 [fn println] 
 [fn extern] write(the answer) => ()
@@ -17,6 +15,6 @@
 [fn println] 
 [fn println] %8 = Const(Unit)
 [fn println] Return %8
-[fn main] %2 = Copy %6
+[fn main] %1 = Copy %5
 [fn main] Jump match_merge_0
-[fn main] Return %2
+[fn main] Return %1

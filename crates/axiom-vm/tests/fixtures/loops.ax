@@ -1,8 +1,8 @@
 fn main() {
-    let x = 42
+    val x = 42
     if x > 10 {
-        println(x)
+        println(string::format("{}", x))
     }
-    let y = x + 8
-    println(y)
+    val y = x + 8
+    println(string::format("{}", y))
 }

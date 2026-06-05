@@ -25,4 +25,6 @@ Ident(23) d→23 : Float
         Path(26) q→18 : Point
 
     Call(29) callee=print→1 : Unit
-      Path(30) d→23 : Float
+      Call(30) callee=format→1000006 : String
+        Lit(31) String("{}") : String
+        Path(32) d→23 : Float
