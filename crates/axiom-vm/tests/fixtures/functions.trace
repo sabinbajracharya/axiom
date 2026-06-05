@@ -1,0 +1,5 @@
+[fn main] %0 = Const(Int(3))
+[fn main] %1 = Const(Int(4))
+[fn main] Call add(%0, %1)
+[fn add] %2 = BinOp Add(%0, %1)
+[fn add] Return

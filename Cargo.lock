@@ -63,6 +63,7 @@ version = "0.1.0"
 dependencies = [
  "axiom-hir",
  "axiom-ir",
+ "axiom-parser",
  "axiom-typeck",
  "thiserror",
 ]

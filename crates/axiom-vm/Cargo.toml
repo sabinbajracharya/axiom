@@ -10,5 +10,8 @@ axiom-ir = { path = "../axiom-ir" }
 axiom-typeck = { path = "../axiom-typeck" }
 thiserror.workspace = true
 
+[dev-dependencies]
+axiom-parser = { path = "../axiom-parser" }
+
 [lints]
 workspace = true

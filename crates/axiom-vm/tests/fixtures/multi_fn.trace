@@ -1,0 +1,9 @@
+[fn main] %0 = Const(Int(3))
+[fn main] %1 = Const(Int(4))
+[fn main] Call sum_of_squares(%0, %1)
+[fn sum_of_squares] Call square(%0)
+[fn square] %1 = BinOp Mul(%0, %0)
+[fn square] Return
+[fn sum_of_squares] Call square(%1)
+[fn square] %1 = BinOp Mul(%0, %0)
+[fn square] Return

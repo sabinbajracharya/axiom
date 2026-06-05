@@ -1,0 +1,12 @@
+fn square(n: Int) -> Int {
+    n * n
+}
+
+fn sum_of_squares(a: Int, b: Int) -> Int {
+    square(a) + square(b)
+}
+
+fn main() {
+    let result = sum_of_squares(3, 4)
+    println(result)
+}

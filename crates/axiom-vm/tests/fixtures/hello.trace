@@ -1,0 +1,6 @@
+[fn main] %0 = Const(String("hello world"))
+[fn builtin] println(hello world) => ()
+[fn output] hello world
+
+[fn main] 
+[fn main] Return
