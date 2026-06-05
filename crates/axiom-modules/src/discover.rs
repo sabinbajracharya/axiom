@@ -18,6 +18,36 @@ use crate::graph::{ModuleEntry, ModuleGraph, ModuleId, Visibility};
 /// Shorthand for the name→path maps used during discovery.
 type PathMap = HashMap<String, PathBuf>;
 
+/// Build a `ModuleGraph` from a library directory (no `main.ax` required).
+///
+/// Used for stdlib discovery — the library root is a synthetic empty module.
+/// Module names are derived from relative paths: `core/platform.ax` → `core::platform`.
+pub fn discover_library(lib_dir: &Path) -> Result<ModuleGraph, ModuleError> {
+    let mut modules: Vec<ModuleEntry> = Vec::new();
+    let mut name_index: PathMap = HashMap::new();
+
+    // Synthetic root — has no source, just anchors the library modules.
+    modules.push(ModuleEntry {
+        path: PathBuf::from(""),
+        name: String::new(),
+        source: String::new(),
+        parent: None,
+        children: Vec::new(),
+        vis: Visibility::Pub,
+    });
+    let root = ModuleId(0);
+
+    discover_children(
+        lib_dir,
+        &PathBuf::from(""),
+        root,
+        &mut modules,
+        &mut name_index,
+    )?;
+
+    Ok(ModuleGraph { modules, root })
+}
+
 /// Build a `ModuleGraph` from a source directory.
 pub fn discover(src_dir: &Path) -> Result<ModuleGraph, ModuleError> {
     let main_path = src_dir.join("main.ax");
@@ -53,6 +83,18 @@ pub fn discover(src_dir: &Path) -> Result<ModuleGraph, ModuleError> {
     )?;
 
     Ok(ModuleGraph { modules, root })
+}
+
+/// Check if a directory contains any `.ax` files.
+fn has_ax_files(dir: &Path) -> bool {
+    dir.read_dir()
+        .ok()
+        .and_then(|entries| {
+            entries
+                .filter_map(|e| e.ok())
+                .find(|e| e.path().extension().and_then(|ext| ext.to_str()) == Some("ax"))
+        })
+        .is_some()
 }
 
 /// Collect `.ax` files and subdirectories from `dir`, filtering out `main.ax`
@@ -179,15 +221,30 @@ fn discover_children(
         }
 
         let mod_ax_path = dir_path.join("mod.ax");
-        if !mod_ax_path.exists() {
-            continue; // stray directory, not a module
+        if mod_ax_path.exists() {
+            let module_name = rel_to_module_name(&rel_path.join(dir_name));
+            let child_id = register_module(&module_name, mod_ax_path, parent, modules, name_index)?;
+            let child_rel_dir = rel_path.join(dir_name);
+            discover_children(dir_path, &child_rel_dir, child_id, modules, name_index)?;
+        } else if has_ax_files(dir_path) {
+            // No mod.ax but has .ax files — register an empty synthetic module.
+            // Handles library directories like stdlib/core/ that have no mod.ax.
+            let module_name = rel_to_module_name(&rel_path.join(dir_name));
+            check_name_collision(&module_name, name_index, dir_path)?;
+            let child_id = ModuleId(modules.len());
+            modules[parent.0].children.push(child_id);
+            name_index.insert(module_name.to_lowercase(), dir_path.clone());
+            modules.push(ModuleEntry {
+                path: rel_path.join(dir_name),
+                name: module_name,
+                source: String::new(),
+                parent: Some(parent),
+                children: Vec::new(),
+                vis: Visibility::Pub,
+            });
+            let child_rel_dir = rel_path.join(dir_name);
+            discover_children(dir_path, &child_rel_dir, child_id, modules, name_index)?;
         }
-
-        let module_name = rel_to_module_name(&rel_path.join(dir_name));
-        let child_id = register_module(&module_name, mod_ax_path, parent, modules, name_index)?;
-
-        let child_rel_dir = rel_path.join(dir_name);
-        discover_children(dir_path, &child_rel_dir, child_id, modules, name_index)?;
     }
 
     Ok(())

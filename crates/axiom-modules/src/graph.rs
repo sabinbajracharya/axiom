@@ -76,4 +76,30 @@ impl ModuleGraph {
         }
         order
     }
+
+    /// Merge another graph into this one. The other graph's root becomes a
+    /// child of this graph's root. All module IDs in the other graph are
+    /// re-indexed to avoid conflicts.
+    pub fn merge(&mut self, other: ModuleGraph) {
+        let offset = self.modules.len();
+        let other_root_new = ModuleId(other.root.0 + offset);
+
+        // Re-index and append all modules from the other graph.
+        for mut entry in other.modules {
+            // Re-index parent.
+            if let Some(ref mut parent) = entry.parent {
+                parent.0 += offset;
+            }
+            // Re-index children.
+            for child in &mut entry.children {
+                child.0 += offset;
+            }
+            self.modules.push(entry);
+        }
+
+        // Attach the other graph's root as a child of our root.
+        self.modules[self.root.0].children.push(other_root_new);
+        // Set the other root's parent to our root.
+        self.modules[other_root_new.0].parent = Some(self.root);
+    }
 }

@@ -35,12 +35,12 @@
 | `extern "C" fn` parser grammar | ✅ Done | `item()` and `member_list()` consume `extern` + optional ABI string before `fn_def` |
 | `extern_abi()` AST accessor | ✅ Done | `FnDef.extern_abi()` returns `Some("C")`, `Some("")`, or `None` |
 | `extern_abi` HIR field | ✅ Done | `FnDef.extern_abi: Option<String>` — set during lowering |
-| `IrFunction.is_extern` | ✅ Done | Field added, defaults to `false` |
+| `IrFunction.is_extern` | ✅ Done | Field added, set from `extern_abi` during IR lowering |
 | VM extern dispatch | ✅ Done | Extern fns dispatched via `call_builtin()` (same as hardcoded builtins) |
-| `stdlib/io.ax` | ✅ Done | `extern "C" fn print(s: String); extern "C" fn println(s: String);` |
-| `with_stdlib()` includes io.ax | ✅ Done | Concatenated with list.ax and map.ax |
-| Remove `print`/`println` builtins | ❌ Blocked | CLI pipeline doesn't use `with_stdlib()` — needs pipeline refactor |
-| `core/platform.ax` | ⏸ Not started | Move extern "C" fns from io.ax to core/platform.ax (platform boundary) |
+| `stdlib/io.ax` | ✅ Done | `pub extern "C" fn print(s: String); pub extern "C" fn println(s: String);` |
+| CLI loads stdlib via module system | ✅ Done | Multi-file path: `discover_library()` + `merge()` |
+| `core/platform.ax` | ✅ Done | Design target created — extern fns stay in io.ax until safe wrappers |
+| Remove `print`/`println` builtins | ⏸ Not started | Single-file path still needs builtins; multi-file resolves via stdlib |
 | Safe wrappers (`pub fn print`) | ⏸ Not started | Layer 2 — wraps `core::platform::write` with safe API |
 | Real FFI (`dlsym`/`libloading`) | ❌ Deferred | Needs Cranelift JIT backend; VM uses builtin dispatch table |
 | `unsafe` blocks | ❌ Deferred | Keywords exist, grammar not implemented |

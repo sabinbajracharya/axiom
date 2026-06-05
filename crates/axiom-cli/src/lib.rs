@@ -19,7 +19,7 @@ pub use check::{check_source, compile_source, CheckReport, CompileResult};
 pub use cli::{parse_args, CliError, Command};
 
 use axiom_parser::ast::AstNode;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 /// Exit code when the source had diagnostics (a *clean* failure, not a crash).
@@ -110,13 +110,23 @@ type ModuleData = (
 fn run_check_dir(path: &Path) -> ExitCode {
     let src_dir = path.join("src");
     let search_dir = if src_dir.exists() { &src_dir } else { path };
-    let graph = match axiom_modules::discover::discover(search_dir) {
+    let mut graph = match axiom_modules::discover::discover(search_dir) {
         Ok(g) => g,
         Err(err) => {
             eprintln!("error: {err}");
             return ExitCode::from(EXIT_USAGE);
         }
     };
+
+    // Merge stdlib modules into the graph.
+    if let Some(stdlib) = stdlib_dir() {
+        match axiom_modules::discover::discover_library(&stdlib) {
+            Ok(stdlib_graph) => graph.merge(stdlib_graph),
+            Err(err) => {
+                eprintln!("warning: could not load stdlib: {err}");
+            }
+        }
+    }
 
     // Phase 1: structural lowering for all modules (no name resolution yet).
     let (mut module_data, mut any_errors) = lower_all_modules(&graph);
@@ -249,13 +259,23 @@ fn run_run(path: &Path) -> ExitCode {
 fn run_run_dir(path: &Path) -> ExitCode {
     let src_dir = path.join("src");
     let search_dir = if src_dir.exists() { &src_dir } else { path };
-    let graph = match axiom_modules::discover::discover(search_dir) {
+    let mut graph = match axiom_modules::discover::discover(search_dir) {
         Ok(g) => g,
         Err(err) => {
             eprintln!("error: {err}");
             return ExitCode::from(EXIT_USAGE);
         }
     };
+
+    // Merge stdlib modules into the graph.
+    if let Some(stdlib) = stdlib_dir() {
+        match axiom_modules::discover::discover_library(&stdlib) {
+            Ok(stdlib_graph) => graph.merge(stdlib_graph),
+            Err(err) => {
+                eprintln!("warning: could not load stdlib: {err}");
+            }
+        }
+    }
 
     // Phase 1: structural lowering for all modules.
     let (mut module_data, mut any_errors) = lower_all_modules(&graph);
@@ -294,6 +314,22 @@ fn run_run_dir(path: &Path) -> ExitCode {
             eprintln!("error: {err}");
             ExitCode::from(EXIT_DIAGNOSTICS)
         }
+    }
+}
+
+/// Locate the stdlib directory. Looks relative to the workspace root
+/// (parent of `crates/`), falling back to `CARGO_MANIFEST_DIR`/../stdlib.
+fn stdlib_dir() -> Option<PathBuf> {
+    // At compile time, CARGO_MANIFEST_DIR points to crates/axiom-cli/.
+    // The workspace root is one level up.
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let workspace_root = manifest.parent()?; // crates/
+    let workspace_root = workspace_root.parent()?; // workspace root
+    let stdlib = workspace_root.join("stdlib");
+    if stdlib.exists() {
+        Some(stdlib)
+    } else {
+        None
     }
 }
 

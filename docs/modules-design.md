@@ -248,10 +248,13 @@ code uses, it stays explicit. This matches the singular idiom principle: effects
 - [ ] Compiler auto-imports prelude items into every module's name resolution scope
 - [ ] Prelude items are lowest priority — explicit definitions shadow them
 - [x] `extern "C" fn` syntax: lexer keywords, parser grammar, AST accessor, HIR field, IR flag, VM dispatch
-- [x] `stdlib/io.ax` created with `extern "C" fn print/println`; loaded via `with_stdlib()`
-- [x] `core/platform.ax` created (design target — extern fns stay in io.ax until CLI pipeline uses module system for stdlib)
-- [ ] CLI pipeline refactor: `compile_source` must use `with_stdlib()` so HIR resolver sees io.ax definitions
-- [ ] Move `print`/`println` to `io.ax` as safe wrappers around `core::platform::write` (remove from resolver/typeck/VM builtins)
+- [x] `stdlib/io.ax` created with `pub extern "C" fn print/println`; exports via module system
+- [x] `core/platform.ax` created (design target — extern fns stay in io.ax until safe wrappers land)
+- [x] CLI pipeline refactor: multi-file path discovers stdlib via `discover_library()` + `merge()`
+- [x] `is_extern` propagation: IR lowering reads `extern_abi` from HIR, sets `is_extern: true`
+- [ ] `core/platform.ax`: move extern "C" fns from io.ax, io.ax imports from core::platform (needs safe wrapper design)
+- [ ] Remove `print`/`println` from `builtin_def_id()` / `builtin_fn()` — single-file path still needs builtins
+- [ ] Single-file path loads stdlib (currently only multi-file uses module system)
 - [ ] Test: `let x: Option<Int> = Some(42)` works without any `use` statement
 - [ ] Test: `use collections::List` works, `List` without import does not
 
