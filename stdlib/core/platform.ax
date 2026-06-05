@@ -6,6 +6,14 @@
 // These are unsafe primitives. Users should never import core::platform
 // directly — use std::io, std::fs, etc. instead.
 
-extern "C" fn write(fd: Int, buf: &[U8], len: Int) -> Int;
-extern "C" fn read(fd: Int, buf: &mut [U8], len: Int) -> Int;
-extern "C" fn close(fd: Int) -> Int;
+pub extern "C" fn write(fd: Int, buf: &[U8], len: Int) -> Int;
+pub extern "C" fn read(fd: Int, buf: &mut [U8], len: Int) -> Int;
+pub extern "C" fn close(fd: Int) -> Int;
+
+// String I/O — write a String directly to a file descriptor.
+// These are the bridge between Axiom's String type and POSIX I/O.
+// Once String::as_bytes() exists, these can be replaced by safe
+// wrappers around `write`.
+
+pub extern "C" fn write_string(fd: Int, s: String);
+pub extern "C" fn write_line(fd: Int, s: String);

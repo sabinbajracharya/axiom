@@ -1,8 +1,18 @@
 // std/io.ax — safe I/O API
 //
-// Extern "C" fn declarations. These are the platform boundary — once the
-// CLI pipeline loads stdlib through the module system, these will move to
-// core/platform.ax and this file will import from there.
+// Wraps core::platform write primitives with ergonomic functions.
+// In multi-file mode these are real Axiom functions; in single-file
+// mode the VM dispatches print/println as builtins (fallback).
 
-pub extern "C" fn print(s: String);
-pub extern "C" fn println(s: String);
+use core::platform::write_string;
+use core::platform::write_line;
+
+/// Write `s` to stdout (fd 1).
+pub fn print(s: String) {
+    write_string(1, s)
+}
+
+/// Write `s` followed by a newline to stdout (fd 1).
+pub fn println(s: String) {
+    write_line(1, s)
+}

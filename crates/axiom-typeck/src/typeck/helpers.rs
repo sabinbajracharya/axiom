@@ -29,9 +29,11 @@ pub(super) fn call_name(name_ref: &NameRef) -> String {
 }
 
 /// Look up a builtin function by name. Returns `None` for unknown names.
-/// `print`/`println` are needed here because the single-file compilation path
-/// doesn't include stdlib HIR items — the type checker needs type info for
-/// extern fns even when their definitions aren't in the HIR.
+///
+/// In multi-file mode, `print`/`println` resolve to real FnDefs in the
+/// stdlib HIR and this lookup isn't used. In single-file mode the stdlib
+/// HIR isn't loaded, so the type checker falls back to these hardcoded
+/// types for the extern declarations.
 pub(super) fn builtin_fn(name: &str) -> Option<Ty> {
     match name {
         // print/println accept any type — use a type parameter so the unifier

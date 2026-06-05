@@ -1,10 +1,11 @@
 # std::io Design — Writer Trait, Extern Fn & Removing Builtins
 
-> **Status:** Layer 1 implemented. `extern "C" fn` syntax works through
-> lexer→parser→HIR→IR→VM. `stdlib/io.ax` exists with `pub extern "C" fn print/println`.
-> VM dispatches extern fns via builtin table (no real FFI). Both single-file and
-> multi-file paths resolve `print`/`println` through the stdlib module system —
-> no hardcoded builtins in resolver or type checker.
+> **Status:** Layers 1–2 implemented. `extern "C" fn` syntax works through
+> lexer→parser→HIR→IR→VM. `stdlib/io.ax` has real `pub fn print`/`println` that
+> call `core::platform::write_string`/`write_line`. VM dispatches extern fns via
+> builtin table (no real FFI). Both single-file and multi-file paths resolve
+> `print`/`println` through the stdlib module system — no hardcoded builtins in
+> resolver or type checker.
 >
 > **Architecture:** Two layers following Go/Rust/Zig — `core::platform` owns the unsafe
 > platform boundary (extern "C" fns around libc), `std::io` builds safe user-facing APIs
@@ -38,11 +39,11 @@
 | `extern_abi` HIR field | ✅ Done | `FnDef.extern_abi: Option<String>` — set during lowering |
 | `IrFunction.is_extern` | ✅ Done | Field added, set from `extern_abi` during IR lowering |
 | VM extern dispatch | ✅ Done | Extern fns dispatched via `call_builtin()` (same as hardcoded builtins) |
-| `stdlib/io.ax` | ✅ Done | `pub extern "C" fn print(s: String); pub extern "C" fn println(s: String);` |
+| `stdlib/io.ax` | ✅ Done | Real `pub fn print`/`println` calling `core::platform::write_string`/`write_line` |
 | CLI loads stdlib via module system | ✅ Done | Multi-file path: `discover_library()` + `merge()` |
-| `core/platform.ax` | ✅ Done | Design target created — extern fns stay in io.ax until safe wrappers |
-| Remove `print`/`println` builtins | ✅ Done | Both paths resolve via stdlib module system; no hardcoded builtins in resolver/typeck |
-| Safe wrappers (`pub fn print`) | ⏸ Not started | Layer 2 — wraps `core::platform::write` with safe API |
+| `core/platform.ax` | ✅ Done | `pub extern "C" fn write_string`/`write_line` + raw `write`/`read`/`close` |
+| Remove `print`/`println` builtins from resolver | ✅ Done | Both paths resolve via stdlib module system; no hardcoded builtins in resolver/typeck |
+| Safe wrappers (`pub fn print`/`println`) | ✅ Done | `io::print`/`println` are real Axiom functions calling `core::platform` externs |
 | Real FFI (`dlsym`/`libloading`) | ❌ Deferred | Needs Cranelift JIT backend; VM uses builtin dispatch table |
 | `unsafe` blocks | ❌ Deferred | Keywords exist, grammar not implemented |
 

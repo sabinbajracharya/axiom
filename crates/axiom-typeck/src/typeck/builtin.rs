@@ -126,10 +126,11 @@ impl TypeChecker {
         );
     }
 
-    /// Register inherent methods for built-in collection types.
+    /// Register inherent methods for built-in types (List, Map, String).
     pub(super) fn register_builtin_methods(&mut self) {
         self.register_list_methods();
         self.register_map_methods();
+        self.register_string_methods();
     }
 
     fn register_list_methods(&mut self) {
@@ -205,6 +206,30 @@ impl TypeChecker {
             methods,
             subscripts: vec![],
             type_params: vec![("K".to_string(), HirId(200)), ("V".to_string(), HirId(201))],
+            type_param_bounds: HashMap::new(),
+        });
+    }
+
+    fn register_string_methods(&mut self) {
+        let string_ty = HirTy::Instance(axiom_hir::InstanceTy {
+            name: axiom_hir::NameRef::unresolved("String"),
+            args: vec![],
+        });
+        let int_ty = HirTy::Named(axiom_hir::NameRef::unresolved("Int"));
+
+        let methods = vec![make_fn(
+            "len",
+            vec![],
+            vec![self_param(CallingConvention::Let, string_ty)],
+            Some(int_ty),
+        )];
+
+        self.impl_table.push(ImplInfo {
+            trait_name: None,
+            type_name: "String".to_string(),
+            methods,
+            subscripts: vec![],
+            type_params: vec![],
             type_param_bounds: HashMap::new(),
         });
     }

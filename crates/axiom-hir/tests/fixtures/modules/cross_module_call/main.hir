@@ -35,15 +35,23 @@ ImplDef(4) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Dei
   SubscriptDef(33) (key) -> V→<unresolved> body
     tail: Call(37) todo→<unresolved>()
 ]
-FnDef(0) name=write vis=private params=[let fd: Int→<unresolved>, let buf: <error>] return=_ {
+FnDef(0) name=write vis=pub params=[let fd: Int→<unresolved>, let buf: <error>] return=_ {
 }
-FnDef(4) name=read vis=private params=[let fd: Int→<unresolved>, let buf: <error>] return=_ {
+FnDef(4) name=read vis=pub params=[let fd: Int→<unresolved>, let buf: <error>] return=_ {
 }
-FnDef(8) name=close vis=private params=[let fd: Int→<unresolved>] return=Int→<unresolved> {
+FnDef(8) name=close vis=pub params=[let fd: Int→<unresolved>] return=Int→<unresolved> {
 }
-FnDef(0) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
+FnDef(11) name=write_string vis=pub params=[let fd: Int→<unresolved>, let s: String→<unresolved>] return=_ {
 }
-FnDef(3) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
+FnDef(15) name=write_line vis=pub params=[let fd: Int→<unresolved>, let s: String→<unresolved>] return=_ {
+}
+UseItem(0) core::platform::write_string
+UseItem(1) core::platform::write_line
+FnDef(2) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
+  tail: Call(6) write_string→11(Lit(7) Int(1), Path(8) s→3)
+}
+FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
+  tail: Call(13) write_line→15(Lit(14) Int(1), Path(15) s→10)
 }
 UseItem(35) utils::greet
 FnDef(36) name=main vis=private params=[] return=_ {
@@ -51,5 +59,5 @@ FnDef(36) name=main vis=private params=[] return=_ {
 }
 UseItem(41) io::print
 FnDef(42) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
-  tail: Call(46) print→0(Path(47) name→43)
+  tail: Call(46) print→2(Path(47) name→43)
 }

@@ -28,5 +28,5 @@ Ident(28) a→28 : Float
       MethodCall(29) method=area : Float
         Path(30) c→24 : Circle
 
-    Call(33) callee=print→0 : Unit
+    Call(33) callee=print→2 : Unit
       Path(34) a→28 : Float
