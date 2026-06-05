@@ -76,6 +76,7 @@ fn lower_fn_inner(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
     FnDef {
         id,
         name: fname,
+        module_path: String::new(),
         visibility,
         type_params,
         params,

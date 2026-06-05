@@ -19,6 +19,9 @@ pub enum Item {
 pub struct FnDef {
     pub id: HirId,
     pub name: String,
+    /// Module path for cross-module name qualification (e.g., "core::platform").
+    /// Empty for single-file compilation. Set during multi-file name resolution.
+    pub module_path: String,
     pub visibility: Visibility,
     pub type_params: Vec<HirTypeParam>,
     pub params: Vec<Param>,

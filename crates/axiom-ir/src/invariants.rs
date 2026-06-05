@@ -195,8 +195,11 @@ fn check_call_targets(
     for block in &func.blocks {
         for instr in &block.instrs {
             if let IrInstr::Call { function, .. } = instr {
+                // Strip module prefix for EXTERNS check so both bare "write"
+                // and qualified "core::platform::write" match.
+                let base_name = function.rsplit("::").next().unwrap_or(function);
                 if !fn_names.contains(function.as_str())
-                    && !EXTERNS.contains(&function.as_str())
+                    && !EXTERNS.contains(&base_name)
                     && !enum_names.contains(function.as_str())
                 {
                     errors.push(format!(

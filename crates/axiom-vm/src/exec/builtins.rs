@@ -13,10 +13,16 @@ use crate::trace::ExecutionTrace;
 use crate::value::Value;
 
 /// Check if a function/method name is a builtin.
+/// Accepts both bare names (single-file) and module-qualified names (multi-file).
 pub fn is_builtin(name: &str) -> bool {
     matches!(
         name,
-        "print" | "println" | "write" | "String::len" | "String::as_bytes"
+        "print"
+            | "println"
+            | "write"
+            | "core::platform::write"
+            | "String::len"
+            | "String::as_bytes"
     )
 }
 
@@ -28,7 +34,7 @@ pub fn call_builtin(
 ) -> Result<Value, VmError> {
     match name {
         "print" | "println" => builtin_print(name, args, trace),
-        "write" => builtin_write(args, trace),
+        "write" | "core::platform::write" => builtin_write(args, trace),
         "String::len" => builtin_string_len(args),
         "String::as_bytes" => builtin_string_as_bytes(args),
         _ => Err(VmError::BuiltinNotFound {

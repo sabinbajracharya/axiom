@@ -106,6 +106,17 @@ fn name_ref_text(nr: &axiom_hir::NameRef) -> String {
     }
 }
 
+/// Build the qualified IR name for a non-monomorphized function.
+/// Uses type_prefix (for impl methods) or module_path (for cross-module fns).
+fn qualified_name(fndef: &FnDef, type_prefix: Option<&str>) -> String {
+    let base = fndef.name.clone();
+    match type_prefix {
+        Some(prefix) => format!("{prefix}::{base}"),
+        None if !fndef.module_path.is_empty() => format!("{}::{}", fndef.module_path, base),
+        None => base,
+    }
+}
+
 /// Lower a function definition. For monomorphized instances, `mono_info` carries
 /// the mangled name, substitution, concrete param types, and return type.
 /// For impl methods, `type_prefix` qualifies the name as "Type::method".
@@ -122,17 +133,15 @@ fn lower_fn_def(
             Some(*param_tys),
             Some(*ret_ty),
         ),
-        None => {
-            let base = fndef.name.clone();
-            let qualified = match type_prefix {
-                Some(prefix) => format!("{prefix}::{base}"),
-                None => base,
-            };
-            (qualified, None, None, None)
-        }
+        None => (qualified_name(fndef, type_prefix), None, None, None),
     };
 
-    let mut fn_ctx = FnLowerCtx::new(&ctx.thir.types, &ctx.mono_lookup, subst);
+    let mut fn_ctx = FnLowerCtx::new(
+        &ctx.thir.types,
+        &ctx.mono_lookup,
+        subst,
+        &ctx.thir.hir.items,
+    );
 
     // Allocate registers for parameters.
     let params: Vec<IrParam> = fndef

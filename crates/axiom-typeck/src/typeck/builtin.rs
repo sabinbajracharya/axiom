@@ -29,6 +29,7 @@ fn make_fn(
     FnDef {
         id: HirId(0),
         name: name.to_string(),
+        module_path: String::new(),
         visibility: Visibility::Private,
         type_params,
         params,

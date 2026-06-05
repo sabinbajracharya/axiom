@@ -100,8 +100,15 @@ pub fn resolve_with_globals(
     );
 
     // Pass 2: resolve name references in all items.
-    for item in items {
+    for item in items.iter_mut() {
         item::resolve_item_names(item, &top_level, diagnostics);
+    }
+
+    // Pass 3: tag FnDefs with their module path for IR name qualification.
+    for item in items.iter_mut() {
+        if let Item::FnDef(f) = item {
+            f.module_path = current_module.to_string();
+        }
     }
 }
 

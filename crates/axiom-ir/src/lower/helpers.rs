@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::ir::{IrBlock, IrFunction, IrInstr, Reg, Terminator};
-use axiom_hir::{Expr, HirId, Pattern};
+use axiom_hir::{Expr, HirId, Item, Pattern};
 use axiom_typeck::mono::helpers::Substitution;
 use axiom_typeck::{Ty, TypeMap};
 
@@ -27,6 +27,8 @@ pub(super) struct FnLowerCtx<'a> {
     pub mono_lookup: &'a MonoLookup,
     /// Active type substitution for monomorphized instance bodies.
     pub subst: Option<&'a Substitution>,
+    /// HIR items for looking up FnDef module_path during call lowering.
+    pub hir_items: &'a [Item],
 }
 
 impl<'a> FnLowerCtx<'a> {
@@ -34,6 +36,7 @@ impl<'a> FnLowerCtx<'a> {
         types: &'a TypeMap,
         mono_lookup: &'a MonoLookup,
         subst: Option<&'a Substitution>,
+        hir_items: &'a [Item],
     ) -> Self {
         Self {
             func: IrFunction {
@@ -53,6 +56,7 @@ impl<'a> FnLowerCtx<'a> {
             label_counter: 0,
             mono_lookup,
             subst,
+            hir_items,
         }
     }
 

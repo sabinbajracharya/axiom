@@ -349,6 +349,7 @@ mod tests {
             items: vec![Item::FnDef(FnDef {
                 id: fn_id,
                 name: "main".to_string(),
+                module_path: String::new(),
                 visibility: Visibility::Private,
                 type_params: vec![],
                 params: vec![],

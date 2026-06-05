@@ -71,7 +71,13 @@ fn lower_call(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
     // Try to resolve to a monomorphized mangled name.
     let resolved = ctx.resolve_call_name(callee_id, &arg_refs, ctx.types);
     let function = if resolved.is_empty() {
-        name_ref_text(&e.callee)
+        let base = name_ref_text(&e.callee);
+        // Qualify with the callee FnDef's module_path so call target
+        // matches the qualified IR function name.
+        find_fn_module_path(callee_id, ctx.hir_items)
+            .filter(|p| !p.is_empty())
+            .map(|p| format!("{p}::{base}"))
+            .unwrap_or(base)
     } else {
         resolved
     };
@@ -450,4 +456,26 @@ pub(super) fn lower_pattern(pat: &Pattern, ctx: &mut FnLowerCtx) -> crate::ir::I
         Pattern::Or(_) => crate::ir::IrPattern::Wildcard,
         Pattern::Range(_) => crate::ir::IrPattern::Wildcard,
     }
+}
+
+/// Look up a FnDef's `module_path` by HirId across all HIR items.
+/// Returns `None` if the FnDef is not found or has an empty module_path.
+fn find_fn_module_path(id: Option<axiom_hir::HirId>, items: &[axiom_hir::Item]) -> Option<String> {
+    let id = id?;
+    for item in items {
+        match item {
+            axiom_hir::Item::FnDef(f) if f.id == id => {
+                return Some(f.module_path.clone());
+            }
+            axiom_hir::Item::ImplDef(impl_def) => {
+                for m in &impl_def.methods {
+                    if m.id == id {
+                        return Some(m.module_path.clone());
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
