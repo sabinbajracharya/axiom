@@ -143,9 +143,9 @@ fn main() {
 }
 
 #[test]
-fn test_golden_match() {
+fn test_golden_int_match() {
     check_golden(
-        "match_expr",
+        "int_match",
         r#"
 fn pick(val x: Int) -> Int {
     match x {

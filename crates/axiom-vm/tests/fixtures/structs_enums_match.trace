@@ -2,6 +2,7 @@
 [fn main] %1 = Circle(...)
 [fn main] Call area(%1)
 [fn area] Match %0 => match_arm_1
+[fn area] VariantPayload %0 [0]
 [fn area] %5 = BinOp Mul(%1, %1)
 [fn area] %4 = Copy %5
 [fn area] Jump match_merge_0

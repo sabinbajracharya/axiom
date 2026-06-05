@@ -1,0 +1,22 @@
+fn describe(s: Shape) -> fn(Shape) -> Float {
+  entry:
+  Match %0 [Circle(%1) -> match_arm_1, Rect(%2, %3) -> match_arm_2, _ -> match_arm_3] fallback match_arm_3
+  match_arm_1:
+  %1 = VariantPayload %0 [0]
+  %5 = BinOp * %1 %1
+  %4 = Copy %5
+  Jump match_merge_0
+  match_arm_2:
+  %2 = VariantPayload %0 [0]
+  %3 = VariantPayload %0 [1]
+  %6 = BinOp * %2 %3
+  %4 = Copy %6
+  Jump match_merge_0
+  match_arm_3:
+  %7 = Const Float(0)
+  %4 = Copy %7
+  Jump match_merge_0
+  match_merge_0:
+  Return %4
+}
+

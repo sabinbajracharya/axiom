@@ -219,13 +219,19 @@ fn lower_match(e: &axiom_hir::MatchExpr, ctx: &mut FnLowerCtx) -> Reg {
         .cloned()
         .unwrap_or_else(|| merge_label.clone());
 
+    // Build match arms, collecting pattern bindings for payload extraction.
+    let mut arm_patterns: Vec<crate::ir::IrPattern> = Vec::new();
     let ir_arms: Vec<crate::ir::MatchArm> = e
         .arms
         .iter()
         .zip(&arm_labels)
-        .map(|(arm, label)| crate::ir::MatchArm {
-            pattern: lower_pattern(&arm.pattern, ctx),
-            target: label.clone(),
+        .map(|(arm, label)| {
+            let pattern = lower_pattern(&arm.pattern, ctx);
+            arm_patterns.push(pattern.clone());
+            crate::ir::MatchArm {
+                pattern,
+                target: label.clone(),
+            }
         })
         .collect();
 
@@ -236,8 +242,18 @@ fn lower_match(e: &axiom_hir::MatchExpr, ctx: &mut FnLowerCtx) -> Reg {
     });
 
     let dst = ctx.fresh_reg();
-    for (arm, label) in e.arms.iter().zip(&arm_labels) {
+    for ((arm, label), pattern) in e.arms.iter().zip(&arm_labels).zip(&arm_patterns) {
         ctx.start_block(label.clone());
+        // Emit VariantPayload instructions for variant pattern bindings.
+        if let crate::ir::IrPattern::Variant { bindings, .. } = pattern {
+            for (i, binding_reg) in bindings.iter().enumerate() {
+                ctx.emit(IrInstr::VariantPayload {
+                    dst: *binding_reg,
+                    scrutinee,
+                    index: i,
+                });
+            }
+        }
         let arm_val = lower_expr(&arm.body, ctx);
         ctx.emit(IrInstr::Copy { dst, src: arm_val });
         ctx.terminate(crate::ir::Terminator::Jump {

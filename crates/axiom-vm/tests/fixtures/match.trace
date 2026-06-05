@@ -2,6 +2,7 @@
 [fn main] %1 = Circle(...)
 [fn main] Call describe(%1)
 [fn describe] Match %0 => match_arm_1
+[fn describe] VariantPayload %0 [0]
 [fn describe] %5 = BinOp Mul(%1, %1)
 [fn describe] %4 = Copy %5
 [fn describe] Jump match_merge_0

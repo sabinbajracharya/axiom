@@ -151,17 +151,10 @@ fn default_exclusions() -> BTreeSet<(String, String)> {
     only_in("struct_field_access", &["hir", "typeck"]);
     only_in("struct_literal", &["hir"]);
 
-    // ── IR + VM only (inline golden tests, no per-layer .ax fixtures) ──
-    for feature in ["match_expr", "multi_fn"] {
+    // ── IR + VM only (integer literal matching, no per-layer .ax fixtures) ──
+    for feature in ["int_match", "multi_fn"] {
         only_in(feature, &["ir", "vm"]);
     }
-
-    // ── IR invariant violations (register ordering bugs in match lowering) ──
-    // These features parse/typecheck fine but the IR lowerer produces invalid
-    // register references. Remove these exclusions once the IR match lowering
-    // is fixed.
-    set.insert(("match".to_string(), "ir".to_string()));
-    set.insert(("structs_enums_match".to_string(), "ir".to_string()));
 
     set
 }

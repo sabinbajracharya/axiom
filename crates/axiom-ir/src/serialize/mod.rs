@@ -102,6 +102,16 @@ fn serialize_instr(instr: &IrInstr, out: &mut String) {
                 fmt_reg(*index)
             )
         }
+        IrInstr::VariantPayload {
+            dst,
+            scrutinee,
+            index,
+        } => format!(
+            "{} = VariantPayload {} [{}]",
+            fmt_reg(*dst),
+            fmt_reg(*scrutinee),
+            index
+        ),
         _ => serialize_instr_complex(instr),
     };
     out.push_str(&format!("{}{}\n", indent(1), line));

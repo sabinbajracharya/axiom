@@ -226,7 +226,7 @@ mod tests {
                 | IrInstr::ListNew { dst, .. }
                 | IrInstr::HeapAlloc { dst, .. } => dst.0 + 1,
                 IrInstr::HeapFree { .. } | IrInstr::HeapSet { .. } => 0,
-                IrInstr::HeapGet { dst, .. } => dst.0 + 1,
+                IrInstr::HeapGet { dst, .. } | IrInstr::VariantPayload { dst, .. } => dst.0 + 1,
             })
             .max()
             .unwrap_or(0);

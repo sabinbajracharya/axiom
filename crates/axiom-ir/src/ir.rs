@@ -117,6 +117,12 @@ pub enum IrInstr {
         variant: String,
         payload: Vec<Reg>,
     },
+    /// r = variant_payload(scrutinee, index) — extract payload field from enum.
+    VariantPayload {
+        dst: Reg,
+        scrutinee: Reg,
+        index: usize,
+    },
     /// r = [elem1, elem2, ...]
     ListNew { dst: Reg, elements: Vec<Reg> },
     /// r = heap_alloc(count) — allocate a buffer for `count` elements, return pointer.

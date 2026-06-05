@@ -284,6 +284,25 @@ impl Vm {
                 );
                 self.current_frame_mut()?.instr_index += 1;
             }
+            IrInstr::VariantPayload {
+                dst,
+                scrutinee,
+                index,
+            } => {
+                let scrutinee_val = self.current_frame()?.read_reg(scrutinee)?.clone();
+                let payload_val = match scrutinee_val {
+                    Value::Enum { payload, .. } => {
+                        payload.get(index).cloned().unwrap_or(Value::Unit)
+                    }
+                    _ => Value::Unit,
+                };
+                self.write_and_advance(
+                    dst,
+                    payload_val,
+                    &fn_name,
+                    format!("VariantPayload %{} [{}]", scrutinee.0, index),
+                )?;
+            }
         }
 
         Ok(())

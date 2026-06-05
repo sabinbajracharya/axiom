@@ -107,68 +107,76 @@ fn check_terminator_targets(
 }
 
 fn check_register_defs(func: &crate::ir::IrFunction, prefix: &str, errors: &mut Vec<String>) {
-    // Collect all defined registers: params + all instruction destinations.
-    let mut defined: HashSet<Reg> = HashSet::new();
-    for p in &func.params {
-        defined.insert(p.reg);
-    }
-    for block in &func.blocks {
-        for instr in &block.instrs {
-            let dst = match instr {
-                IrInstr::Const { dst, .. }
-                | IrInstr::BinOp { dst, .. }
-                | IrInstr::UnaryOp { dst, .. }
-                | IrInstr::Call { dst, .. }
-                | IrInstr::MethodCall { dst, .. }
-                | IrInstr::Field { dst, .. }
-                | IrInstr::Index { dst, .. }
-                | IrInstr::Copy { dst, .. }
-                | IrInstr::StructNew { dst, .. }
-                | IrInstr::EnumNew { dst, .. }
-                | IrInstr::ListNew { dst, .. }
-                | IrInstr::HeapAlloc { dst, .. }
-                | IrInstr::HeapGet { dst, .. } => *dst,
-                IrInstr::HeapFree { .. } | IrInstr::HeapSet { .. } => {
-                    // No destination register — skip.
-                    continue;
-                }
-            };
-            defined.insert(dst);
-        }
-    }
+    let defined = collect_defined_regs(func);
 
-    // Check that every register used in instructions/terminators is defined.
     for block in &func.blocks {
         for instr in &block.instrs {
-            let used: Vec<Reg> = match instr {
-                IrInstr::BinOp { lhs, rhs, .. } => vec![*lhs, *rhs],
-                IrInstr::UnaryOp { src, .. } => vec![*src],
-                IrInstr::Call { args, .. } => args.clone(),
-                IrInstr::MethodCall { receiver, args, .. } => {
-                    let mut v = vec![*receiver];
-                    v.extend(args);
-                    v
-                }
-                IrInstr::Field { base, .. } => vec![*base],
-                IrInstr::Index { base, index, .. } => vec![*base, *index],
-                IrInstr::Copy { src, .. } => vec![*src],
-                IrInstr::StructNew { fields, .. } => fields.iter().map(|(_, r)| *r).collect(),
-                IrInstr::EnumNew { payload, .. } => payload.clone(),
-                IrInstr::ListNew { elements, .. } => elements.clone(),
-                IrInstr::Const { .. } => vec![],
-                IrInstr::HeapAlloc { count, .. } => vec![*count],
-                IrInstr::HeapFree { ptr } => vec![*ptr],
-                IrInstr::HeapGet { ptr, index, .. } => vec![*ptr, *index],
-                IrInstr::HeapSet {
-                    ptr, index, value, ..
-                } => vec![*ptr, *index, *value],
-            };
-            for r in used {
+            for r in instr_used_regs(instr) {
                 if !defined.contains(&r) {
                     errors.push(format!("{}: register {} used before definition", prefix, r));
                 }
             }
         }
+    }
+}
+
+/// Collect all defined registers: params + all instruction destinations.
+fn collect_defined_regs(func: &crate::ir::IrFunction) -> HashSet<Reg> {
+    let mut defined: HashSet<Reg> = func.params.iter().map(|p| p.reg).collect();
+    for block in &func.blocks {
+        for instr in &block.instrs {
+            if let Some(dst) = instr_dst(instr) {
+                defined.insert(dst);
+            }
+        }
+    }
+    defined
+}
+
+fn instr_dst(instr: &IrInstr) -> Option<Reg> {
+    match instr {
+        IrInstr::Const { dst, .. }
+        | IrInstr::BinOp { dst, .. }
+        | IrInstr::UnaryOp { dst, .. }
+        | IrInstr::Call { dst, .. }
+        | IrInstr::MethodCall { dst, .. }
+        | IrInstr::Field { dst, .. }
+        | IrInstr::Index { dst, .. }
+        | IrInstr::Copy { dst, .. }
+        | IrInstr::StructNew { dst, .. }
+        | IrInstr::EnumNew { dst, .. }
+        | IrInstr::VariantPayload { dst, .. }
+        | IrInstr::ListNew { dst, .. }
+        | IrInstr::HeapAlloc { dst, .. }
+        | IrInstr::HeapGet { dst, .. } => Some(*dst),
+        IrInstr::HeapFree { .. } | IrInstr::HeapSet { .. } => None,
+    }
+}
+
+fn instr_used_regs(instr: &IrInstr) -> Vec<Reg> {
+    match instr {
+        IrInstr::BinOp { lhs, rhs, .. } => vec![*lhs, *rhs],
+        IrInstr::UnaryOp { src, .. } => vec![*src],
+        IrInstr::Call { args, .. } => args.clone(),
+        IrInstr::MethodCall { receiver, args, .. } => {
+            let mut v = vec![*receiver];
+            v.extend(args);
+            v
+        }
+        IrInstr::Field { base, .. } => vec![*base],
+        IrInstr::Index { base, index, .. } => vec![*base, *index],
+        IrInstr::Copy { src, .. } => vec![*src],
+        IrInstr::StructNew { fields, .. } => fields.iter().map(|(_, r)| *r).collect(),
+        IrInstr::EnumNew { payload, .. } => payload.clone(),
+        IrInstr::VariantPayload { scrutinee, .. } => vec![*scrutinee],
+        IrInstr::ListNew { elements, .. } => elements.clone(),
+        IrInstr::Const { .. } => vec![],
+        IrInstr::HeapAlloc { count, .. } => vec![*count],
+        IrInstr::HeapFree { ptr } => vec![*ptr],
+        IrInstr::HeapGet { ptr, index, .. } => vec![*ptr, *index],
+        IrInstr::HeapSet {
+            ptr, index, value, ..
+        } => vec![*ptr, *index, *value],
     }
 }
 
@@ -178,13 +186,17 @@ fn check_call_targets(
     prefix: &str,
     errors: &mut Vec<String>,
 ) {
-    // Built-in functions provided by the runtime — not expected to have IR definitions.
+    // Built-in functions and enum variant constructors — not expected to have IR definitions.
     const BUILTINS: &[&str] = &["print", "println"];
     let fn_names: HashSet<&str> = ir.functions.iter().map(|f| f.name.as_str()).collect();
+    let enum_names: HashSet<&str> = ir.enum_variants.keys().map(|k| k.as_str()).collect();
     for block in &func.blocks {
         for instr in &block.instrs {
             if let IrInstr::Call { function, .. } = instr {
-                if !fn_names.contains(function.as_str()) && !BUILTINS.contains(&function.as_str()) {
+                if !fn_names.contains(function.as_str())
+                    && !BUILTINS.contains(&function.as_str())
+                    && !enum_names.contains(function.as_str())
+                {
                     errors.push(format!(
                         "{}: Call target `{}` not found in IR",
                         prefix, function
