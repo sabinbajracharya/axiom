@@ -22,6 +22,7 @@ pub enum Keyword {
     Fn,
     Struct,
     Enum,
+    Extern,
     Trait,
     Impl,
     Let,
@@ -54,6 +55,7 @@ pub enum Keyword {
     In,
     Is,
     Subscript,
+    Unsafe,
     Yield,
 }
 
@@ -66,6 +68,7 @@ impl Keyword {
         Keyword::Fn,
         Keyword::Struct,
         Keyword::Enum,
+        Keyword::Extern,
         Keyword::Trait,
         Keyword::Impl,
         Keyword::Let,
@@ -98,6 +101,7 @@ impl Keyword {
         Keyword::In,
         Keyword::Is,
         Keyword::Subscript,
+        Keyword::Unsafe,
         Keyword::Yield,
     ];
 }

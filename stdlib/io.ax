@@ -1,0 +1,2 @@
+extern "C" fn print(s: String);
+extern "C" fn println(s: String);

@@ -38,6 +38,7 @@ fn make_fn(
             stmts: vec![],
             tail: None,
         },
+        extern_abi: None,
     }
 }
 

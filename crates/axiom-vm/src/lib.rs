@@ -243,6 +243,7 @@ mod tests {
             return_type: axiom_typeck::Ty::Unit,
             blocks: vec![block],
             next_reg: next_reg.max(1),
+            is_extern: false,
         };
         axiom_ir::Ir {
             functions: vec![func],
@@ -357,6 +358,7 @@ mod tests {
             return_type: axiom_typeck::Ty::Int,
             blocks: vec![entry, block_true, block_false],
             next_reg: 4,
+            is_extern: false,
         };
         let ir = axiom_ir::Ir {
             functions: vec![func],
@@ -412,6 +414,7 @@ mod tests {
                 terminator: Terminator::Return(Some(Reg(2))),
             }],
             next_reg: 3,
+            is_extern: false,
         }
     }
 
@@ -442,6 +445,7 @@ mod tests {
                 terminator: Terminator::Return(Some(Reg(2))),
             }],
             next_reg: 3,
+            is_extern: false,
         }
     }
 }

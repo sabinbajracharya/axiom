@@ -1,6 +1,9 @@
 # std::io Design — Writer Trait, Extern Fn & Removing Builtins
 
-> **Status:** design phase. Not yet implemented. Binding before code is written.
+> **Status:** Layer 1 partially implemented. `extern "C" fn` syntax works through
+> lexer→parser→HIR→IR→VM. `stdlib/io.ax` exists with `extern "C" fn print/println`.
+> VM dispatches extern fns via builtin table (no real FFI). `print`/`println` remain
+> hardcoded builtins in resolver + type checker until CLI pipeline loads stdlib.
 > **Decisions baked in:** `core`/`std` two-tier stdlib layering (§11),
 > `Display`/`Debug` traits for formatting (§11), `string::format` as the one formatting
 > mechanism (§11), `std::io` includes `print`, `println`, `read_line`, `dbg` (§11).
@@ -19,7 +22,26 @@
 
 ---
 
-## 0. The concern this answers
+## 0a. Implementation status
+
+| Component | Status | Notes |
+|---|---|---|
+| `extern "C" fn` lexer keywords | ✅ Done | `extern` and `unsafe` keywords in token.rs, symbols.rs, syntax_kind.rs |
+| `extern "C" fn` parser grammar | ✅ Done | `item()` and `member_list()` consume `extern` + optional ABI string before `fn_def` |
+| `extern_abi()` AST accessor | ✅ Done | `FnDef.extern_abi()` returns `Some("C")`, `Some("")`, or `None` |
+| `extern_abi` HIR field | ✅ Done | `FnDef.extern_abi: Option<String>` — set during lowering |
+| `IrFunction.is_extern` | ✅ Done | Field added, defaults to `false` |
+| VM extern dispatch | ✅ Done | Extern fns dispatched via `call_builtin()` (same as hardcoded builtins) |
+| `stdlib/io.ax` | ✅ Done | `extern "C" fn print(s: String); extern "C" fn println(s: String);` |
+| `with_stdlib()` includes io.ax | ✅ Done | Concatenated with list.ax and map.ax |
+| Remove `print`/`println` builtins | ❌ Blocked | CLI pipeline doesn't use `with_stdlib()` — needs pipeline refactor |
+| Real FFI (`dlsym`/`libloading`) | ❌ Deferred | Needs Cranelift JIT backend; VM uses builtin dispatch table |
+| `unsafe` blocks | ❌ Deferred | Keywords exist, grammar not implemented |
+| Layer 2 (safe wrappers) | ❌ Deferred | Blocked on removing builtins from resolver/typeck |
+
+---
+
+## 0b. The concern this answers
 
 Today, `print` and `println` are VM builtins — hardcoded strings intercepted in the VM's
 call dispatch. This is the correct v0 approach, but it's a dead end:

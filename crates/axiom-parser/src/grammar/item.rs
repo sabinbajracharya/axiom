@@ -26,6 +26,7 @@ const ITEM_START: &[K] = &[
     K::KwUse,
     K::KwError,
     K::KwPub,
+    K::KwExtern,
 ];
 
 /// Whether the current token can begin an item (so an item loop should try to
@@ -38,6 +39,12 @@ pub(super) fn at_item_start(p: &Parser) -> bool {
 pub(super) fn item(p: &mut Parser) {
     let m = p.start();
     opt_visibility(p);
+    // `extern "ABI"` is a prefix modifier for function declarations (§12.1).
+    // Consume it before the keyword dispatch so `pub extern "C" fn` works.
+    if p.at(K::KwExtern) {
+        p.bump(); // extern
+        p.eat(K::StrLit); // optional ABI string
+    }
     match p.current() {
         K::KwFn => fn_def(p, m),
         K::KwStruct => struct_def(p, m),
@@ -272,7 +279,7 @@ fn impl_block(p: &mut Parser, m: Marker) {
 /// `{ method* }` shared by traits and impls. Each member may carry `pub`. A
 /// member begins with `fn`, `subscript`, or `pub`; anything else is garbage.
 fn at_member_start(p: &Parser) -> bool {
-    p.at(K::KwFn) || p.at(K::KwSubscript) || p.at(K::KwPub)
+    p.at(K::KwFn) || p.at(K::KwSubscript) || p.at(K::KwPub) || p.at(K::KwExtern)
 }
 
 fn member_list(p: &mut Parser, kind: K) {
@@ -282,6 +289,11 @@ fn member_list(p: &mut Parser, kind: K) {
         if at_member_start(p) {
             let im = p.start();
             opt_visibility(p);
+            // `extern "ABI"` prefix for method declarations.
+            if p.at(K::KwExtern) {
+                p.bump();
+                p.eat(K::StrLit);
+            }
             if p.at(K::KwFn) {
                 fn_def(p, im);
             } else if p.at(K::KwSubscript) {

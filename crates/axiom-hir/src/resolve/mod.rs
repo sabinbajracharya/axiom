@@ -283,6 +283,8 @@ pub(crate) fn resolve_name_ref(
 const BUILTIN_HIR_ID_START: usize = 1_000_000;
 
 /// Built-in names that are always available, mapped to reserved HirIds.
+/// `print`/`println` are here until the CLI pipeline uses `with_stdlib()`
+/// (then they resolve through `stdlib/io.ax` and these entries can be removed).
 pub(crate) fn builtin_def_id(name: &str) -> Option<DefId> {
     let idx = match name {
         "print" => 0,

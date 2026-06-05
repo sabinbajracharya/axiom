@@ -24,6 +24,9 @@ pub struct FnDef {
     pub params: Vec<Param>,
     pub return_type: Option<HirTy>,
     pub body: Block,
+    /// `Some("C")` for `extern "C" fn`, `Some("")` for `extern fn`, `None` for
+    /// regular functions. Extern functions have no user-written body.
+    pub extern_abi: Option<String>,
 }
 
 #[derive(Debug, Clone)]

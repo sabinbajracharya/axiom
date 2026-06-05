@@ -2,8 +2,8 @@
 
 > **Status:** Phases 1–3 implemented and tested. Phase 4 (prelude) deferred pending stdlib.
 > **Decisions baked in:** module paths use `::` (§10.1), one file = one module, `pub` visibility
-> by default private (§10.3), `use` import syntax (§10.2), `core`/`std` two-tier stdlib
-> layering (§11).
+> by default private (§10.3), `use` import syntax (§10.2), three-tier stdlib layering:
+> `core` (auto-imported) → `collections` (explicit) → `std` (explicit, hosted).
 > **Prerequisites:** none — this is foundational. Other features depend on *this*.
 > **Companion docs:** [`DESIGN_SPEC.md`](../DESIGN_SPEC.md) §10 (modules), §11 (stdlib),
 > [`io-design.md`](io-design.md) (the consumer — std::io depends on this),
@@ -16,8 +16,8 @@
 Today the compiler processes a single file. Every function, struct, and type lives in one
 flat namespace. This is fine for v0, but it blocks everything that comes next:
 
-- **No `core` or `std`.** The standard library is a collection of modules — without module
-  support, there's nowhere to put `core::option::Option` or `std::io::println`.
+- **No `core`, `collections`, or `std`.** The standard library is three tiers — without module
+  support, there's nowhere to put `core::option::Option` or `collections::List`.
 - **No imports.** `use std::io::print` doesn't parse, resolve, or compile.
 - **No multi-file programs.** Real programs split code across files. One file = one program
   is a prototype constraint, not a language feature.
@@ -103,15 +103,23 @@ A small set of names available in every module without `use`. The prelude is a
 compiler-internal mechanism: during name resolution, prelude items are treated as if every
 module has an implicit `use prelude::*`.
 
-**Prelude contents** (auto-imported):
-- `Option`, `Some`, `None` — from `core::option`
-- `Result`, `Ok`, `Err` — from `core::result`
+**Prelude contents** (auto-imported from `core`):
+- **Types:** `Option`, `Some`, `None`, `Result`, `Ok`, `Err`
+- **Primitives:** `Int`, `Float`, `Bool`, `String`, `()` (unit) — language-level, always in scope
+- **Traits:** `Deinit`, `Equatable`, `Hashable`, `Ord` — core marker traits
+
+**Not in prelude** (explicit `use` required):
+- `collections::List`, `collections::Map`, `collections::Set` — collections are a capability, not vocabulary
+- `io::print`, `io::println` — I/O is a side effect, visible at the import site (singular idiom)
+- Everything in `std` (fs, net, math, etc.)
+
+**Principle:** The prelude is the *language vocabulary* — types and traits so common that
+requiring `use` adds noise without aiding comprehension. Collections and I/O are *capabilities*;
+their imports signal what the code does. This matches Zig/Go/Mojo (builtin = language level,
+everything else = library).
 
 Prelude items have the **lowest priority** — any explicit `use` or local definition
 shadows them. This prevents confusion when a user defines their own `Option` type.
-
-The prelude is small. `print`/`println` join it later (after the std::io work), but the
-prelude mechanism itself is built here.
 
 #### 1.2.4 Multi-file compilation model
 
@@ -202,10 +210,48 @@ Type checking passes. ✅
 **Goal:** `Option`, `Result`, `Some`, `None`, `Ok`, `Err` available without `use`.
 **Blocked on:** stdlib `core` module must exist first.
 
+**Stdlib layout (three-tier):**
+
+```
+stdlib/
+  core/                  ← auto-imported via prelude (language vocabulary)
+    option.ax            — enum Option { Some(T), None }
+    result.ax            — enum Result { Ok(T), Err(E) }
+    iter.ax              — trait Iterator + adapters (map, filter, fold, etc.)
+    string.ax            — String methods (len, contains, etc.)
+    box.ax               — Box<T> (heap allocation)
+  collections/           ← explicit import (already exists)
+    list.ax              — List<T>
+    map.ax               — Map<K,V>
+    set.ax               — Set<T>
+  io.ax                  ← explicit import
+    print, println, read_line, dbg
+```
+
+**What's auto-imported (prelude = language vocabulary):**
+- Primitive types: `Int`, `Float`, `Bool`, `String`, `()` — language-level, always in scope
+- Core enums: `Option`, `Some`, `None`, `Result`, `Ok`, `Err` — from `core/`
+- Core traits: `Deinit`, `Equatable`, `Hashable`, `Ord`
+
+**What requires explicit `use` (capabilities, not vocabulary):**
+- `use collections::List` — collections signal data structure usage
+- `use io::print` — I/O is a side effect, visible at the import site
+- Everything in `std` (fs, net, math, etc.)
+
+**Why this split:** The prelude boundary follows Zig/Go/Mojo — builtin = language level,
+everything else = library. If an import helps a reader understand what capabilities the
+code uses, it stays explicit. This matches the singular idiom principle: effects are visible.
+
+- [ ] Create `core/` directory with `option.ax`, `result.ax`
 - [ ] Create `prelude.ax` (compiler-internal file that re-exports from `core`)
 - [ ] Compiler auto-imports prelude items into every module's name resolution scope
 - [ ] Prelude items are lowest priority — explicit definitions shadow them
-- [ ] Test: `let x: Option<I32> = Some(42)` works without any `use` statement
+- [x] `extern "C" fn` syntax: lexer keywords, parser grammar, AST accessor, HIR field, IR flag, VM dispatch
+- [x] `stdlib/io.ax` created with `extern "C" fn print/println`; loaded via `with_stdlib()`
+- [ ] CLI pipeline refactor: `compile_source` must use `with_stdlib()` so HIR resolver sees io.ax definitions
+- [ ] Move `print`/`println` to `io.ax` (remove from resolver/typeck/VM builtins) — blocked on CLI refactor
+- [ ] Test: `let x: Option<Int> = Some(42)` works without any `use` statement
+- [ ] Test: `use collections::List` works, `List` without import does not
 
 ### Known gaps and limitations
 
@@ -218,6 +264,7 @@ Type checking passes. ✅
 | **No `super`/`crate` path resolution** | `use super::foo` parses but doesn't resolve | Needs resolver support |
 | **Field-level visibility not enforced** | `pub struct Foo { pub x, y }` — `y` accessible across modules | Needs type checker enforcement |
 | **No re-exports** (`pub use`) | Can't re-export items from submodules | Deferred |
+| **CLI pipeline doesn't use `with_stdlib()`** | `axiom-cli::compile_source` parses user source directly; stdlib only loaded in `axiom-typeck::check_source_with_stdlib`. Blocks removing `print`/`println` from builtins. | Needs CLI pipeline refactor to prepend stdlib before parse+lower |
 
 ---
 

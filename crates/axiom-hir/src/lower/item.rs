@@ -81,6 +81,7 @@ fn lower_fn_inner(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
         params,
         return_type,
         body,
+        extern_abi: f.extern_abi(),
     }
 }
 

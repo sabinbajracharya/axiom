@@ -135,6 +135,7 @@ mod tests {
                 terminator: axiom_ir::Terminator::Return(None),
             }],
             next_reg: 3,
+            is_extern: false,
         }
     }
 

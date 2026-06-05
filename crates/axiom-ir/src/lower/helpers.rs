@@ -44,6 +44,7 @@ impl<'a> FnLowerCtx<'a> {
                 return_type: Ty::Unit,
                 blocks: Vec::new(),
                 next_reg: 0,
+                is_extern: false,
             },
             types,
             bindings: HashMap::new(),

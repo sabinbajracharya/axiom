@@ -13,6 +13,7 @@ const KEYWORDS: &[(&str, Keyword)] = &[
     ("fn", Keyword::Fn),
     ("struct", Keyword::Struct),
     ("enum", Keyword::Enum),
+    ("extern", Keyword::Extern),
     ("trait", Keyword::Trait),
     ("impl", Keyword::Impl),
     ("let", Keyword::Let),
@@ -45,6 +46,7 @@ const KEYWORDS: &[(&str, Keyword)] = &[
     ("in", Keyword::In),
     ("is", Keyword::Is),
     ("subscript", Keyword::Subscript),
+    ("unsafe", Keyword::Unsafe),
     ("yield", Keyword::Yield),
 ];
 
@@ -88,6 +90,7 @@ pub fn keyword_label(kw: Keyword) -> &'static str {
         Keyword::Fn => "KwFn",
         Keyword::Struct => "KwStruct",
         Keyword::Enum => "KwEnum",
+        Keyword::Extern => "KwExtern",
         Keyword::Trait => "KwTrait",
         Keyword::Impl => "KwImpl",
         Keyword::Let => "KwLet",
@@ -118,6 +121,7 @@ pub fn keyword_label(kw: Keyword) -> &'static str {
         Keyword::In => "KwIn",
         Keyword::Is => "KwIs",
         Keyword::Subscript => "KwSubscript",
+        Keyword::Unsafe => "KwUnsafe",
         Keyword::Yield => "KwYield",
         Keyword::Super => "KwSuper",
         Keyword::Crate => "KwCrate",

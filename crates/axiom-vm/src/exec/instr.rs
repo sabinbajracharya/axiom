@@ -71,6 +71,21 @@ impl Vm {
                     return Ok(());
                 }
 
+                // Extern functions (extern "C" fn) are dispatched as builtins.
+                // They have no body in the IR — the Rust-side builtin table
+                // provides the implementation.
+                if let Some(func) = self.ir.functions.iter().find(|f| f.name == function) {
+                    if func.is_extern {
+                        let val = crate::exec::builtins::call_builtin(
+                            &function,
+                            arg_vals,
+                            &mut self.trace,
+                        )?;
+                        self.write_and_advance(dst, val, &fn_name, String::new())?;
+                        return Ok(());
+                    }
+                }
+
                 // Enum constructor: the IR lowerer emits Call for enum
                 // variants (e.g. Circle(5)). Check enum_variants to
                 // distinguish from real function calls.

@@ -155,6 +155,7 @@ syntax_kinds! {
         KwFn,
         KwStruct,
         KwEnum,
+        KwExtern,
         KwTrait,
         KwImpl,
         KwLet,
@@ -187,6 +188,7 @@ syntax_kinds! {
         KwIn,
         KwIs,
         KwSubscript,
+        KwUnsafe,
         KwYield,
     }
     nodes {
@@ -337,6 +339,7 @@ fn keyword_kind(kw: Keyword) -> SyntaxKind {
         Keyword::Fn => SyntaxKind::KwFn,
         Keyword::Struct => SyntaxKind::KwStruct,
         Keyword::Enum => SyntaxKind::KwEnum,
+        Keyword::Extern => SyntaxKind::KwExtern,
         Keyword::Trait => SyntaxKind::KwTrait,
         Keyword::Impl => SyntaxKind::KwImpl,
         Keyword::Let => SyntaxKind::KwLet,
@@ -367,6 +370,7 @@ fn keyword_kind(kw: Keyword) -> SyntaxKind {
         Keyword::In => SyntaxKind::KwIn,
         Keyword::Is => SyntaxKind::KwIs,
         Keyword::Subscript => SyntaxKind::KwSubscript,
+        Keyword::Unsafe => SyntaxKind::KwUnsafe,
         Keyword::Yield => SyntaxKind::KwYield,
         Keyword::Super => SyntaxKind::KwSuper,
         Keyword::Crate => SyntaxKind::KwCrate,

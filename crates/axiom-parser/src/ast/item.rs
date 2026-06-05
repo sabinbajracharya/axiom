@@ -72,6 +72,27 @@ impl FnDef {
     pub fn body(&self) -> Option<BlockExpr> {
         child_node(&self.0)
     }
+    /// The ABI string for `extern "C" fn` declarations. Returns `Some("C")`
+    /// for `extern "C" fn foo()`, `Some("")` for `extern fn foo()` (no ABI),
+    /// and `None` for plain `fn foo()`.
+    pub fn extern_abi(&self) -> Option<String> {
+        let children = self.0.tokens();
+        let mut found_extern = false;
+        for tok in &children {
+            if found_extern {
+                // Next token after `extern` is the ABI string literal.
+                if tok.kind() == SyntaxKind::StrLit {
+                    return Some(tok.text().trim_matches('"').to_string());
+                }
+                // `extern fn` with no ABI string.
+                return Some(String::new());
+            }
+            if tok.kind() == SyntaxKind::KwExtern {
+                found_extern = true;
+            }
+        }
+        None
+    }
 }
 
 pub struct StructDef(SyntaxNode);

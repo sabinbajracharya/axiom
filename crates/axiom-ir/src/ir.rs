@@ -33,6 +33,9 @@ pub struct IrFunction {
     pub return_type: Ty,
     pub blocks: Vec<IrBlock>,
     pub next_reg: u32,
+    /// `true` for `extern "C" fn` declarations — no body, dispatched by the VM
+    /// as a builtin (e.g. `print`, `println`).
+    pub is_extern: bool,
 }
 
 #[derive(Debug, Clone)]

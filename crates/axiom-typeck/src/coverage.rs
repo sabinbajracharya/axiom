@@ -358,6 +358,7 @@ mod tests {
                     stmts: vec![],
                     tail: None,
                 },
+                extern_abi: None,
             })],
             diagnostics: vec![],
         };

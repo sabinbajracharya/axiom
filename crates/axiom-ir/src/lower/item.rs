@@ -184,6 +184,7 @@ fn lower_fn_def(
         return_type,
         blocks: fn_ctx.func.blocks,
         next_reg: fn_ctx.func.next_reg,
+        is_extern: false,
     };
 
     ctx.functions.push(func);
