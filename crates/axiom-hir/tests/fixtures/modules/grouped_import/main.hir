@@ -1,0 +1,11 @@
+UseItem(1) utils{greet, add}
+FnDef(2) name=main vis=private params=[] return=_ {
+  ExprStmt(4) Call(5) greet→12(Lit(6) String("hello"))
+  ValStmt(11) Ident(7) x→7: _ = Call(8) add→18(Lit(9) Int(1), Lit(10) Int(2))
+}
+FnDef(12) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
+  tail: Call(16) print→1000000(Path(17) name→13)
+}
+FnDef(18) name=add vis=pub params=[let a: Int→<unresolved>, let b: Int→<unresolved>] return=Int→<unresolved> {
+  tail: Bin(23) +(Path(24) a→19, Path(25) b→20)
+}

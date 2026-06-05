@@ -1,0 +1,3 @@
+pub fn greet(name: String) { print(name) }
+
+pub fn add(a: Int, b: Int) -> Int { a + b }

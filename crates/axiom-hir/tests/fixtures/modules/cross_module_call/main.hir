@@ -1,0 +1,7 @@
+UseItem(1) utils::greet
+FnDef(2) name=main vis=private params=[] return=_ {
+  tail: Call(5) greet→7(Lit(6) String("world"))
+}
+FnDef(7) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
+  tail: Call(11) print→1000000(Path(12) name→8)
+}

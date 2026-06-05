@@ -1,0 +1,5 @@
+UseItem(1) models::Point
+FnDef(2) name=main vis=private params=[] return=_ {
+  ValStmt(8) Ident(4) p→4: _ = StructLit(5) Point→9 { x: Lit(6) Int(1), y: Lit(7) Int(2) }
+}
+StructDef(9) name=Point vis=pub fields=[pub x: Int→<unresolved>, pub y: Int→<unresolved>]
