@@ -121,11 +121,13 @@ mod tests {
                     reg: Reg(0),
                     name: "x".to_string(),
                     ty: Ty::Int,
+                    convention: axiom_hir::CallingConvention::Let,
                 },
                 IrParam {
                     reg: Reg(1),
                     name: "y".to_string(),
                     ty: Ty::Int,
+                    convention: axiom_hir::CallingConvention::Let,
                 },
             ],
             return_type: Ty::Unit,

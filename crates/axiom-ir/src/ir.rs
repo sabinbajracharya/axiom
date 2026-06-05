@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use axiom_hir::{BinOp, UnaryOp};
+use axiom_hir::{BinOp, CallingConvention, UnaryOp};
 use axiom_typeck::Ty;
 
 // ── The program ──────────────────────────────────────────────────────────────
@@ -43,6 +43,10 @@ pub struct IrParam {
     pub reg: Reg,
     pub name: String,
     pub ty: Ty,
+    /// The parameter's calling convention. `Inout` parameters are written back
+    /// to the caller's argument register when the callee returns (the VM's
+    /// mutable-value-semantics write-back); `Let`/`Sink` are pass-by-value.
+    pub convention: CallingConvention,
 }
 
 /// Links a monomorphized instance back to its generic definition.

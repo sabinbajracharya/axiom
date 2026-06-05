@@ -391,7 +391,13 @@ impl TypeChecker {
                     .map(|t| self.resolve_hir_ty(t))
                     .unwrap_or(crate::types::Ty::Error)
             };
-            let mutability = Mutability::Immutable;
+            // `inout`/`sink` parameters are mutable bindings (an `inout` is
+            // read-write and written back to the caller; a `sink` is owned);
+            // `let` parameters are an immutable borrow.
+            let mutability = match param.convention {
+                CallingConvention::Inout | CallingConvention::Sink => Mutability::Mutable,
+                CallingConvention::Let => Mutability::Immutable,
+            };
             self.env
                 .define(param.name.clone(), param_type.clone(), param.id, mutability);
             self.types.insert(param.id, param_type);

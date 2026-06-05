@@ -1,6 +1,7 @@
 //! Terminator execution: exhaustive match on all Terminator variants.
 
-use axiom_ir::{IrPattern, Terminator};
+use axiom_hir::CallingConvention;
+use axiom_ir::{IrInstr, IrPattern, Reg, Terminator};
 
 use crate::error::VmError;
 use crate::value::Value;
@@ -31,18 +32,27 @@ impl Vm {
                 };
                 self.trace_instr(&fn_name, trace_text);
 
+                // Mutable-value-semantics write-back: collect the final values of
+                // the callee's `inout` parameters before the frame is popped, so
+                // they can be copied back into the caller's argument registers.
+                let writebacks = self.collect_inout_writebacks()?;
+
                 // Pop frame.
                 self.call_stack.pop();
 
-                // If there's a caller, write the return value to its Call dst
-                // and advance past the Call instruction.
+                // If there's a caller, write back inout params, store the return
+                // value in its Call dst, and advance past the Call instruction.
                 if let Some(caller) = self.call_stack.last_mut() {
                     let idx = caller.instr_index;
-                    let call_instr = &caller.blocks[caller.block_index].instrs[idx];
-                    if let axiom_ir::IrInstr::Call { dst, .. }
-                    | axiom_ir::IrInstr::MethodCall { dst, .. } = call_instr
-                    {
-                        caller.write_reg(*dst, val.clone())?;
+                    let instr = caller.blocks[caller.block_index].instrs[idx].clone();
+                    let (arg_regs, dst) = call_arg_regs_and_dst(&instr);
+                    for (param_index, value) in writebacks {
+                        if let Some(reg) = arg_regs.get(param_index) {
+                            caller.write_reg(*reg, value)?;
+                        }
+                    }
+                    if let Some(dst) = dst {
+                        caller.write_reg(dst, val.clone())?;
                     }
                     caller.instr_index += 1;
                 } else {
@@ -194,5 +204,43 @@ impl Vm {
 
             Terminator::Unreachable => Err(VmError::UnreachableReached),
         }
+    }
+
+    /// Read the current (about-to-return) frame's `inout` parameter values,
+    /// paired with their parameter index. Used by the `Return` handler to copy
+    /// them back into the caller's argument registers.
+    fn collect_inout_writebacks(&self) -> Result<Vec<(usize, Value)>, VmError> {
+        let frame = self.current_frame()?;
+        let Some(func) = self.ir.functions.iter().find(|f| f.name == frame.fn_name) else {
+            return Ok(Vec::new());
+        };
+        let mut out = Vec::new();
+        for (i, param) in func.params.iter().enumerate() {
+            if param.convention == CallingConvention::Inout {
+                out.push((i, frame.read_reg(param.reg)?.clone()));
+            }
+        }
+        Ok(out)
+    }
+}
+
+/// Extract the caller's argument registers and result register from the call
+/// instruction it is currently parked on. Parameter index `i` maps to
+/// `arg_regs[i]` — for a method call the receiver is index 0 (the `self`
+/// parameter), matching the IR's `[receiver, args…]` layout.
+fn call_arg_regs_and_dst(instr: &IrInstr) -> (Vec<Reg>, Option<Reg>) {
+    match instr {
+        IrInstr::Call { dst, args, .. } => (args.clone(), Some(*dst)),
+        IrInstr::MethodCall {
+            dst,
+            receiver,
+            args,
+            ..
+        } => {
+            let mut regs = vec![*receiver];
+            regs.extend(args.iter().copied());
+            (regs, Some(*dst))
+        }
+        _ => (Vec::new(), None),
     }
 }

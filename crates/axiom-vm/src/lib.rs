@@ -398,11 +398,13 @@ mod tests {
                     reg: Reg(0),
                     name: "a".to_string(),
                     ty: axiom_typeck::Ty::Int,
+                    convention: axiom_hir::CallingConvention::Let,
                 },
                 IrParam {
                     reg: Reg(1),
                     name: "b".to_string(),
                     ty: axiom_typeck::Ty::Int,
+                    convention: axiom_hir::CallingConvention::Let,
                 },
             ],
             return_type: axiom_typeck::Ty::Int,

@@ -159,6 +159,7 @@ fn lower_fn_def(
                 reg,
                 name: p.name.clone(),
                 ty,
+                convention: p.convention,
             }
         })
         .collect();
