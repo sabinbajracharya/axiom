@@ -169,11 +169,17 @@ impl Vm {
     }
 
     /// Single iterative execution loop. Processes instructions and terminators
-    /// until the call stack is empty.
+    /// until the call stack is empty or the step limit is reached.
     fn run_loop(&mut self) -> Result<(), VmError> {
+        let max_steps = 1_000_000;
+        let mut steps = 0u64;
         loop {
             if self.call_stack.is_empty() {
                 return Ok(());
+            }
+            steps += 1;
+            if steps > max_steps {
+                return Err(VmError::StepLimitExceeded(max_steps));
             }
 
             // Check if current frame has more instructions.
@@ -247,6 +253,7 @@ mod tests {
         axiom_ir::Ir {
             functions: vec![func],
             entry: 0,
+            enum_variants: std::collections::HashMap::new(),
         }
     }
 
@@ -360,6 +367,7 @@ mod tests {
         let ir = axiom_ir::Ir {
             functions: vec![func],
             entry: 0,
+            enum_variants: std::collections::HashMap::new(),
         };
         let mut vm = Vm::new(ir);
         let result = vm.run().unwrap();
@@ -374,6 +382,7 @@ mod tests {
         let ir = axiom_ir::Ir {
             functions: vec![add_fn, main_fn],
             entry: 1,
+            enum_variants: std::collections::HashMap::new(),
         };
         let mut vm = Vm::new(ir);
         let result = vm.run().unwrap();

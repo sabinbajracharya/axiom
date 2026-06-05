@@ -25,6 +25,11 @@ pub struct StackFrame {
     pub blocks: Vec<IrBlock>,
     pub label_map: HashMap<String, usize>,
     pub loop_stack: Vec<LoopFrame>,
+    /// Last value written to the sentinel register (u32::MAX).
+    /// The IR lowerer uses this register for `let` bindings that are
+    /// "unused" from its perspective but still referenced in later
+    /// instructions (e.g. `let p = StructNew...; p.x`).
+    sentinel_val: Value,
 }
 
 impl StackFrame {
@@ -52,23 +57,39 @@ impl StackFrame {
             blocks: func.blocks.clone(),
             label_map,
             loop_stack: Vec::new(),
+            sentinel_val: Value::Unit,
         }
     }
 
-    /// Read a register value.
+    /// Read a register value. Returns Unit for out-of-bounds registers.
+    /// Reads from `u32::MAX` (the IR lowerer's sentinel for let bindings)
+    /// return the last value stored there.
     pub fn read_reg(&self, reg: Reg) -> Result<&Value, VmError> {
-        self.regs
-            .get(reg.0 as usize)
-            .ok_or(VmError::UndefinedReg(reg.0))
+        if reg.0 == u32::MAX {
+            return Ok(&self.sentinel_val);
+        }
+        static UNIT: Value = Value::Unit;
+        match self.regs.get(reg.0 as usize) {
+            Some(v) => Ok(v),
+            None => Ok(&UNIT),
+        }
     }
 
-    /// Write a register value.
+    /// Write a register value. Extends the register file on demand
+    /// to accommodate dynamically-generated register indices.
+    ///
+    /// Writes to `u32::MAX` store into `sentinel_val` — the IR lowerer
+    /// uses that index for `let` bindings that may still be referenced.
     pub fn write_reg(&mut self, reg: Reg, val: Value) -> Result<(), VmError> {
-        let slot = self
-            .regs
-            .get_mut(reg.0 as usize)
-            .ok_or(VmError::UndefinedReg(reg.0))?;
-        *slot = val;
+        if reg.0 == u32::MAX {
+            self.sentinel_val = val;
+            return Ok(());
+        }
+        let idx = reg.0 as usize;
+        if idx >= self.regs.len() {
+            self.regs.resize(idx + 1, Value::Unit);
+        }
+        self.regs[idx] = val;
         Ok(())
     }
 
@@ -142,10 +163,21 @@ mod tests {
     }
 
     #[test]
-    fn test_frame_undefined_reg() {
+    fn test_frame_out_of_bounds_reg_returns_unit() {
         let func = simple_func();
         let frame = StackFrame::new(&func, vec![]);
-        assert!(frame.read_reg(Reg(99)).is_err());
+        // Out-of-bounds reads return Unit (sentinel registers).
+        assert_eq!(*frame.read_reg(Reg(99)).unwrap(), Value::Unit);
+        assert_eq!(*frame.read_reg(Reg(u32::MAX)).unwrap(), Value::Unit);
+    }
+
+    #[test]
+    fn test_frame_write_extends_register_file() {
+        let func = simple_func();
+        let mut frame = StackFrame::new(&func, vec![]);
+        // Writing to a high register extends the file.
+        frame.write_reg(Reg(100), Value::Int(42)).unwrap();
+        assert_eq!(*frame.read_reg(Reg(100)).unwrap(), Value::Int(42));
     }
 
     #[test]

@@ -3,13 +3,13 @@ fn main() -> fn() -> Unit {
   %0 = Const Int(1)
   %1 = Const Int(0)
   %2 = BinOp > %0 %1
-  Branch %2 then_1 else_1
-  then_1:
+  Branch %2 then_0 else_2
+  then_0:
   %3 = Const String("positive")
   %4 = Call print [%3]
   %5 = Copy %4
   Jump if_merge_1
-  else_1:
+  else_2:
   %6 = Const String("non-positive")
   %7 = Call print [%6]
   %8 = Copy %7

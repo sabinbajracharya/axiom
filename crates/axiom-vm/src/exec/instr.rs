@@ -71,6 +71,20 @@ impl Vm {
                     return Ok(());
                 }
 
+                // Enum constructor: the IR lowerer emits Call for enum
+                // variants (e.g. Circle(5)). Check enum_variants to
+                // distinguish from real function calls.
+                if let Some((type_name, _)) = self.ir.enum_variants.get(&function) {
+                    let val = Value::Enum {
+                        type_name: type_name.clone(),
+                        variant: function.clone(),
+                        payload: arg_vals,
+                    };
+                    let text = format!("%{} = {function}(...)", dst.0);
+                    self.write_and_advance(dst, val, &fn_name, text)?;
+                    return Ok(());
+                }
+
                 // Push callee frame. instr_index stays at the Call —
                 // Return will advance it when the callee finishes.
                 self.push_frame(&function, arg_vals)?;

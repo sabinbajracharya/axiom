@@ -209,7 +209,7 @@ fn lower_match(e: &axiom_hir::MatchExpr, ctx: &mut FnLowerCtx) -> Reg {
         .iter()
         .zip(&arm_labels)
         .map(|(arm, label)| crate::ir::MatchArm {
-            pattern: lower_pattern(&arm.pattern),
+            pattern: lower_pattern(&arm.pattern, ctx),
             target: label.clone(),
         })
         .collect();
@@ -363,7 +363,7 @@ fn resolve_assign_target(target: &AssignTarget, ctx: &FnLowerCtx) -> Reg {
     }
 }
 
-pub(super) fn lower_pattern(pat: &Pattern) -> crate::ir::IrPattern {
+pub(super) fn lower_pattern(pat: &Pattern, ctx: &mut FnLowerCtx) -> crate::ir::IrPattern {
     match pat {
         Pattern::Wildcard(_) => crate::ir::IrPattern::Wildcard,
         Pattern::Literal(lp) => {
@@ -377,11 +377,22 @@ pub(super) fn lower_pattern(pat: &Pattern) -> crate::ir::IrPattern {
             crate::ir::IrPattern::Literal(c)
         }
         Pattern::Ident(_) => crate::ir::IrPattern::Wildcard,
-        Pattern::TupleStruct(p) => crate::ir::IrPattern::Variant {
-            type_name: String::new(),
-            variant: name_ref_text(&p.path),
-            bindings: Vec::new(),
-        },
+        Pattern::TupleStruct(p) => {
+            let bindings: Vec<Reg> = p
+                .fields
+                .iter()
+                .map(|f| {
+                    let reg = ctx.fresh_reg();
+                    ctx.bind_pattern(f, reg);
+                    reg
+                })
+                .collect();
+            crate::ir::IrPattern::Variant {
+                type_name: String::new(),
+                variant: name_ref_text(&p.path),
+                bindings,
+            }
+        }
         Pattern::Struct(_) => crate::ir::IrPattern::Wildcard,
         Pattern::Or(_) => crate::ir::IrPattern::Wildcard,
         Pattern::Range(_) => crate::ir::IrPattern::Wildcard,

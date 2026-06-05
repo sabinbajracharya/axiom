@@ -3,3 +3,10 @@
 [fn main] Call add(%0, %1)
 [fn add] %2 = BinOp Add(%0, %1)
 [fn add] Return
+[fn main] %4294967295 = Copy %2
+[fn main] %3 = Const(Unit)
+[fn builtin] println(()) => ()
+[fn output] ()
+
+[fn main] 
+[fn main] Return

@@ -1,9 +1,8 @@
 fn main() {
-    let x = 0
-    loop {
-        if x >= 5 {
-            break
-        }
+    let x = 42
+    if x > 10 {
         println(x)
     }
+    let y = x + 8
+    println(y)
 }

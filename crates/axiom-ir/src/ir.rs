@@ -4,6 +4,8 @@
 //! [`Ir`] (the program), [`IrFunction`], [`IrBlock`], [`IrInstr`],
 //! [`Terminator`], and [`Reg`] (virtual registers).
 
+use std::collections::HashMap;
+
 use axiom_hir::{BinOp, UnaryOp};
 use axiom_typeck::Ty;
 
@@ -14,6 +16,10 @@ use axiom_typeck::Ty;
 pub struct Ir {
     pub functions: Vec<IrFunction>,
     pub entry: usize,
+    /// Maps enum variant name → (enum type name, payload field count).
+    /// Populated during IR lowering so the VM can distinguish enum
+    /// constructor calls from function calls.
+    pub enum_variants: HashMap<String, (String, usize)>,
 }
 
 // ── Functions ────────────────────────────────────────────────────────────────

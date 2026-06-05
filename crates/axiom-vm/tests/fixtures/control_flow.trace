@@ -1,1 +1,15 @@
 [fn main] %0 = Const(Int(42))
+[fn main] %4294967295 = Copy %0
+[fn main] %1 = Const(Unit)
+[fn main] %2 = Const(Int(10))
+[fn main] %3 = BinOp Gt(%4294967295, %2)
+[fn main] Branch %3 => then_0
+[fn main] %4 = Const(String("big"))
+[fn builtin] println(big) => ()
+[fn output] big
+
+[fn main] 
+[fn main] %6 = Copy %5
+[fn main] Jump if_merge_1
+[fn main] %10 = Copy %6
+[fn main] Return

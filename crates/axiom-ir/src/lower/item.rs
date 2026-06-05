@@ -8,14 +8,18 @@ use axiom_typeck::Ty;
 use super::LowerCtx;
 
 /// Lower an HIR item. Only FnDefs produce IR functions in v0.
+/// EnumDefs are collected into `enum_variants` so the VM can distinguish
+/// enum constructor calls from function calls.
 pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
     match item {
         Item::FnDef(f) => lower_fn_def(f, ctx),
-        Item::StructDef(_)
-        | Item::EnumDef(_)
-        | Item::TraitDef(_)
-        | Item::ImplDef(_)
-        | Item::SubscriptDef(_) => {}
+        Item::EnumDef(e) => {
+            for v in &e.variants {
+                ctx.enum_variants
+                    .insert(v.name.clone(), (e.name.clone(), v.payload.len()));
+            }
+        }
+        Item::StructDef(_) | Item::TraitDef(_) | Item::ImplDef(_) | Item::SubscriptDef(_) => {}
     }
 }
 

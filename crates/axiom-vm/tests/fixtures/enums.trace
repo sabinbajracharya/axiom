@@ -1,0 +1,12 @@
+[fn main] %0 = Const(Int(5))
+[fn main] %1 = Circle(...)
+[fn main] %4294967295 = Copy %1
+[fn main] %2 = Const(Unit)
+[fn main] Match %4294967295 => match_arm_1
+[fn builtin] println(5) => ()
+[fn output] 5
+
+[fn main] 
+[fn main] %6 = Copy %7
+[fn main] Jump match_merge_0
+[fn main] Return

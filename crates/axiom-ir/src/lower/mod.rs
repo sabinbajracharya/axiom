@@ -3,6 +3,8 @@
 //! Consumes the THIR (typed HIR) and produces a register-based IR with
 //! explicit basic blocks and terminators.
 
+use std::collections::HashMap;
+
 use crate::ir::Ir;
 use axiom_typeck::Thir;
 
@@ -24,6 +26,8 @@ pub fn lower(thir: &Thir) -> Ir {
 pub(super) struct LowerCtx<'a> {
     pub thir: &'a Thir,
     pub functions: Vec<crate::ir::IrFunction>,
+    /// Maps enum variant name → (enum type name, payload count).
+    pub enum_variants: HashMap<String, (String, usize)>,
 }
 
 impl<'a> LowerCtx<'a> {
@@ -31,6 +35,7 @@ impl<'a> LowerCtx<'a> {
         Self {
             thir,
             functions: Vec::new(),
+            enum_variants: HashMap::new(),
         }
     }
 
@@ -43,6 +48,7 @@ impl<'a> LowerCtx<'a> {
         Ir {
             functions: self.functions,
             entry,
+            enum_variants: self.enum_variants,
         }
     }
 }

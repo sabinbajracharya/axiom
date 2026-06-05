@@ -15,6 +15,8 @@ pub(super) struct FnLowerCtx<'a> {
     pub current_block: usize,
     /// Loop stack: (head_label, exit_label) for break/continue.
     pub loop_stack: Vec<(String, String)>,
+    /// Monotonic counter for generating unique labels.
+    label_counter: usize,
 }
 
 impl<'a> FnLowerCtx<'a> {
@@ -33,6 +35,7 @@ impl<'a> FnLowerCtx<'a> {
             bindings: std::collections::HashMap::new(),
             current_block: 0,
             loop_stack: Vec::new(),
+            label_counter: 0,
         }
     }
 
@@ -43,9 +46,11 @@ impl<'a> FnLowerCtx<'a> {
         r
     }
 
-    /// Generate a fresh label with a prefix.
+    /// Generate a fresh label with a prefix. Uses a monotonic counter
+    /// to guarantee uniqueness even when called before blocks are created.
     pub fn fresh_label(&mut self, prefix: &str) -> String {
-        let idx = self.func.blocks.len();
+        let idx = self.label_counter;
+        self.label_counter += 1;
         format!("{prefix}_{idx}")
     }
 

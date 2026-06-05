@@ -1,0 +1,11 @@
+[fn main] %0 = Const(Int(10))
+[fn main] %1 = Const(Int(20))
+[fn main] %2 = StructNew Point(...)
+[fn main] %4294967295 = Copy %2
+[fn main] %3 = Const(Unit)
+[fn main] %4 = Field %4294967295.x
+[fn builtin] println(10) => ()
+[fn output] 10
+
+[fn main] 
+[fn main] Return

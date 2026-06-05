@@ -20,6 +20,7 @@ fn run_with_trace(source: &str) -> String {
     let result = axiom_parser::parse(source);
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
     let hir = axiom_hir::lower(&root, source);
+
     let thir = axiom_typeck::check(hir);
     let ir = axiom_ir::lower(&thir);
 
