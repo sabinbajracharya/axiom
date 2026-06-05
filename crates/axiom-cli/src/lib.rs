@@ -18,6 +18,7 @@ pub mod harness;
 pub use check::{check_source, compile_source, CheckReport, CompileResult};
 pub use cli::{parse_args, CliError, Command};
 
+use axiom_parser::ast::AstNode;
 use std::path::Path;
 use std::process::ExitCode;
 
@@ -97,33 +98,55 @@ fn run_check(path: &Path) -> ExitCode {
     }
 }
 
-/// Multi-file check: build the module graph from the directory and print it.
+/// Multi-file check: build the module graph, compile each module, and combine.
 fn run_check_dir(path: &Path) -> ExitCode {
     let src_dir = path.join("src");
     let search_dir = if src_dir.exists() { &src_dir } else { path };
-    match axiom_modules::discover::discover(search_dir) {
-        Ok(graph) => {
-            println!("module graph ({} modules):", graph.modules.len());
-            for (i, module) in graph.modules.iter().enumerate() {
-                let parent = module.parent.map_or(String::from("-"), |p| p.0.to_string());
-                let children: Vec<String> =
-                    module.children.iter().map(|c| c.0.to_string()).collect();
-                println!(
-                    "  [{i}] {} (parent={parent}, children=[{}])",
-                    if module.name.is_empty() {
-                        "<root>"
-                    } else {
-                        &module.name
-                    },
-                    children.join(", ")
-                );
-            }
-            ExitCode::SUCCESS
-        }
+    let graph = match axiom_modules::discover::discover(search_dir) {
+        Ok(g) => g,
         Err(err) => {
             eprintln!("error: {err}");
-            ExitCode::from(EXIT_USAGE)
+            return ExitCode::from(EXIT_USAGE);
         }
+    };
+
+    // Compile each module in topological order and combine HIRs.
+    let mut all_items = Vec::new();
+    let mut all_diagnostics = Vec::new();
+    let mut any_errors = false;
+
+    for module_id in graph.topo_order() {
+        let module = graph.get(module_id);
+        let parse_result = axiom_parser::parse(&module.source);
+        let Some(root) = axiom_parser::ast::SourceFile::cast(parse_result.tree) else {
+            eprintln!("error: failed to parse module `{}`", module.name);
+            any_errors = true;
+            continue;
+        };
+        let hir = axiom_hir::lower(&root, &module.source);
+        for diag in &hir.diagnostics {
+            eprintln!("{diag}");
+            any_errors = true;
+        }
+        all_items.extend(hir.items);
+        all_diagnostics.extend(hir.diagnostics);
+    }
+
+    // Type-check the combined HIR.
+    let combined_hir = axiom_hir::Hir {
+        items: all_items,
+        diagnostics: Vec::new(),
+    };
+    let thir = axiom_typeck::check(combined_hir);
+    for diag in &thir.diagnostics {
+        eprintln!("{diag}");
+        any_errors = true;
+    }
+
+    if any_errors {
+        ExitCode::from(EXIT_DIAGNOSTICS)
+    } else {
+        ExitCode::SUCCESS
     }
 }
 
