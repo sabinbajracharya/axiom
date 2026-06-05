@@ -157,14 +157,21 @@ stdlib/
       stdlib path (bare mode has no stdlib by design). Regenerated multi-file HIR goldens.
       Gate green.
 
-### Phase B — primitive trait impls (in `core/primitives.ax` + `core/string.ax`)
-- [ ] **B1.** `impl Deinit for {Int,Float,Bool,String,Unit}` (empty bodies). Remove the
-      Deinit rows from `register_builtin_impls`. Regen goldens. *(M2)*
-- [ ] **B2.** `impl Equatable for {Int,Float,Bool,String}` (body `self == other`) and
-      `impl Ord` (body using `<`). Remove those rows from `register_builtin_impls`. Regen. *(M3)*
-- [ ] **B3.** Add the scalar `hash` floor intrinsic (P3); `impl Hashable for {…}` calling it.
-      Remove the Hashable rows. Regen. *(M4)* — or **defer** if nothing consumes `Hashable`
-      until Map (M7); if deferred, fold into Phase D.
+### Phase B — primitive trait impls (in `core/primitives.ax` + `core/string.ax`) ✅ DONE (M2/M3/M4)
+- [x] **B0 (added).** Enable trait impls on builtin primitive types: `collect_impl_defs`
+      recognized impl targets only via `env.lookup`, so `impl Trait for Int` errored
+      (`TypeNotFoundForImpl`). Recognize the builtin primitive names; verified `impl …
+      for Int` type-checks, satisfies a bound, and runs.
+- [x] **B1.** `impl Deinit for {Int,Float,Bool,Unit}` (core/primitives.ax) + `String`
+      (core/string.ax). Removed the Deinit rows + `ALL_TYPES`. Made the core traits `pub`
+      and added `core::traits` to the implicit prelude so trait names resolve in impls/bounds.
+      Regen. *(M2)*
+- [x] **B2.** `impl Equatable` (body `self == other`) and `impl Ord` (body `self < other`)
+      for the 4 primitives. Removed those rows. Added core_traits_e2e. Regen. *(M3)*
+- [x] **B3.** Added the `hash_raw` scalar floor (typeck method + VM deterministic hash);
+      `impl Hashable for {…}` forwards to it. Removed the Hashable rows — `register_builtin_impls`
+      is now gone entirely. Fixed `resolve_impl_self_type` for primitive impls (was `Ty::Error`).
+      Regen + e2e. *(M4)*
 
 ### Phase C — `String::len` → library
 - [ ] **C1.** Add the `Bytes` length floor op (P3). Write `impl String { fn len(let self)
