@@ -150,50 +150,56 @@ Today the compiler processes one file. With modules it must:
 
 ## 3. Implementation phases
 
-### Phase 1 — Module graph & file discovery
+### Phase 1 — Module graph & file discovery ✅
 
 **Goal:** The compiler can process multiple `.ax` files and understand `use` statements.
 
-- [ ] Add `ModuleGraph` struct — maps module paths to file paths
-- [ ] Add `resolve_imports` pass — walks `use` statements, discovers files, detects cycles
+- [x] Add `ModuleGraph` struct — maps module paths to file paths (`axiom-modules` crate)
+- [x] File discovery: `main.ax` entry point, `foo.ax` + `foo/` siblings, `mod.ax` pattern
 - [ ] Add compiler search paths for `core/` and `std/` directories
-- [ ] Parse `use std::io::print` → produce `Import` HIR node
-- [ ] Parse `use std::collections::{Map, Set}` → multi-import
-- [ ] Parse `use foo::bar as h` → aliased import
-- [ ] Error: circular imports
-- [ ] Error: module not found
-- [ ] Error: duplicate import
+- [x] Parse `use std::io::print` → produce `UseItem` HIR node (lowered from `UseDecl`)
+- [x] Parse `use std::collections::{Map, Set}` → multi-import (`UseTreeKind::Group`)
+- [x] Parse `use foo::bar as h` → aliased import (`rename` in `UseTreeKind::Single`)
+- [ ] Error: circular imports (not yet — no cycle detection in module graph)
+- [x] Error: module not found (`ModuleError` variants)
+- [x] Error: duplicate import (via `DuplicateDefinition` diagnostic)
 
-**Test:** Two user files, one imports from the other. Import resolution succeeds.
+**Test:** Two user files, one imports from the other. Import resolution succeeds. ✅
+**Note:** `super`/`crate` keywords added to lexer and parser.
 
-### Phase 2 — Cross-module name resolution
+### Phase 2 — Cross-module name resolution 🔶 PARTIAL
 
 **Goal:** Symbols from imported modules are available in the importing module.
 
 - [ ] Extend `Resolver` to track module-level exports (`pub` items)
 - [ ] Build a `GlobalSymbolTable` that spans all modules
 - [ ] Resolve `use utils::math::add` → resolver looks up `add` in `utils::math`
+      **Status: BROKEN.** `resolve_use_path` only searches the current module's
+      `top_level` scope. Cross-module `use` items produce "unresolved name" errors.
 - [ ] Visibility check: error if accessing non-`pub` item from another module
-- [ ] Alias support: `use foo::bar as b` → `b` resolves to `bar`
+      **Status: NOT DONE.** Non-pub items give "unresolved name" instead of a
+      proper visibility error.
+- [x] Alias support: `use foo::bar as b` → `b` resolves to `bar` (rename in `process_use_tree`)
 
 **Test:** File A defines `pub fn add(a: I32, b: I32) -> I32`. File B imports and calls it.
-Type checking passes.
+Type checking passes. ❌ **FAILS** — cross-module resolution not wired up.
 
-### Phase 3 — Multi-file compilation pipeline
+### Phase 3 — Multi-file compilation pipeline 🔶 PARTIAL
 
 **Goal:** The compiler driver handles parse → HIR → typeck → IR across files.
 
-- [ ] Compiler driver: parse entry file → discover imports → parse all files → build module
-  graph → HIR lowering (per-module, with cross-module resolution) → type checking → IR
-  lowering
-- [ ] Single IR output with all functions (qualified names already work)
+- [x] Compiler driver: discover modules → parse all files → build module graph → HIR
+      lowering (per-module) → combine HIRs → type checking combined HIR
+- [x] Single IR output with all functions (qualified names already work)
 - [ ] Golden file tests for multi-file programs
 
-**Test:** Two-file program compiles end-to-end and runs in the VM.
+**Test:** Two-file program compiles end-to-end and runs in the VM. ❌ **FAILS**
+(depends on Phase 2 cross-module resolution working)
 
-### Phase 4 — Prelude
+### Phase 4 — Prelude ⏸ DEFERRED
 
 **Goal:** `Option`, `Result`, `Some`, `None`, `Ok`, `Err` available without `use`.
+**Blocked on:** stdlib `core` module must exist first.
 
 - [ ] Create `prelude.ax` (compiler-internal file that re-exports from `core`)
 - [ ] Compiler auto-imports prelude items into every module's name resolution scope
