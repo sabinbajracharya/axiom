@@ -74,7 +74,6 @@ pub fn check_source(source: &str) -> CheckReport {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

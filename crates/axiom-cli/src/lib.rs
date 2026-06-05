@@ -99,3 +99,39 @@ fn unimplemented_command(name: &str, milestone: &str) -> ExitCode {
     eprintln!("error: `axiom {name}` is not implemented yet — arrives in {milestone}.");
     ExitCode::from(EXIT_UNIMPLEMENTED)
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_args_run() {
+        let args = vec!["run".to_string(), "test.ax".to_string()];
+        let cmd = parse_args(&args).unwrap();
+        assert!(matches!(cmd, Command::Run { .. }));
+    }
+
+    #[test]
+    fn test_parse_args_build() {
+        let args = vec!["build".to_string(), "test.ax".to_string()];
+        let cmd = parse_args(&args).unwrap();
+        assert!(matches!(cmd, Command::Build { .. }));
+    }
+
+    #[test]
+    fn test_check_source_clean() {
+        let report = check_source("fn main() { val x = 1 }");
+        assert!(report.is_clean(), "diagnostics: {:?}", report.diagnostics);
+    }
+
+    #[test]
+    fn test_check_source_type_error() {
+        let report = check_source("fn main() { val x: Int = 3.14 }");
+        assert!(!report.is_clean());
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|d| d.contains("type mismatch")));
+    }
+}
