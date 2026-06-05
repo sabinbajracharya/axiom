@@ -5,17 +5,17 @@ use std::collections::HashMap;
 
 use crate::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 
-pub(super) type Substitution = HashMap<TypeParamId, Ty>;
+pub type Substitution = HashMap<TypeParamId, Ty>;
 
 // ── Type-param detection ──────────────────────────────────────────────────────
 
 /// Check if a list of types contains any `TypeParam`.
-pub(super) fn contains_type_param_tys(tys: &[Ty]) -> bool {
+pub fn contains_type_param_tys(tys: &[Ty]) -> bool {
     tys.iter().any(contains_type_param)
 }
 
 /// Check if a type tree contains any `TypeParam` (recursive).
-pub(super) fn contains_type_param(ty: &Ty) -> bool {
+pub fn contains_type_param(ty: &Ty) -> bool {
     match ty {
         Ty::TypeParam(_) => true,
         Ty::Fn(f) => {
@@ -31,7 +31,7 @@ pub(super) fn contains_type_param(ty: &Ty) -> bool {
 
 /// Unify `actual` (concrete) with `expected` (may contain `TypeParam`),
 /// recording `TypeParam → concrete` mappings in `subst`.
-pub(super) fn unify(actual: &Ty, expected: &Ty, subst: &mut Substitution) {
+pub fn unify(actual: &Ty, expected: &Ty, subst: &mut Substitution) {
     match (actual, expected) {
         (_, Ty::TypeParam(tp)) => {
             subst.entry(tp.clone()).or_insert_with(|| actual.clone());
@@ -59,7 +59,7 @@ pub(super) fn unify(actual: &Ty, expected: &Ty, subst: &mut Substitution) {
 // ── Substitution ──────────────────────────────────────────────────────────────
 
 /// Replace every `Ty::TypeParam` in `ty` with the concrete type from `subst`.
-pub(super) fn substitute(ty: &Ty, subst: &Substitution) -> Ty {
+pub fn substitute(ty: &Ty, subst: &Substitution) -> Ty {
     match ty {
         Ty::TypeParam(tp) => subst.get(tp).cloned().unwrap_or_else(|| ty.clone()),
         Ty::Fn(f) => Ty::Fn(FnTy {
@@ -87,13 +87,13 @@ pub(super) fn substitute(ty: &Ty, subst: &Substitution) -> Ty {
 // ── Name mangling ─────────────────────────────────────────────────────────────
 
 /// Mangled name: `original__Type1_Type2` (e.g., `id__Int`, `pair__Int_String`).
-pub(super) fn mangle_name(original: &str, type_args: &[Ty]) -> String {
+pub fn mangle_name(original: &str, type_args: &[Ty]) -> String {
     let arg_names: Vec<String> = type_args.iter().map(type_arg_name).collect();
     format!("{original}__{}", arg_names.join("_"))
 }
 
 /// Join the short names of all type args with `_` (used as dedup key suffix).
-pub(super) fn type_args_suffix(type_args: &[Ty]) -> String {
+pub fn type_args_suffix(type_args: &[Ty]) -> String {
     type_args
         .iter()
         .map(type_arg_name)
@@ -102,7 +102,7 @@ pub(super) fn type_args_suffix(type_args: &[Ty]) -> String {
 }
 
 /// Short name for a type argument in a mangled name.
-pub(super) fn type_arg_name(ty: &Ty) -> String {
+pub fn type_arg_name(ty: &Ty) -> String {
     match ty {
         Ty::Int => "Int".to_string(),
         Ty::Float => "Float".to_string(),

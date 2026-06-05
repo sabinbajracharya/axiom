@@ -13,7 +13,8 @@ fn lower_fixture(source: &str) -> axiom_ir::Ir {
     let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
     let hir = axiom_hir::lower(&root, source);
     let thir = axiom_typeck::check(hir);
-    axiom_ir::lower(&thir)
+    let mono = axiom_typeck::monomorphize(&thir);
+    axiom_ir::lower(&thir, &mono)
 }
 
 #[test]

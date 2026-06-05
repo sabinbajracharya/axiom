@@ -1,38 +1,131 @@
 //! Item lowering: HIR Item → IR function.
 
+use std::collections::HashMap;
+
 use super::helpers::FnLowerCtx;
-use crate::ir::{IrFunction, IrParam};
+use crate::ir::{GenericOrigin, IrFunction, IrParam};
 use axiom_hir::{FnDef, Item};
-use axiom_typeck::Ty;
+use axiom_typeck::mono::helpers::Substitution;
+use axiom_typeck::{Ty, TypeParamId};
 
 use super::LowerCtx;
 
-/// Lower an HIR item. Only FnDefs produce IR functions in v0.
+/// Lower an HIR item. Only non-generic FnDefs produce IR functions.
+/// Generic FnDefs are skipped — they are replaced by monomorphized instances
+/// lowered in [`lower_mono_instances`].
 /// EnumDefs are collected into `enum_variants` so the VM can distinguish
 /// enum constructor calls from function calls.
 pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
     match item {
-        Item::FnDef(f) => lower_fn_def(f, ctx),
+        Item::FnDef(f) => {
+            // Skip generic FnDefs — they are lowered as monomorphized instances.
+            if !f.type_params.is_empty() {
+                return;
+            }
+            lower_fn_def(f, ctx, None);
+        }
         Item::EnumDef(e) => {
             for v in &e.variants {
                 ctx.enum_variants
                     .insert(v.name.clone(), (e.name.clone(), v.payload.len()));
             }
         }
-        Item::StructDef(_) | Item::TraitDef(_) | Item::ImplDef(_) | Item::SubscriptDef(_) => {}
+        // ImplDef methods are handled via lower_mono_instances for generic ones,
+        // or via collect_impl_methods for non-generic ones.
+        Item::ImplDef(impl_def) => {
+            for m in &impl_def.methods {
+                if m.type_params.is_empty() {
+                    lower_fn_def(m, ctx, None);
+                }
+            }
+        }
+        Item::StructDef(_) | Item::TraitDef(_) | Item::SubscriptDef(_) => {}
     }
 }
 
-fn lower_fn_def(fndef: &FnDef, ctx: &mut LowerCtx) {
-    let mut fn_ctx = FnLowerCtx::new(&ctx.thir.types);
+/// Lower all monomorphized function instances from the MonoResult.
+pub(super) fn lower_mono_instances(ctx: &mut LowerCtx) {
+    for inst in &ctx.mono.instances {
+        let fndef = match find_fn_def(inst.original_id, &ctx.thir.hir.items) {
+            Some(f) => f,
+            None => continue,
+        };
+        let subst = build_subst(fndef, &inst.type_args);
+        lower_fn_def(
+            fndef,
+            ctx,
+            Some((&inst.name, &subst, &inst.param_types, &inst.return_type)),
+        );
+    }
+}
+
+/// Find the original FnDef by HirId, searching top-level items and ImplDef methods.
+fn find_fn_def(id: axiom_hir::HirId, items: &[Item]) -> Option<&FnDef> {
+    for item in items {
+        match item {
+            Item::FnDef(f) if f.id == id => return Some(f),
+            Item::ImplDef(impl_def) => {
+                for m in &impl_def.methods {
+                    if m.id == id {
+                        return Some(m);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Build a TypeParamId → concrete Ty substitution from a FnDef's type params
+/// and the concrete type args.
+fn build_subst(fndef: &FnDef, type_args: &[Ty]) -> Substitution {
+    let mut subst = HashMap::new();
+    for (i, tp) in fndef.type_params.iter().enumerate() {
+        if let Some(concrete) = type_args.get(i) {
+            subst.insert(
+                TypeParamId {
+                    name: tp.name.clone(),
+                    index: i,
+                    def_id: tp.id,
+                },
+                concrete.clone(),
+            );
+        }
+    }
+    subst
+}
+
+/// Lower a function definition. For monomorphized instances, `mono_info` carries
+/// the mangled name, substitution, concrete param types, and return type.
+fn lower_fn_def(
+    fndef: &FnDef,
+    ctx: &mut LowerCtx,
+    mono_info: Option<(&str, &Substitution, &[Ty], &Ty)>,
+) {
+    let (name, subst, mono_param_tys, mono_ret_ty) = match &mono_info {
+        Some((name, subst, param_tys, ret_ty)) => (
+            name.to_string(),
+            Some(*subst),
+            Some(*param_tys),
+            Some(*ret_ty),
+        ),
+        None => (fndef.name.clone(), None, None, None),
+    };
+
+    let mut fn_ctx = FnLowerCtx::new(&ctx.thir.types, &ctx.mono_lookup, subst);
 
     // Allocate registers for parameters.
     let params: Vec<IrParam> = fndef
         .params
         .iter()
-        .map(|p| {
+        .enumerate()
+        .map(|(i, p)| {
             let reg = fn_ctx.fresh_reg();
-            let ty = ctx.thir.types.get(&p.id).cloned().unwrap_or(Ty::Error);
+            let ty = mono_param_tys
+                .and_then(|pts| pts.get(i).cloned())
+                .or_else(|| ctx.thir.types.get(&p.id).cloned())
+                .unwrap_or(Ty::Error);
             fn_ctx.bind(p.id, reg);
             IrParam {
                 reg,
@@ -43,7 +136,10 @@ fn lower_fn_def(fndef: &FnDef, ctx: &mut LowerCtx) {
         .collect();
 
     // Determine return type.
-    let return_type = ctx.thir.types.get(&fndef.id).cloned().unwrap_or(Ty::Unit);
+    let return_type = mono_ret_ty
+        .cloned()
+        .or_else(|| ctx.thir.types.get(&fndef.id).cloned())
+        .unwrap_or(Ty::Unit);
 
     // Lower the body block.
     let entry_label = "entry".to_string();
@@ -54,10 +150,17 @@ fn lower_fn_def(fndef: &FnDef, ctx: &mut LowerCtx) {
     // Add implicit return carrying the tail expression's value.
     fn_ctx.ensure_return(Some(tail_reg));
 
+    let generic_origin = mono_info
+        .as_ref()
+        .map(|(_name, _, type_args, _)| GenericOrigin {
+            generic_name: fndef.name.clone(),
+            concrete_args: (*type_args).to_vec(),
+        });
+
     let func = IrFunction {
-        name: fndef.name.clone(),
-        type_params: fndef.type_params.iter().map(|tp| tp.name.clone()).collect(),
-        generic_origin: None,
+        name,
+        type_params: Vec::new(), // Monomorphized instances have no type params.
+        generic_origin,
         params,
         return_type,
         blocks: fn_ctx.func.blocks,

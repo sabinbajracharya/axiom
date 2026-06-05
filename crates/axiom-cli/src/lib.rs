@@ -114,7 +114,8 @@ fn run_run(path: &Path) -> ExitCode {
         Some(t) => t,
         None => return ExitCode::from(EXIT_DIAGNOSTICS),
     };
-    let ir = axiom_ir::lower(&thir);
+    let mono = axiom_typeck::monomorphize(&thir);
+    let ir = axiom_ir::lower(&thir, &mono);
     let mut vm = axiom_vm::Vm::new(ir);
     match vm.run() {
         Ok(_) => ExitCode::SUCCESS,

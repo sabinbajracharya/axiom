@@ -61,11 +61,26 @@ fn lower_lit(e: &axiom_hir::LitExpr, ctx: &mut FnLowerCtx) -> Reg {
 }
 
 fn lower_call(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
+    // Collect arg expr references for type lookup before lowering to registers.
+    let arg_refs: Vec<&Expr> = e.args.iter().collect();
+    let callee_id = match &e.callee {
+        axiom_hir::NameRef::Resolved(r) => Some(r.def_id),
+        _ => None,
+    };
+
+    // Try to resolve to a monomorphized mangled name.
+    let resolved = ctx.resolve_call_name(callee_id, &arg_refs, ctx.types);
+    let function = if resolved.is_empty() {
+        name_ref_text(&e.callee)
+    } else {
+        resolved
+    };
+
     let args: Vec<Reg> = e.args.iter().map(|a| lower_expr(a, ctx)).collect();
     let dst = ctx.fresh_reg();
     ctx.emit(IrInstr::Call {
         dst,
-        function: name_ref_text(&e.callee),
+        function,
         args,
     });
     dst

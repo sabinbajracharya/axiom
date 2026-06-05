@@ -1,26 +1,40 @@
 //! Lowering helpers: register allocation, block management, bindings.
 
+use std::collections::HashMap;
+
 use crate::ir::{IrBlock, IrFunction, IrInstr, Reg, Terminator};
-use axiom_hir::{HirId, Pattern};
+use axiom_hir::{Expr, HirId, Pattern};
+use axiom_typeck::mono::helpers::Substitution;
 use axiom_typeck::{Ty, TypeMap};
+
+/// Lookup table for monomorphized function variants.
+/// Maps original fn HirId → list of (concrete param types, mangled name).
+pub(super) type MonoLookup = HashMap<HirId, Vec<(Vec<Ty>, String)>>;
 
 /// Per-function lowering context. Manages registers, blocks, and bindings.
 pub(super) struct FnLowerCtx<'a> {
     pub func: IrFunction,
-    #[expect(dead_code)]
     pub types: &'a TypeMap,
     /// Map from HirId → register (binding resolution).
-    pub bindings: std::collections::HashMap<HirId, Reg>,
+    pub bindings: HashMap<HirId, Reg>,
     /// Current block being built (index into func.blocks).
     pub current_block: usize,
     /// Loop stack: (head_label, exit_label) for break/continue.
     pub loop_stack: Vec<(String, String)>,
     /// Monotonic counter for generating unique labels.
     label_counter: usize,
+    /// Monomorphized function lookup: fn_id → [(param_types, mangled_name)].
+    pub mono_lookup: &'a MonoLookup,
+    /// Active type substitution for monomorphized instance bodies.
+    pub subst: Option<&'a Substitution>,
 }
 
 impl<'a> FnLowerCtx<'a> {
-    pub fn new(types: &'a TypeMap) -> Self {
+    pub fn new(
+        types: &'a TypeMap,
+        mono_lookup: &'a MonoLookup,
+        subst: Option<&'a Substitution>,
+    ) -> Self {
         Self {
             func: IrFunction {
                 name: String::new(),
@@ -32,10 +46,12 @@ impl<'a> FnLowerCtx<'a> {
                 next_reg: 0,
             },
             types,
-            bindings: std::collections::HashMap::new(),
+            bindings: HashMap::new(),
             current_block: 0,
             loop_stack: Vec::new(),
             label_counter: 0,
+            mono_lookup,
+            subst,
         }
     }
 
@@ -129,6 +145,54 @@ impl<'a> FnLowerCtx<'a> {
         &last.unwrap().0
     }
 
+    /// Resolve a function call to its (possibly mangled) name.
+    /// If the callee is generic and has monomorphized instances, matches the
+    /// argument types against the instance parameter types to find the right
+    /// mangled name. Returns the original name for non-generic functions.
+    pub fn resolve_call_name(
+        &self,
+        callee_id: Option<HirId>,
+        arg_exprs: &[&Expr],
+        thir: &TypeMap,
+    ) -> String {
+        let callee_id = match callee_id {
+            Some(id) => id,
+            None => return String::new(),
+        };
+
+        let variants = match self.mono_lookup.get(&callee_id) {
+            Some(v) if !v.is_empty() => v,
+            _ => return String::new(), // Will fall back to name_ref_text
+        };
+
+        // Collect arg types from the THIR, applying substitution if active.
+        let arg_tys: Vec<Ty> = arg_exprs
+            .iter()
+            .filter_map(|a| thir.get(&a.id()).cloned())
+            .map(|t| {
+                if let Some(subst) = self.subst {
+                    axiom_typeck::mono::helpers::substitute(&t, subst)
+                } else {
+                    t
+                }
+            })
+            .collect();
+
+        // Find the matching variant by comparing arg types to param types.
+        for (param_tys, mangled_name) in variants {
+            if param_tys.len() == arg_tys.len()
+                && param_tys
+                    .iter()
+                    .zip(arg_tys.iter())
+                    .all(|(p, a)| ty_eq(p, a))
+            {
+                return mangled_name.clone();
+            }
+        }
+
+        String::new() // No match — fall back to original name
+    }
+
     /// Ensure the current block ends with a return terminator.
     /// If `value` is `Some(reg)`, the return carries that register's value.
     pub fn ensure_return(&mut self, value: Option<Reg>) {
@@ -136,5 +200,39 @@ impl<'a> FnLowerCtx<'a> {
         if matches!(block.terminator, Terminator::Unreachable) {
             block.terminator = Terminator::Return(value);
         }
+    }
+}
+
+/// Structural type equality for matching arg types against mono instance
+/// parameter types. Uses `to_string()` for Float (f64 can't implement `Eq`).
+fn ty_eq(a: &Ty, b: &Ty) -> bool {
+    match (a, b) {
+        (Ty::Int, Ty::Int)
+        | (Ty::Bool, Ty::Bool)
+        | (Ty::String, Ty::String)
+        | (Ty::Unit, Ty::Unit)
+        | (Ty::Float, Ty::Float)
+        | (Ty::Error, Ty::Error) => true,
+        (Ty::Struct(a), Ty::Struct(b)) => a.name == b.name,
+        (Ty::Enum(a), Ty::Enum(b)) => a.name == b.name,
+        (Ty::Instance(a), Ty::Instance(b)) => {
+            a.name == b.name
+                && a.args.len() == b.args.len()
+                && a.args.iter().zip(b.args.iter()).all(|(x, y)| ty_eq(x, y))
+        }
+        (Ty::Fn(a), Ty::Fn(b)) => {
+            a.params.len() == b.params.len()
+                && a.params
+                    .iter()
+                    .zip(b.params.iter())
+                    .all(|(x, y)| ty_eq(x, y))
+                && ty_eq(&a.return_type, &b.return_type)
+        }
+        (Ty::Tuple(a), Ty::Tuple(b)) => {
+            a.len() == b.len() && a.iter().zip(b.iter()).all(|(x, y)| ty_eq(x, y))
+        }
+        (Ty::HeapBuffer(a), Ty::HeapBuffer(b)) => ty_eq(a, b),
+        (Ty::TypeParam(a), Ty::TypeParam(b)) => a.index == b.index && a.def_id == b.def_id,
+        _ => false,
     }
 }

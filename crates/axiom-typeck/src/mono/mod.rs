@@ -11,7 +11,7 @@
 //! mangled name, concrete parameter types, and concrete return type.  Body
 //! cloning / IR lowering happens downstream (when the IR crate exists).
 
-mod helpers;
+pub mod helpers;
 mod walk;
 
 #[cfg(test)]

@@ -19,6 +19,7 @@ fn main() {
     };
     let hir = axiom_hir::lower(&root, source);
     let thir = axiom_typeck::check(hir);
-    let ir = axiom_ir::lower(&thir);
+    let mono = axiom_typeck::monomorphize(&thir);
+    let ir = axiom_ir::lower(&thir, &mono);
     println!("{}", axiom_ir::serialize(&ir));
 }

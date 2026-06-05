@@ -37,7 +37,7 @@ pub use mono::{monomorphize, MonoInstance, MonoResult};
 pub use serialize::serialize;
 pub use thir::{Thir, TypeMap};
 pub use typeck::check;
-pub use types::{EnumTy, FnTy, StructTy, Ty};
+pub use types::{EnumTy, FnTy, StructTy, Ty, TypeParamId};
 
 /// Type-check a source string with the standard library prepended.
 /// The stdlib defines library types (List, Map, etc.) that replace compiler built-ins.
