@@ -54,14 +54,8 @@ pub fn resolve(ctx: &mut crate::lower::LowerCtx, global_exports: Option<&GlobalE
     // Pass 1: top-level item defs are already collected in ctx.defs during lowering.
     let mut top_level = build_top_level(&ctx.defs, &mut ctx.diagnostics);
 
-    // Pass 1.25: inject io pub items at lowest priority (before explicit `use`).
-    if let Some(exports) = global_exports {
-        if let Some(io_items) = exports.get("io") {
-            for (name, &(def_id, kind, _vis)) in io_items {
-                top_level.entry(name.clone()).or_insert((def_id, kind));
-            }
-        }
-    }
+    // Pass 1.25: inject the implicit prelude (`io` pub items) at lowest priority.
+    inject_prelude(&mut top_level, global_exports);
 
     // Pass 1.5: process `use` items to add imported names to the top-level scope.
     process_use_items(
@@ -90,6 +84,10 @@ pub fn resolve_with_globals(
     // Pass 1: build top-level scope from this module's defs.
     let mut top_level = build_top_level(defs, diagnostics);
 
+    // Pass 1.25: inject the implicit prelude (`io` pub items) — same rule as the
+    // single-file `resolve` path, so `print` resolves identically everywhere.
+    inject_prelude(&mut top_level, Some(global_exports));
+
     // Pass 1.5: process `use` items with cross-module lookup.
     process_use_items(
         items,
@@ -109,6 +107,27 @@ pub fn resolve_with_globals(
         if let Item::FnDef(f) = item {
             f.module_path = current_module.to_string();
         }
+    }
+}
+
+/// Inject the implicit prelude into a module's top-level scope: the `io` module's
+/// pub items (a de-facto `use io::*`) at lowest priority — `or_insert` so a
+/// module's own definitions and explicit `use`s always win. Shared by both the
+/// single-file (`resolve`) and multi-module (`resolve_with_globals`) paths so
+/// `print`/`println` resolve identically everywhere.
+/// See `docs/stdlib-loading-unification.md`.
+fn inject_prelude(
+    top_level: &mut HashMap<String, (DefId, DefKind)>,
+    global_exports: Option<&GlobalExports>,
+) {
+    let Some(exports) = global_exports else {
+        return;
+    };
+    let Some(io_items) = exports.get("io") else {
+        return;
+    };
+    for (name, &(def_id, kind, _vis)) in io_items {
+        top_level.entry(name.clone()).or_insert((def_id, kind));
     }
 }
 

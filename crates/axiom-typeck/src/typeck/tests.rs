@@ -1,14 +1,10 @@
 //! Unit tests for the type checker.
 
 use super::*;
-use axiom_hir::lower;
-use axiom_parser::ast::AstNode;
 
+// Bare mode (no stdlib) routed through the one `check_modules` pipeline.
 fn check_source(source: &str) -> Thir {
-    let result = axiom_parser::parse(source);
-    let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = lower(&root, source, None);
-    check(hir)
+    crate::check_source(source)
 }
 
 #[test]
