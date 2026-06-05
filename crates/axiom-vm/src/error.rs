@@ -44,7 +44,4 @@ pub enum VmError {
 
     #[error("builtin not found: {name}")]
     BuiltinNotFound { name: String },
-
-    #[error("execution exceeded step limit ({0})")]
-    StepLimitExceeded(u64),
 }
