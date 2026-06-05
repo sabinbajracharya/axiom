@@ -26,7 +26,6 @@ mod error;
 pub mod exhaustiveness;
 pub mod mono;
 mod serialize;
-mod stdlib;
 mod thir;
 mod typeck;
 mod types;
@@ -35,7 +34,6 @@ pub use coverage::{check_all, TypeckCoverageError};
 pub use error::TypeDiagnostic;
 pub use mono::{monomorphize, MonoInstance, MonoResult};
 pub use serialize::serialize;
-pub use stdlib::with_stdlib;
 pub use thir::{Thir, TypeMap};
 pub use typeck::check;
 pub use types::{EnumTy, FnTy, StructTy, Ty, TypeParamId};
@@ -99,18 +97,4 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
 /// so it cannot diverge. See `docs/stdlib-loading-unification.md` §3.
 pub fn check_source(source: &str) -> Thir {
     check_modules(&[("", source)])
-}
-
-/// Type-check a source string with the standard library prepended.
-/// The stdlib defines library types (List, Map, etc.) that replace compiler built-ins.
-/// Source concatenation happens before parsing, so HirIds are allocated linearly
-/// across stdlib + user source (no collision, no remapping).
-#[allow(clippy::expect_used)]
-pub fn check_source_with_stdlib(source: &str) -> Thir {
-    use axiom_parser::ast::AstNode;
-    let combined = stdlib::with_stdlib(source);
-    let result = axiom_parser::parse(&combined);
-    let root = axiom_parser::ast::SourceFile::cast(result.tree).expect("valid parse tree");
-    let hir = axiom_hir::lower(&root, &combined, None);
-    check(hir)
 }

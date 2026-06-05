@@ -16,6 +16,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 axiom-modules = { path = "../axiom-modules" }
+axiom-stdlib = { path = "../axiom-stdlib" }
 
 [[example]]
 name = "typeck"

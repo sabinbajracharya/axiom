@@ -5,7 +5,11 @@
 
 #![allow(clippy::unwrap_used)]
 
-use axiom_typeck::{check_source_with_stdlib, serialize};
+use axiom_typeck::serialize;
+
+fn check_source_with_stdlib(src: &str) -> axiom_typeck::Thir {
+    axiom_typeck::check_modules(&axiom_stdlib::with_main(src))
+}
 
 fn diags(src: &str) -> Vec<String> {
     check_source_with_stdlib(src)

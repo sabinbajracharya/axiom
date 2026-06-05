@@ -4,16 +4,10 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use axiom_parser::ast::AstNode;
-
 /// Run a program through the full pipeline and return the concatenated output
 /// the VM emitted (the `output` trace events).
 fn run_output(source: &str) -> String {
-    let combined = axiom_typeck::with_stdlib(source);
-    let result = axiom_parser::parse(&combined);
-    let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = axiom_hir::lower(&root, &combined, None);
-    let thir = axiom_typeck::check(hir);
+    let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
     assert!(
         thir.diagnostics.is_empty(),
         "unexpected type diagnostics: {:?}",

@@ -81,6 +81,7 @@ dependencies = [
  "axiom-lexer",
  "axiom-modules",
  "axiom-parser",
+ "axiom-stdlib",
  "thiserror",
 ]
 
@@ -91,6 +92,7 @@ dependencies = [
  "axiom-hir",
  "axiom-ir",
  "axiom-parser",
+ "axiom-stdlib",
  "axiom-typeck",
  "thiserror",
 ]

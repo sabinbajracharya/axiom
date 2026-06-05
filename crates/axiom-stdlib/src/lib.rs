@@ -15,6 +15,18 @@ pub fn modules() -> &'static [(&'static str, &'static str)] {
     STDLIB
 }
 
+/// The standard single-file / test module set: every embedded stdlib module
+/// followed by one unnamed (`""`) user module. Pass straight to
+/// `axiom_typeck::check_modules` (or the CLI/IR pipeline). The empty user-module
+/// name keeps IR fn-qualification identical to the old single-file path, so VM
+/// goldens stay stable. This crate stays a leaf — it composes the list, the
+/// caller drives the pipeline. See `docs/stdlib-loading-unification.md`.
+pub fn with_main(source: &str) -> Vec<(&str, &str)> {
+    let mut modules: Vec<(&str, &str)> = STDLIB.to_vec();
+    modules.push(("", source));
+    modules
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]

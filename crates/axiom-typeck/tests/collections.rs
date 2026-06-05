@@ -6,10 +6,10 @@
 
 #![allow(clippy::unwrap_used)]
 
-use axiom_typeck::{check_source_with_stdlib, serialize, Thir};
+use axiom_typeck::{serialize, Thir};
 
 fn check_source(source: &str) -> Thir {
-    check_source_with_stdlib(source)
+    axiom_typeck::check_modules(&axiom_stdlib::with_main(source))
 }
 
 fn dump(thir: &Thir) -> String {

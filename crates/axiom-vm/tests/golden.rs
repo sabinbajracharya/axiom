@@ -8,7 +8,6 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use axiom_parser::ast::AstNode;
 use std::fs;
 use std::path::Path;
 
@@ -17,15 +16,11 @@ fn normalize(s: &str) -> String {
 }
 
 fn run_with_trace(source: &str) -> String {
-    // Prepend the stdlib so print/println resolve to the real `stdlib/io.ax`
-    // functions (which call core::platform::write) — there are no print/println
-    // VM builtins. Mirrors the single-file compilation path.
-    let combined = axiom_typeck::with_stdlib(source);
-    let result = axiom_parser::parse(&combined);
-    let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = axiom_hir::lower(&root, &combined, None);
-
-    let thir = axiom_typeck::check(hir);
+    // Compile the user source on top of the embedded stdlib through the one
+    // unified pipeline (the same path single-file `forge run` uses). `print`/
+    // `println` resolve to the real `stdlib/io.ax` functions — there are no
+    // print/println VM builtins. See `docs/stdlib-loading-unification.md`.
+    let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
     // Execution fixtures must type-check cleanly. This guard is what surfaces
     // bugs like passing a non-`String` to the `String`-only `print` — previously
     // such diagnostics were silently ignored here. See

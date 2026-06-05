@@ -4,20 +4,20 @@
 [fn main] VariantPayload %1 [0]
 [fn main] %6 = Const(String("{}"))
 [fn main] 
-[fn main] Call println(%7)
-[fn println] %1 = Const(Int(1))
-[fn println] 
+[fn main] Call io::println(%7)
+[fn io::println] %1 = Const(Int(1))
+[fn io::println] 
 [fn extern] write(5) => ()
 [fn output] 5
-[fn println] 
-[fn println] %4 = Const(Int(1))
-[fn println] %5 = Const(String("\\n"))
-[fn println] 
+[fn io::println] 
+[fn io::println] %4 = Const(Int(1))
+[fn io::println] %5 = Const(String("\\n"))
+[fn io::println] 
 [fn extern] write(\n) => ()
 [fn output] \n
-[fn println] 
-[fn println] %8 = Const(Unit)
-[fn println] Return %8
+[fn io::println] 
+[fn io::println] %8 = Const(Unit)
+[fn io::println] Return %8
 [fn main] %5 = Copy %8
 [fn main] Jump match_merge_0
 [fn main] Return %5

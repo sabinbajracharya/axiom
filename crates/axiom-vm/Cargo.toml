@@ -12,6 +12,7 @@ thiserror.workspace = true
 
 [dev-dependencies]
 axiom-parser = { path = "../axiom-parser" }
+axiom-stdlib = { path = "../axiom-stdlib" }
 
 [lints]
 workspace = true
