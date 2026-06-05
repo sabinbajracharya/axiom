@@ -67,6 +67,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "axiom-stdlib"
+version = "0.0.0"
+dependencies = [
+ "axiom-modules",
+]
+
+[[package]]
 name = "axiom-typeck"
 version = "0.0.0"
 dependencies = [

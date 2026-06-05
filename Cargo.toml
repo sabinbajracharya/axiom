@@ -5,6 +5,7 @@ members = [
     "crates/axiom-parser",
     "crates/axiom-hir",
     "crates/axiom-typeck",
+    "crates/axiom-stdlib",
     "crates/axiom-ir",
     "crates/axiom-cli",
     "crates/axiom-vm",
