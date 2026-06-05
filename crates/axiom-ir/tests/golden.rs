@@ -176,3 +176,20 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn test_golden_generics() {
+    check_golden(
+        "generics",
+        r#"
+fn id<T>(x: T) -> T {
+    x
+}
+
+fn main() {
+    val a = id(42)
+    val b = id(true)
+}
+"#,
+    );
+}

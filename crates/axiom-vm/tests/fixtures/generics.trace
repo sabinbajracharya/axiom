@@ -1,0 +1,8 @@
+[fn main] %0 = Const(Int(42))
+[fn main] Call id__Int(%0)
+[fn id__Int] Return %0
+[fn builtin] println(42) => ()
+[fn output] 42
+
+[fn main] 
+[fn main] Return %2
