@@ -389,7 +389,7 @@ reaches the VM. The VM sees flat IR with qualified names, same as today.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Extern fn name collisions | Two modules register same name | Namespaced names: `io._write_stdout`, not `_write_stdout` |
+| Extern fn name collisions | Two modules register same name | **Resolved (ef553e1).** FnDef carries `module_path` set during multi-file resolution. IR lowering qualifies names (e.g., `core::platform::write`). VM and invariant checker handle both bare and qualified forms. |
 | Missing extern callback at runtime | Panic or UB | Clear error message: "extern function 'io._write_stdout' not registered" |
 | Writer trait needs generics too early | Scope creep | `Writer` works without generics — each impl is for a concrete type. Generics come later. |
 | Prelude importing `print` before `std::io` exists | Ordering dependency | Phase 5 is explicitly last — prelude update happens after std::io is working |
