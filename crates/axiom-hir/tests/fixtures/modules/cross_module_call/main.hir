@@ -4,16 +4,36 @@ FnDef(4) name=read vis=pub params=[let fd: Int→<unresolved>, inout buf: Bytes�
 }
 FnDef(8) name=close vis=pub params=[let fd: Int→<unresolved>] return=Int→<unresolved> {
 }
-TraitDef(0) name=Deinit vis=private methods=[
+ImplDef(0) Deinit→0 for Int→1000000 methods=[
+  FnDef(1) name=drop vis=private params=[let self: _] return=_ {
+  }
+]
+ImplDef(4) Deinit→0 for Float→1000001 methods=[
+  FnDef(5) name=drop vis=private params=[let self: _] return=_ {
+  }
+]
+ImplDef(8) Deinit→0 for Bool→1000002 methods=[
+  FnDef(9) name=drop vis=private params=[let self: _] return=_ {
+  }
+]
+ImplDef(12) Deinit→0 for Unit→1000004 methods=[
+  FnDef(13) name=drop vis=private params=[let self: _] return=_ {
+  }
+]
+ImplDef(0) Deinit→0 for String→1000003 methods=[
+  FnDef(1) name=drop vis=private params=[let self: _] return=_ {
+  }
+]
+TraitDef(0) name=Deinit vis=pub methods=[
   Method(1) name=drop params=[let self: _] return=_
 ]
-TraitDef(3) name=Equatable vis=private methods=[
+TraitDef(3) name=Equatable vis=pub methods=[
   Method(4) name=eq params=[let self: _, let other: Self→<unresolved>] return=Bool→<unresolved>
 ]
-TraitDef(7) name=Hashable: Equatable→<unresolved> vis=private methods=[
+TraitDef(7) name=Hashable: Equatable→<unresolved> vis=pub methods=[
   Method(8) name=hash params=[let self: _] return=Int→<unresolved>
 ]
-TraitDef(10) name=Ord: Equatable→<unresolved> vis=private methods=[
+TraitDef(10) name=Ord: Equatable→<unresolved> vis=pub methods=[
   Method(11) name=lt params=[let self: _, let other: Self→<unresolved>] return=Bool→<unresolved>
 ]
 StructDef(0) name=List<T: Deinit→<unresolved>> vis=private fields=[private _placeholder: Int→<unresolved>]

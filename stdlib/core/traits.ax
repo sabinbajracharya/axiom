@@ -12,23 +12,23 @@
 
 /// A type with a deinitializer, run deterministically when a value's lifetime
 /// ends (Perceus inserts the calls). Primitive types implement it as a no-op.
-trait Deinit {
+pub trait Deinit {
     fn drop(let self);
 }
 
 /// Types whose values can be compared for equality.
-trait Equatable {
+pub trait Equatable {
     fn eq(let self, other: Self) -> Bool;
 }
 
 /// Types whose values can be hashed. Equal values must hash equal, so every
 /// `Hashable` type is also `Equatable`.
-trait Hashable: Equatable {
+pub trait Hashable: Equatable {
     fn hash(let self) -> Int;
 }
 
 /// Types with a total ordering. Comparison subsumes equality, so every `Ord`
 /// type is also `Equatable`.
-trait Ord: Equatable {
+pub trait Ord: Equatable {
     fn lt(let self, other: Self) -> Bool;
 }

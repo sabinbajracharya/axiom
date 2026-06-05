@@ -110,11 +110,16 @@ pub fn resolve_with_globals(
     }
 }
 
-/// Inject the implicit prelude into a module's top-level scope: the `std::io`
-/// module's pub items (a de-facto `use std::io::*`) at lowest priority — `or_insert` so a
-/// module's own definitions and explicit `use`s always win. Shared by both the
+/// The implicit prelude: modules whose pub items are in scope everywhere
+/// without an explicit `use`. `core::traits` (Deinit/Equatable/Hashable/Ord —
+/// the always-available behavioral vocabulary) and `std::io` (print/println).
+const PRELUDE_MODULES: &[&str] = &["core::traits", "std::io"];
+
+/// Inject the implicit prelude into a module's top-level scope: the pub items of
+/// each `PRELUDE_MODULES` entry, at lowest priority — `or_insert` so a module's
+/// own definitions and explicit `use`s always win. Shared by both the
 /// single-file (`resolve`) and multi-module (`resolve_with_globals`) paths so
-/// `print`/`println` resolve identically everywhere.
+/// the prelude names resolve identically everywhere.
 /// See `docs/stdlib-loading-unification.md`.
 fn inject_prelude(
     top_level: &mut HashMap<String, (DefId, DefKind)>,
@@ -123,11 +128,13 @@ fn inject_prelude(
     let Some(exports) = global_exports else {
         return;
     };
-    let Some(io_items) = exports.get("std::io") else {
-        return;
-    };
-    for (name, &(def_id, kind, _vis)) in io_items {
-        top_level.entry(name.clone()).or_insert((def_id, kind));
+    for module in PRELUDE_MODULES {
+        let Some(items) = exports.get(*module) else {
+            continue;
+        };
+        for (name, &(def_id, kind, _vis)) in items {
+            top_level.entry(name.clone()).or_insert((def_id, kind));
+        }
     }
 }
 

@@ -1,0 +1,11 @@
+// core/string.ax -- the String type's core trait implementations and methods
+//
+// String is the one core primitive that allocates, so it is always available
+// (it backs string literals and `format`). Its core-trait impls live here
+// rather than in core/primitives.ax. String methods (`len`, …) will land here
+// in later migration phases, bottoming out on the `as_bytes` floor primitive.
+
+// ── Deinit (the backing buffer's release is handled by the runtime) ──
+impl Deinit for String {
+    fn drop(let self) {}
+}

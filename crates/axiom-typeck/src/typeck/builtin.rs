@@ -15,9 +15,6 @@ use std::collections::HashMap;
 /// All primitive type names that get auto-impls for Equatable/Hashable/Ord.
 const PRIMITIVE_TYPES: &[&str] = &["Int", "Float", "Bool", "String"];
 
-/// All type names that get auto-impls for Deinit (includes Unit).
-const ALL_TYPES: &[&str] = &["Int", "Float", "Bool", "String", "Unit"];
-
 /// Helper to build a synthetic FnDef for built-in methods.
 fn make_fn(
     name: &str,
@@ -184,18 +181,12 @@ impl TypeChecker {
     }
 
     /// Register auto-implementations for built-in traits.
+    ///
+    /// Deinit for the primitives now lives in `core/primitives.ax` +
+    /// `core/string.ax` (collected via the normal impl path). Only the
+    /// Equatable/Hashable/Ord primitive auto-impls remain here, pending
+    /// Phases B2/B3.
     pub(super) fn register_builtin_impls(&mut self) {
-        for type_name in ALL_TYPES {
-            self.impl_table.push(ImplInfo {
-                trait_name: Some("Deinit".to_string()),
-                type_name: type_name.to_string(),
-                methods: vec![],
-                subscripts: vec![],
-                type_params: vec![],
-                type_param_bounds: HashMap::new(),
-            });
-        }
-
         for type_name in PRIMITIVE_TYPES {
             for trait_name in &["Equatable", "Hashable", "Ord"] {
                 self.impl_table.push(ImplInfo {
@@ -223,18 +214,6 @@ mod tests {
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
         let hir = lower(&root, source, None);
         TypeChecker::new(hir)
-    }
-
-    #[test]
-    fn test_builtin_deinit_auto_impl() {
-        let mut checker = make_checker("fn main() {}");
-        checker.register_builtin_impls();
-        let deinit_impls: Vec<_> = checker
-            .impl_table
-            .iter()
-            .filter(|i| i.trait_name.as_deref() == Some("Deinit"))
-            .collect();
-        assert_eq!(deinit_impls.len(), 5);
     }
 
     #[test]
