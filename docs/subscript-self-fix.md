@@ -376,7 +376,141 @@ cargo test -p axiom-typeck --test diagnostics -- duplicate_subscript
 - [x] **15. Docs:** Updated `DESIGN_SPEC.md` §4.4.1 v0 implementation note
 - [x] **16. Mark doc status `[x]` and commit**
 
-## 8. Cross-references
+## 8. Multi-index subscript support — design plan
+
+> **Status: Proposed; not yet implemented.**
+> The self-fix (§0–§7) is complete. This section describes the next step:
+> supporting multiple index expressions (`g[row, col]`) so that subscript
+> declarations with multiple index params are usable at the call site.
+
+### 8.0 Motivation
+
+Single-index (`xs[0]`) works. The parser and typeck already handle subscript
+declarations with any number of index params — `lower_params` and `infer_index`
+don't cap at one. But the **call-site syntax** (`base[...]`) only supports a
+single expression inside the brackets. A `Grid` with `subscript(self, row: Int,
+col: Int) -> Int` can't be used as `g[row, col]` — we work around it with
+`at_row_col(row, col)`.
+
+Adding comma-separated expressions inside `[...]` closes this gap without any
+new HIR, IR, or VM concepts. The subscription model (read/write pair, explicit
+`self`, `value` last param) is unchanged — this is purely a parser and typeck
+extension.
+
+### 8.1 Syntax
+
+**Before (single-index only):**
+```ebnf
+IndexExpr  = Expr '[' Expr ']'
+```
+
+**After:**
+```ebnf
+IndexArgs  = Expr (',' Expr)* ','?     -- no trailing comma
+IndexExpr  = Expr '[' IndexArgs ']'
+```
+
+Examples:
+```axiom
+xs[0]               // single index — unchanged
+g[row, col]         // two indices
+t[x, y, z]          // three indices
+```
+
+### 8.2 How the desugar works (unchanged pattern)
+
+The v0 desugar is index-param-count-agnostic. For `N` index params:
+
+**Read:** `xs[i, j]` → `subscript_fn(xs, i, j)`
+**Write:** `xs[i, j] = v` → `subscript_set(xs, i, j, v)`
+**Compound:** `xs[i, j] += v` → `temp = subscript_fn(xs, i, j); temp += v; subscript_set(xs, i, j, temp)`
+
+No new IR instructions, no VM changes. The `MethodCall` just gets more arguments.
+
+### 8.3 Typeck dispatch
+
+`infer_index` currently matches the subscript by index-param count. With
+multi-index:
+
+1. Count the number of expressions inside `[...]` — call it `M`.
+2. For a read: find `subscript(self, p1, ..., pN) -> T` where `N == M`.
+   The param count minus the `self` param must equal `M`.
+3. For a write: find `subscript(inout self, p1, ..., pN, value: T)` where `N == M`.
+   The param count minus `self` minus `value` must equal `M`.
+
+Duplicate-detection (H6) already works across arities:
+- `subscript(self, i: Int) -> T` and `subscript(self, row: Int, col: Int) -> T`
+  are **not** duplicates (different index-param counts — different dispatch
+  arities).
+- `subscript(self, i: Int) -> T` and `subscript(self, x: Int) -> T` **are**
+  duplicates (same count, same convention).
+
+No new duplicate-detection code — the existing `check_duplicate_subscripts`
+function in `collect.rs` already hashes by index-param count.
+
+### 8.4 Parser changes
+
+**`crates/axiom-parser/src/grammar/expr.rs`** — the expression that parses
+`[...]` after a base expression (likely `postfix_expr` or a similar function).
+Currently it parses exactly one expr inside brackets. Change to loop with
+commas.
+
+**`crates/axiom-parser/src/ast/expr.rs`** — `IndexExpr` gains:
+```rust
+pub fn indices(&self) -> Vec<Expr> {
+    child_nodes(&self.0)  // returns all expr children inside [...]
+}
+```
+The old `single_index()` method is either removed or delegates to
+`indices().first()`.
+
+### 8.5 HIR/IR lowering
+
+- **`crates/axiom-hir/src/lower/expr.rs`** — `lower_index_expr` builds an
+  argument list from all index expressions. Currently it builds `[index]`;
+  change to `[index1, index2, ...]`.
+
+- **`crates/axiom-ir/src/lower/expr.rs:233`** — `lower_index_read` /
+  `lower_index_write` already build arg lists functionally by appending.
+  Multi-index just means the list has more elements. No structural change.
+
+### 8.6 Files affected
+
+| File | Change |
+|---|---|
+| `crates/axiom-parser/src/grammar/expr.rs` | Parse `Expr (',' Expr)*` inside `[...]` |
+| `crates/axiom-parser/src/ast/expr.rs` | `IndexExpr::indices()` → `Vec<Expr>` |
+| `crates/axiom-hir/src/lower/expr.rs` | Build arg list from all indices |
+| `crates/axiom-ir/src/lower/expr.rs` | No change (already arg-list functional) |
+| `crates/axiom-typeck/src/typeck/methods.rs` | `infer_index`: index count = `indices.len()`; dispatch by param count |
+| `showcase/place_assignment.ax` | Grid uses `g[row, col]` instead of `at_row_col` |
+| `crates/axiom-vm/tests/place_assign_matrix.rs` | Add multi-index test cell |
+| `crates/axiom-vm/tests/place_assign_e2e.rs` | Add multi-index e2e test |
+
+### 8.7 Harness & guards
+
+| Guard | Mechanism | Strength |
+|---|---|---|
+| Multi-index single-index backwards-compat | All existing single-index tests pass unchanged | **Hard** |
+| Multi-index dispatch (2+ indices) | New e2e test: Grid with `g[row, col]` | **Hard** |
+| Wrong arity → error | `.stderr` golden: `g[row]` on a 2-index subscript | **Hard** |
+| Compound ops with multi-index | Coverage matrix extends to multi-index Grid | **Hard** |
+| Duplicate across different arities is fine | `check_duplicate_subscripts` already arity-aware | **Soft** (existing guard) |
+
+### 8.8 Checklist
+
+- [ ] **1. Parser:** Parse `Expr (',' Expr)*` inside `[...]`
+- [ ] **2. AST:** `IndexExpr::indices()` → `Vec<Expr>`
+- [ ] **3. HIR lower:** `lower_index_expr` uses all index exprs
+- [ ] **4. Typeck:** `infer_index` dispatches by `indices.len()`
+- [ ] **5. Typeck:** Wrong-arity diagnostic (`.stderr` golden)
+- [ ] **6. Showcase:** Grid uses `g[row, col]` natively
+- [ ] **7. Test:** Multi-index e2e (read, write, compound)
+- [ ] **8. Test:** Wrong-arity → diagnostic
+- [ ] **9. Docs:** Update DESIGN_SPEC.md §4.4.1
+- [ ] **10. Mark doc status `[x]` and commit**
+
+## 9. Cross-references
 
 | Source file | Role |
 |---|---|
