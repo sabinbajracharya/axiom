@@ -39,6 +39,7 @@ dependencies = [
  "axiom-hir",
  "axiom-lexer",
  "axiom-parser",
+ "axiom-stdlib",
  "axiom-typeck",
  "thiserror",
 ]

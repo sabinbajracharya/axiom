@@ -236,7 +236,9 @@ that shows the call chain.
    green; `infer_list_lit` switches off `HirId(0)`. *No desugaring moved yet.* ✅ **Done** —
    `@lang` attribute + `axiom_hir::LangItems`; `tests/lang_items.rs` consistency + policy.
 3. **§6.3 coverage invariant** + goldens for the *existing* IR desugaring — lock current
-   behaviour before relocating it.
+   behaviour before relocating it. ✅ **Done** — `axiom-ir/tests/desugar_coverage.rs`
+   (Expr-variant drift guard + per-sugar golden + desugared-calls check) and
+   `tests/desugar_goldens/list_literal.ir`.
 4. **§4 HIR desugar pass** — introduce the pass; move list-literal desugaring HIR-ward
    emitting real (now lang-item-resolved) calls; delete the IR `lower_list_lit` synthesis
    and the `infer_list_lit` special-case; goldens must show the *same* end behaviour.
