@@ -150,6 +150,8 @@ ImplDef(5) List→0<T: Deinit→<unresolved>> methods=[
   }
   SubscriptDef(130) (self, index) -> T→6 body
     tail: Path(137) self→131.Field(136) buf[Path(138) index→132]
+  SubscriptDef(139) set (self, index, value) body
+    tail: Path(147) self→140.Field(146) buf[Path(148) index→141] = Path(149) value→142
 ]
 StructDef(0) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private keys: [K→1], private vals: [V→2], private used: [Bool→<unresolved>], private count: Int→<unresolved>, private cap: Int→<unresolved>]
 ImplDef(8) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[

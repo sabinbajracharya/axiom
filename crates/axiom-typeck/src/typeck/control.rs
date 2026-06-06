@@ -528,8 +528,7 @@ impl TypeChecker {
                 Ty::Unit
             }
             AssignTarget::Index { base, index } => {
-                self.infer_expr(base);
-                self.infer_expr(index);
+                self.check_index_assign(base, index, &value_ty, assign.id);
                 Ty::Unit
             }
         };

@@ -38,12 +38,24 @@ struct SugarSpec {
 }
 
 /// Every sugar `Expr` variant. A new one must be added here with a golden.
-const SUGAR_EXPRS: &[SugarSpec] = &[SugarSpec {
-    expr_variant: "ListLit",
-    golden_stem: "list_literal",
-    program: "fn main() {\n    val xs = [10, 20, 30]\n}\n",
-    expected_calls: &["List::with_capacity", "List::push"],
-}];
+const SUGAR_EXPRS: &[SugarSpec] = &[
+    SugarSpec {
+        expr_variant: "ListLit",
+        golden_stem: "list_literal",
+        program: "fn main() {\n    val xs = [10, 20, 30]\n}\n",
+        expected_calls: &["List::with_capacity", "List::push"],
+    },
+    // Indexed-place assignment (`base[i] = v` / `base[i] += v`) on a library
+    // collection desugars to the `subscript_set` setter — never a raw struct
+    // `IndexSet` (`docs/mutable-subscript-design.md` §4.2). The compound form
+    // reads the old element back through `List::subscript` first.
+    SugarSpec {
+        expr_variant: "Assign",
+        golden_stem: "index_assign",
+        program: "fn main() {\n    var xs = [10, 20, 30]\n    xs[0] = 40 + 5\n    xs[1] += 7\n}\n",
+        expected_calls: &["List::subscript_set", "List::subscript"],
+    },
+];
 
 /// Every `Expr` variant in `axiom_hir::Expr`, mirrored here so adding a variant
 /// forces updating this test (and classifying it as sugar or not). Keep in sync

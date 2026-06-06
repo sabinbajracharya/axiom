@@ -153,6 +153,9 @@ pub enum TypeDiagnostic {
     #[error("trait `{name}` not found")]
     TraitNotFound { name: String, span: Span },
 
+    #[error("cannot assign to `{ty}[…]`: type `{ty}` has no writable subscript")]
+    NoWritableSubscript { ty: String, span: Span },
+
     #[error("type `{name}` not found for impl")]
     TypeNotFoundForImpl { name: String, span: Span },
 
@@ -198,6 +201,7 @@ impl TypeDiagnostic {
             | TypeDiagnostic::UnknownMethod { span, .. }
             | TypeDiagnostic::TraitNotFound { span, .. }
             | TypeDiagnostic::TypeNotFoundForImpl { span, .. }
+            | TypeDiagnostic::NoWritableSubscript { span, .. }
             | TypeDiagnostic::UnsatisfiedBound { span, .. } => *span,
         }
     }
@@ -241,6 +245,7 @@ impl TypeDiagnostic {
             TypeDiagnostic::UnknownMethod { .. } => "unknown_method",
             TypeDiagnostic::TraitNotFound { .. } => "trait_not_found",
             TypeDiagnostic::TypeNotFoundForImpl { .. } => "type_not_found_for_impl",
+            TypeDiagnostic::NoWritableSubscript { .. } => "no_writable_subscript",
             TypeDiagnostic::UnsatisfiedBound { .. } => "unsatisfied_bound",
         }
     }

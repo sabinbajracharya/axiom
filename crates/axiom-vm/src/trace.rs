@@ -32,6 +32,22 @@ impl ExecutionTrace {
         });
     }
 
+    /// The program's *real* output: the concatenation of every `output` trace
+    /// entry (recorded by `write` in `builtins.rs`), in order. Unlike `format`,
+    /// this is exactly what the program printed — value-construction and
+    /// instruction noise are excluded — so behavioural tests assert on observed
+    /// output rather than on substrings of the full execution trace
+    /// (`docs/mutable-subscript-design.md` §7 H1).
+    pub fn output(&self) -> String {
+        let mut out = String::new();
+        for entry in &self.entries {
+            if entry.fn_name == "output" {
+                out.push_str(&entry.instr);
+            }
+        }
+        out
+    }
+
     /// Format the trace as text (one line per entry).
     pub fn format(&self) -> String {
         let mut out = String::new();

@@ -165,7 +165,18 @@ impl Vm {
                     (Value::HeapPtr(addr), Value::Int(i)) => {
                         self.heap.get(*addr, *i as usize)?.clone()
                     }
-                    _ => Value::Unit,
+                    // The primitive `Index` indexes only the `[T]` heap-buffer
+                    // floor. A struct/other base reaching here means lowering
+                    // failed to dispatch `base[i]` to a subscript — fail loudly
+                    // instead of returning `Unit` (the silent fall-through that
+                    // hid the original bug; `docs/mutable-subscript-design.md`
+                    // §7 H4).
+                    _ => {
+                        return Err(VmError::UnsupportedIndexBase {
+                            op: "read",
+                            got: base_val.type_name().to_string(),
+                        })
+                    }
                 };
                 self.write_and_advance(
                     dst,
@@ -311,12 +322,20 @@ impl Vm {
                     Value::Int(i) => *i as usize,
                     _ => 0,
                 };
-                // Index-write goes through the shared heap: the base is a
+                // Index-write goes through the shared heap: the base must be a
                 // `HeapBuffer` pointer (the `[T]` floor). Higher-level
-                // collections like `List` write through their own subscript.
-                if let Value::HeapPtr(addr) = *self.current_frame()?.read_reg(base)? {
-                    self.heap.set(addr, idx, val)?;
-                }
+                // collections lower `base[i] = v` to their `subscript_set`, so a
+                // non-pointer base reaching here means lowering failed to
+                // dispatch — fail loudly instead of silently dropping the write
+                // (the original bug; `docs/mutable-subscript-design.md` §7 H4).
+                let base_val = self.current_frame()?.read_reg(base)?.clone();
+                let Value::HeapPtr(addr) = base_val else {
+                    return Err(VmError::UnsupportedIndexBase {
+                        op: "write",
+                        got: base_val.type_name().to_string(),
+                    });
+                };
+                self.heap.set(addr, idx, val)?;
                 self.trace_instr(
                     &fn_name,
                     format!("IndexSet %{}[%{}] = %{}", base.0, index.0, value.0),

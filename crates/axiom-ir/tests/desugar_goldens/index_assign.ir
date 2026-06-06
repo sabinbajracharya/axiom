@@ -1,0 +1,24 @@
+fn main() -> fn() -> Unit {
+  entry:
+  %0 = Const Int(10)
+  %1 = Const Int(20)
+  %2 = Const Int(30)
+  %4 = Const Int(3)
+  %3 = Call List::with_capacity [%4]
+  %5 = MethodCall %3 List::push [%0]
+  %6 = MethodCall %3 List::push [%1]
+  %7 = MethodCall %3 List::push [%2]
+  %8 = Const Int(0)
+  %9 = Const Int(40)
+  %10 = Const Int(5)
+  %11 = BinOp + %9 %10
+  %12 = MethodCall %3 List::subscript_set [%8, %11]
+  %13 = Const Unit
+  %14 = Const Int(1)
+  %15 = Const Int(7)
+  %16 = MethodCall %3 List::subscript [%14]
+  %17 = BinOp + %16 %15
+  %18 = MethodCall %3 List::subscript_set [%14, %17]
+  %19 = Const Unit
+  Return %19
+}

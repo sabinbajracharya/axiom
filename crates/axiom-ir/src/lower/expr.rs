@@ -218,21 +218,30 @@ fn lower_field(e: &axiom_hir::FieldExpr, ctx: &mut FnLowerCtx) -> Reg {
 fn lower_index(e: &axiom_hir::IndexExpr, ctx: &mut FnLowerCtx) -> Reg {
     let base = lower_expr(&e.base, ctx);
     let index = lower_expr(&e.index, ctx);
-    let dst = ctx.fresh_reg();
-
-    // A raw `[T]` heap buffer indexes with the primitive `Index` instruction.
-    // Any other indexable base is a struct with a `subscript` operator (the type
-    // checker proved one exists), so dispatch `base[index]` to its lowered
-    // `Type::subscript(self, index)` function — the receiver's runtime type
-    // resolves the qualified name in the VM.
     let base_ty = ctx.receiver_type(e.base.id());
-    let is_heap_buffer = matches!(base_ty, Some(axiom_typeck::Ty::HeapBuffer(_)));
-    if is_heap_buffer {
+    lower_index_read(base, base_ty.as_ref(), index, ctx)
+}
+
+/// Lower a *read* of `base[index]` into a fresh register.
+///
+/// A raw `[T]` heap buffer indexes with the primitive `Index` instruction. Any
+/// other indexable base is a struct with a `subscript` operator (the type
+/// checker proved one exists), so dispatch `base[index]` to its lowered
+/// `Type::subscript(self, index)` function — the receiver's runtime type
+/// resolves the qualified name in the VM. Shared by `lower_index` and the
+/// compound-assignment read-back in `lower_index_write`.
+pub(super) fn lower_index_read(
+    base: Reg,
+    base_ty: Option<&axiom_typeck::Ty>,
+    index: Reg,
+    ctx: &mut FnLowerCtx,
+) -> Reg {
+    let dst = ctx.fresh_reg();
+    if matches!(base_ty, Some(axiom_typeck::Ty::HeapBuffer(_))) {
         ctx.emit(IrInstr::Index { dst, base, index });
         return dst;
     }
-
-    let method = match base_ty.as_ref().and_then(type_name_from_ty) {
+    let method = match base_ty.and_then(type_name_from_ty) {
         Some(type_name) => axiom_hir::lang::subscript_fn(type_name.as_str()),
         None => axiom_hir::lang::SUBSCRIPT.to_string(),
     };
@@ -243,6 +252,38 @@ fn lower_index(e: &axiom_hir::IndexExpr, ctx: &mut FnLowerCtx) -> Reg {
         args: vec![index],
     });
     dst
+}
+
+/// Lower a *write* of `base[index] = value`.
+///
+/// The mirror of [`lower_index_read`]: a raw `[T]` heap buffer writes with the
+/// primitive `IndexSet`; any other base dispatches to its `Type::subscript_set`
+/// setter as an `inout self` method call, so the receiver is mutated in place
+/// and written back (exactly how `List::push` mutates `self`). The setter
+/// returns `Unit`, written to a throwaway register
+/// (`docs/mutable-subscript-design.md` §4.2).
+pub(super) fn lower_index_write(
+    base: Reg,
+    base_ty: Option<&axiom_typeck::Ty>,
+    index: Reg,
+    value: Reg,
+    ctx: &mut FnLowerCtx,
+) {
+    if matches!(base_ty, Some(axiom_typeck::Ty::HeapBuffer(_))) {
+        ctx.emit(IrInstr::IndexSet { base, index, value });
+        return;
+    }
+    let method = match base_ty.and_then(type_name_from_ty) {
+        Some(type_name) => axiom_hir::lang::subscript_set_fn(type_name.as_str()),
+        None => axiom_hir::lang::SUBSCRIPT_SET.to_string(),
+    };
+    let dst = ctx.fresh_reg();
+    ctx.emit(IrInstr::MethodCall {
+        dst,
+        receiver: base,
+        method,
+        args: vec![index, value],
+    });
 }
 
 fn lower_struct_lit(e: &axiom_hir::StructLitExpr, ctx: &mut FnLowerCtx) -> Reg {

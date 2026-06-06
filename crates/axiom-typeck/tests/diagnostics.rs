@@ -267,3 +267,24 @@ struct Circle { radius: Float }
 fn main() { do_print(Circle { radius: 1.0 }) }",
     );
 }
+
+#[test]
+fn test_diag_no_writable_subscript() {
+    // A type with only a read subscript cannot be assigned into by index:
+    // `c[0] = 5` must report "no writable subscript", not silently lower to a
+    // dropped write (docs/mutable-subscript-design.md §4.2, step 4).
+    let diags = typeck_diagnostics(
+        "struct Cell { v: Int }
+impl Cell {
+    subscript(i: Int) -> Int { self.v }
+}
+fn main() {
+    var c = Cell { v: 1 }
+    c[0] = 5
+}",
+    );
+    assert!(
+        diags.iter().any(|d| d.contains("no writable subscript")),
+        "expected a no-writable-subscript diagnostic, got: {diags:?}"
+    );
+}

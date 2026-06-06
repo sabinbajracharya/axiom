@@ -22,6 +22,7 @@ crates/axiom-vm/
 ├── src/
 │   ├── lib.rs              # Vm::new(ir), vm.run() -> Result<Value>
 │   ├── error.rs            # VmError enum (thiserror)
+|   |                         #   - UnsupportedIndexBase: indexed op on non-HeapPtr
 │   ├── value.rs            # runtime Value enum
 │   ├── frame.rs            # StackFrame: register file + current block + IP
 │   ├── exec/
@@ -31,11 +32,19 @@ crates/axiom-vm/
 │   │   ├── binop.rs        # exec_binop(): all 18 BinOp variants
 │   │   └── builtins.rs     # print/println — the only FFI surface for now
 │   └── trace.rs            # ExecutionTrace: records every instr for debugging
+|   |                         #   - trace.output(): real program output only
 └── tests/
-    ├── golden.rs           # trace golden tests (.trace files)
-    ├── invariants.rs       # exhaustiveness divergence guards
-    ├── parity.rs           # (stub) future JIT-vs-interp parity test
-    ├── ffi_consistency.rs  # (stub) future FFI surface consistency
+    ├── golden.rs                  # trace golden tests (.trace files)
+    ├── invariants.rs              # exhaustiveness divergence guards
+    ├── mutable_subscript_e2e.rs   # end-to-end: indexed-place write on List + user struct
+    ├── output_assertion_guard.rs  # H1 drift guard: bans trace.format() in *e2e.rs suites
+    ├── place_assign_e2e.rs        # end-to-end: assignment to struct fields + heap buffers
+    ├── place_assign_matrix.rs     # H3 coverage matrix: {target}×{op}×{base}
+    ├── list_e2e.rs                # end-to-end: List operations
+    ├── map_e2e.rs                 # end-to-end: Map operations
+    ├── subscript_e2e.rs           # end-to-end: subscript reads
+    ├── parity.rs                  # (stub) future JIT-vs-interp parity test
+    ├── ffi_consistency.rs         # (stub) future FFI surface consistency
     └── fixtures/
         ├── hello.ax + hello.trace
         ├── arithmetic.ax + arithmetic.trace
@@ -114,6 +123,10 @@ Public API:
 - `vm.run() -> Result<Value>` — execute entry function
 - `vm.run_function(name: &str, args: Vec<Value>) -> Result<Value>` — call specific function
 - `vm.take_trace() -> ExecutionTrace` — extract recorded trace
+- `vm.trace_output() -> String` — concatenated real program output (filtered
+  to `output` entries only — the basis for behavioural e2e assertions, as
+  distinct from full-trace text goldens; see
+  [`docs/mutable-subscript-design.md`](docs/mutable-subscript-design.md) §7 H1)
 
 ## Execution model
 
@@ -170,6 +183,9 @@ Three divergence guards (from DESIGN_SPEC §13.2):
 1. **IrInstr coverage:** every variant has an execution arm (no wildcard).
 2. **Terminator coverage:** every variant has an execution arm.
 3. **BinOp coverage:** every variant has an evaluation arm.
+4. **Indexed-base guard:** `Index`/`IndexSet` on a non-`HeapPtr` base returns
+   `UnsupportedIndexBase` — never silently falls through to no-op/`Unit`
+   ([`docs/mutable-subscript-design.md`](docs/mutable-subscript-design.md) §7 H4).
 
 ### Layer 4: FFI consistency (`tests/ffi_consistency.rs`)
 

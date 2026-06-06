@@ -241,8 +241,17 @@ fn lower_subscript(sub: &axiom_hir::SubscriptDef, ctx: &mut LowerCtx, type_prefi
     let tail_reg = super::stmt::lower_block_expr(&sub.body, &mut fn_ctx);
     fn_ctx.ensure_return(Some(tail_reg));
 
+    // A read subscript lowers to `Type::subscript`; a setter (no return type)
+    // to `Type::subscript_set`, so `base[i]` and `base[i] = v` dispatch to
+    // distinct functions (`docs/mutable-subscript-design.md` §4.2).
+    let name = if sub.is_setter {
+        axiom_hir::lang::subscript_set_fn(type_prefix)
+    } else {
+        axiom_hir::lang::subscript_fn(type_prefix)
+    };
+
     ctx.functions.push(IrFunction {
-        name: axiom_hir::lang::subscript_fn(type_prefix),
+        name,
         type_params: Vec::new(),
         generic_origin: None,
         params,

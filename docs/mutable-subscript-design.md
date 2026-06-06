@@ -1,10 +1,9 @@
 # Mutable Subscript / Indexed-Place Assignment — Design Plan
 
-> **Status: [Bug confirmed; fix deferred; design captured].** `base[i] = v` and
-> `base[i] op= v` on a library collection (`List<T>`) are **broken today** — silently for
-> plain assignment, loudly for compound. This doc records *why*, *how we missed it*, the
-> *staged fix*, and the *drift-guard harness* that stops this class of bug recurring.
-> Nothing here is built yet; this is the plan to read before starting.
+> **Status: [Fixed; implemented; all guards mechanized].** `base[i] = v` and
+> `base[i] op= v` on a library collection (`List<T>`) now work correctly. The
+> v0 interim fix uses setter-desugar (§4.2); the full `inout` projection (§4.1)
+> lands with the memory model in v1. All H1–H4 drift guards are in place.
 
 ## 0. The concern this answers
 
@@ -124,35 +123,35 @@ the setter; the *end-state* picks the projection.
 > Build order mirrors `lang-items-and-desugaring-design.md` §7: lock the failing behaviour
 > with **real-output** tests first, then implement until green.
 
-- [ ] **1. Red tests (real output).** Add e2e tests asserting the *runtime* result (via the
+- [x] **1. Red tests (real output).** Add e2e tests asserting the *runtime* result (via the
       `output`-only helper, §7 H1), each using a value **not present as a literal** in the
       source so a no-op cannot pass (§7 H2): `xs[0] = compute()`, `x[i] = x[j]`,
       `a[i] += n`, `a[i] -= n`, on `List<Int>` and on a user struct with a subscript. They
       must **fail** against today's code (no-op / `Unit + Int`).
-- [ ] **2. VM fall-through guard (H4).** Make `IndexSet`/`Index` on a non-`HeapPtr` base a
+- [x] **2. VM fall-through guard (H4).** Make `IndexSet`/`Index` on a non-`HeapPtr` base a
       hard `VmError` (e.g. `UnsupportedIndexBase`) instead of no-op/`Unit`. Re-run §1 repros:
       the silent cases now error loudly. (This alone converts the bug from silent to visible.)
-- [ ] **3. Stdlib setter.** Add the `List` write subscript (§4.2). Decide & document the
+- [x] **3. Stdlib setter.** Add the `List` write subscript (§4.2). Decide & document the
       surface syntax (O-MS1). Update `stdlib/std/collections/list.ax` + its README.
-- [ ] **4. Subscript-set resolution/typeck.** Allow a type to carry a **read** and a
+- [x] **4. Subscript-set resolution/typeck.** Allow a type to carry a **read** and a
       **write** subscript; resolve `base[i] = v` / `op=` to the write form in
       `infer_index`/assignment checking (`axiom-typeck/.../typeck/methods.rs:437`,
       `find_impl_subscript`). Emit a clear diagnostic when a base is assigned-into but has no
       writable subscript.
-- [ ] **5. Lowering.** Rewrite `lower_assign_index` (`axiom-ir/src/lower/assign.rs:96`): raw
+- [x] **5. Lowering.** Rewrite `lower_assign_index` (`axiom-ir/src/lower/assign.rs:96`): raw
       `[T]` → keep `IndexSet`; library type → `MethodCall Type::subscript_set(inout base, i,
       v)`. Compound: old value via the read-subscript dispatch (factor a shared
       `lower_index_read` helper out of `lower_index`), then `BinOp`, then setter.
-- [ ] **6. Goldens.** Pin the desugared IR for one `=` and one `+=` case (the
+- [x] **6. Goldens.** Pin the desugared IR for one `=` and one `+=` case (the
       `desugar_goldens` pattern), showing the setter call chain — not a raw `IndexSet` on a
       struct.
-- [ ] **7. Green + coverage.** All §1 repros return correct values. Add the place-assignment
+- [x] **7. Green + coverage.** All §1 repros return correct values. Add the place-assignment
       coverage matrix (§7 H3) and make it pass. `cargo fmt && clippy -D warnings && test`.
-- [ ] **8. Fix the misleading legacy tests.** Convert `test_list_index_assignment_runs`
+- [x] **8. Fix the misleading legacy tests.** Convert `test_list_index_assignment_runs`
       (`place_assign_e2e.rs`) and any `list_e2e`/`map_e2e`/`subscript_e2e` value assertions to
       the real-output helper; delete trace-substring value checks. (They currently pass for
       the wrong reason — see §6.)
-- [ ] **9. Spec/docs sync.** Note in `DESIGN_SPEC.md` §4.4 that the write form is
+- [x] **9. Spec/docs sync.** Note in `DESIGN_SPEC.md` §4.4 that the write form is
       implemented via the interim setter in v0; update `vm-design.md`/`ir-design.md` for the
       new lowering and the `UnsupportedIndexBase` error.
 
@@ -176,6 +175,10 @@ struct… structural assert + capacity golden"). We documented the lesson but di
 mechanize it for *place assignment*.
 
 ## 7. Harness & drift guards (so this class can't return)
+
+> **All mechanized.** Each guard below is implemented in the test suite as of the
+> v0 interim fix. The source of truth for test file locations: `place_assign_matrix.rs`
+> (H3), `output_assertion_guard.rs` (H1), and `crates/axiom-vm/src/exec/instr.rs` (H4).
 
 Mirroring `lexer-testing.md` §4/§9, `collection-type-design.md` §8, and
 `lang-items-and-desugaring-design.md` §6 — **mechanize the "can't silently drift" guard.**
@@ -230,7 +233,7 @@ the single guard that would have caught the original bug on day one.*
 
 | # | Question | Lean |
 |---|---|---|
-| O-MS1 | Surface syntax of the write subscript — a dedicated `subscript(inout self, index, value)` setter, or one `inout`-projection subscript (`yield inout …`) that serves both read & write? | interim: **setter**; end-state: **projection** (§4.4) |
+| O-MS1 | Surface syntax of the write subscript — a dedicated `subscript(inout self, index, value)` setter, or one `inout`-projection subscript (`yield inout …`) that serves both read & write? | **resolved for v0: setter** (implemented); end-state: **projection** (§4.4) |
 | O-MS2 | Should compound `a[i] += v` evaluate the index **once** (bind to a temp) to avoid double-evaluating an effectful index expression? | **yes** — eval index once (matches §4.4 "eagerly-evaluated operands") |
 | O-MS3 | Do `OrderedMap`/`Set`/user structs reuse the same setter convention, or is it `List`-specific for v0? | shared convention, `List` first |
 

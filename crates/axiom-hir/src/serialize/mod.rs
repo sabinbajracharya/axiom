@@ -175,7 +175,8 @@ fn serialize_impl_def(i: &ImplDef, depth: usize, out: &mut String) {
 
 fn serialize_subscript_def(s: &SubscriptDef, depth: usize, out: &mut String) {
     indent(out, depth);
-    out.push_str(&format!("SubscriptDef({}) ", s.id));
+    let kind = if s.is_setter { "set " } else { "" };
+    out.push_str(&format!("SubscriptDef({}) {kind}", s.id));
     let params: Vec<String> = s.params.iter().map(|p| p.name.clone()).collect();
     out.push_str(&format!("({})", params.join(", ")));
     if let Some(ret) = &s.return_type {

@@ -300,6 +300,25 @@ A subscript **suspends**, lends a projection to the caller (`let` or `inout`), a
 
 > **Spike status:** subscripts + exclusivity + closures + loops were exercised together in Spike 0/0b — see [`docs/spike-0-findings.md`](docs/spike-0-findings.md). Result: 23/23 scenarios matched intent, friction confined to known cases with standard workarounds. The `match`-ergonomics × exclusivity interaction (§7.2) remains to confirm in the real implementation.
 
+#### 4.4.1 v0 implementation note [Decided]
+
+The design above is the end-state: `inout` projection via `yield` (§4.1). The **v0
+compiler** implements the write half through an **interim setter-desugar** instead,
+since the full memory model (Perceus + exclusivity enforcement, §14) does not land
+until v1. The interim approach:
+
+- A library type defines a **write subscript** as a method with an extra `value`
+  parameter and no return type: `subscript(index: Int, value: T) { self.buf[index] = value }`.
+  The HIR distinguishes read vs. write subscripts via `SubscriptDef.is_setter`.
+- `base[i] = v` and `base[i] op= v` lower to `MethodCall Type::subscript_set(inout base, i, v)`,
+  reusing the same name-keyed dispatch the VM already uses for reads —
+  no new IR instruction, no projection machinery.
+- Raw `[T]` heap-buffer indexing keeps the fast primitive `IndexSet`/`Index` path.
+- The VM `IndexSet`/`Index` primitives now hard-error on a non-`HeapPtr` base
+  (`UnsupportedIndexBase`) instead of silently falling through to no-op/`Unit`.
+
+Full design capture and checklist: [`docs/mutable-subscript-design.md`](docs/mutable-subscript-design.md).
+
 ### 4.5 Heap allocation & Perceus reference counting [Decided]
 Value semantics + scope ownership handles the stack-shaped common case: a value is freed deterministically when its owning binding leaves scope (like a C++ destructor / Rust drop). But recursive/shared/escaping data (trees, graphs, closures that outlive a call) needs heap allocation with shared lifetime. For that, Axiom uses **Perceus** (Koka): *precise compile-time reference counting with elision and reuse.*
 

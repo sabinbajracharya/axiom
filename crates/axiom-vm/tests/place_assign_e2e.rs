@@ -3,6 +3,10 @@
 //! sentinel and these lowered to nothing. They are the foundation for the
 //! mutating collection methods (List::push writes `self.buf[i]` and
 //! `self.count`).
+//!
+//! Assertions use `trace.output()` (the program's *real* printed text), so a
+//! silent no-op cannot pass on a coincidental trace substring — the gap that
+//! hid the indexed-write bug (`docs/mutable-subscript-design.md` §6).
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -18,7 +22,7 @@ fn run_output(source: &str) -> String {
     let mut vm = axiom_vm::Vm::new(ir);
     vm.set_tracing(true);
     vm.run().expect("vm run");
-    vm.take_trace().map(|t| t.format()).unwrap_or_default()
+    vm.take_trace().map(|t| t.output()).unwrap_or_default()
 }
 
 #[test]
@@ -31,7 +35,7 @@ fn main() {
     print(format("{}", c.n))
 }"#,
     );
-    assert!(out.contains('9'), "got: {out:?}");
+    assert_eq!(out, "9", "got: {out:?}");
 }
 
 #[test]
@@ -44,7 +48,7 @@ fn main() {
     print(format("{}", c.n))
 }"#,
     );
-    assert!(out.contains('8'), "got: {out:?}");
+    assert_eq!(out, "8", "got: {out:?}");
 }
 
 #[test]
@@ -56,5 +60,5 @@ fn test_list_index_assignment_runs() {
     print(format("{}", xs[0]))
 }"#,
     );
-    assert!(out.contains('9'), "got: {out:?}");
+    assert_eq!(out, "9", "got: {out:?}");
 }

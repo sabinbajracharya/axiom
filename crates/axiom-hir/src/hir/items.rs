@@ -117,12 +117,20 @@ pub struct ImplDef {
 
 /// A subscript declaration: `subscript(params) -> RetType { body }`.
 /// No name — identified by parameter signature. Lives inside an impl block.
+///
+/// A subscript with a return type is a **read** projection (`base[i]` as a
+/// value); one with no return type is a **setter** (`base[i] = v`), whose last
+/// parameter is the assigned value and whose synthesized `self` is `inout`. See
+/// `docs/mutable-subscript-design.md` §4.2 (the interim setter-desugar).
 #[derive(Debug, Clone)]
 pub struct SubscriptDef {
     pub id: HirId,
     pub params: Vec<Param>,
     pub return_type: Option<HirTy>,
     pub body: Block,
+    /// `true` for the write form (`subscript(index, value)`, no return type);
+    /// `false` for the read form (`subscript(index) -> T`).
+    pub is_setter: bool,
 }
 
 // ── Use items ─────────────────────────────────────────────────────────────────

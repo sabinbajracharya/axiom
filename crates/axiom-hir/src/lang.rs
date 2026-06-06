@@ -22,6 +22,11 @@ pub const LIST: &str = "List";
 /// The associated method name used for indexing (`base[i]` → `Type::subscript`).
 pub const SUBSCRIPT: &str = "subscript";
 
+/// The associated method name used for indexed-place *writes*
+/// (`base[i] = v` → `Type::subscript_set`). The setter counterpart of
+/// [`SUBSCRIPT`] (`docs/mutable-subscript-design.md` §4.2).
+pub const SUBSCRIPT_SET: &str = "subscript_set";
+
 /// `List::new()` — an empty list (used by empty / unsized literals).
 pub const LIST_NEW: &str = "List::new";
 
@@ -37,6 +42,14 @@ pub const LIST_PUSH: &str = "List::push";
 /// `subscript` declaration to a `Type::subscript(self, index…)` function.
 pub fn subscript_fn(type_name: &str) -> String {
     format!("{type_name}::{SUBSCRIPT}")
+}
+
+/// Build the qualified *setter* subscript function name for a receiver type,
+/// e.g. `subscript_set_fn("List")` → `"List::subscript_set"`. The write
+/// counterpart of [`subscript_fn`]: `base[i] = v` dispatches to this function
+/// (`docs/mutable-subscript-design.md` §4.2).
+pub fn subscript_set_fn(type_name: &str) -> String {
+    format!("{type_name}::{SUBSCRIPT_SET}")
 }
 
 // ── Lang items ────────────────────────────────────────────────────────────────

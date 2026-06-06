@@ -20,7 +20,7 @@ fn run_output(source: &str) -> String {
     vm.run().expect("vm run");
     // The trace records each platform write; the rendered text appears in the
     // `[fn output] …` lines. Return the whole trace and let callers search it.
-    vm.take_trace().map(|t| t.format()).unwrap_or_default()
+    vm.take_trace().map(|t| t.output()).unwrap_or_default()
 }
 
 #[test]

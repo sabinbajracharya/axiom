@@ -503,7 +503,10 @@ impl TypeChecker {
                     .map(|t| self.resolve_hir_ty(t))
                     .unwrap_or(crate::types::Ty::Error)
             };
-            let mutability = Mutability::Immutable;
+            let mutability = match param.convention {
+                CallingConvention::Inout | CallingConvention::Sink => Mutability::Mutable,
+                CallingConvention::Let => Mutability::Immutable,
+            };
             self.env
                 .define(param.name.clone(), param_type.clone(), param.id, mutability);
             self.types.insert(param.id, param_type);

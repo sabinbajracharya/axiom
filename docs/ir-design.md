@@ -283,7 +283,33 @@ zero or more `IrInstr`s into the current block.
 | `Match(scrut, arms)` | see §3.5 | merge block's value |
 | `Loop(kind)` | see §3.6 | loop's break value |
 | `Block { stmts, tail }` | lower stmts sequentially, lower tail (or Unit) | tail's reg |
-| `Assign(target, val)` | lower val → `%v`, `Copy` to target's reg | Unit |
+| `Assign(target, val)` | lower val → `%v`, `Copy` to target's reg (for `Name`/`Field` targets) | Unit |
+| `Assign(Index(base, idx), val)` | ...read back via the same type's read subscript dispatch (`lower_index_read`) before the `BinOp`. | Unit |
+
+### 3.3.1 Index lowering helpers
+
+Indexed reads and writes on library types share a common dispatch pattern. Two
+public helpers in `crates/axiom-ir/src/lower/expr.rs` encapsulate it:
+
+- **`lower_index_read(base: Reg, base_ty: &Ty, index: Reg, ctx: &mut FnLowerCtx) -> Reg`** —
+  emits the IR for `base[index]` as a read expression. For a `[T]` heap buffer it
+  emits the primitive `Index` instruction. For any other type (e.g. `List<T>`) it
+  emits a `MethodCall Type::subscript(inout self, index)` using the name-keyed
+  dispatch the VM already supports. Called by `lower_expr` for `Expr::Index` and
+  by compound-assignment lowering (`lower_assign_index`) for read-back of the old
+  element.
+
+- **`lower_index_write(base: Reg, base_ty: &Ty, index: Reg, value: Reg, ctx: &mut FnLowerCtx)`** —
+  emits the IR for `base[index] = value`. For a `[T]` heap buffer it emits the
+  primitive `IndexSet`. For any other type it emits a `MethodCall
+  Type::subscript_set(inout self, index, value)`, dispatching to the **write
+  subscript** setter (distinguished from the read subscript by
+  `SubscriptDef.is_setter` in HIR).
+
+This split avoids a new IR instruction (`SubscriptSet`): the write half reuses
+the existing `MethodCall` infrastructure. The `inout` receiver convention ensures
+the callee's mutations are written back to the caller, exactly as `push` already
+does.
 
 ### 3.4 If lowering
 

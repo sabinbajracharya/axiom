@@ -17,7 +17,7 @@ fn run_output(source: &str) -> String {
     let mut vm = axiom_vm::Vm::new(ir);
     vm.set_tracing(true);
     vm.run().expect("vm run");
-    vm.take_trace().map(|t| t.format()).unwrap_or_default()
+    vm.take_trace().map(|t| t.output()).unwrap_or_default()
 }
 
 #[test]
@@ -30,11 +30,11 @@ fn main() {
     print(format("{}", h(7)))
 }"#,
     );
-    // Int::hash is deterministic; we only assert the call ran and produced an
-    // integer line (the trace contains the printed value).
+    // Int::hash is deterministic; assert the call ran and produced an integer
+    // (real program output, not a trace artifact).
     assert!(
-        out.contains("output"),
-        "expected program output, got: {out:?}"
+        !out.is_empty() && out.parse::<i64>().is_ok(),
+        "expected an integer hash as program output, got: {out:?}"
     );
 }
 

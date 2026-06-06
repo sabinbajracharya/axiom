@@ -23,7 +23,7 @@ fn run_output(source: &str) -> String {
     let mut vm = axiom_vm::Vm::new(ir);
     vm.set_tracing(true);
     vm.run().expect("vm run");
-    vm.take_trace().map(|t| t.format()).unwrap_or_default()
+    vm.take_trace().map(|t| t.output()).unwrap_or_default()
 }
 
 #[test]

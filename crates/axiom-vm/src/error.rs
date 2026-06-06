@@ -51,6 +51,13 @@ pub enum VmError {
     #[error("type error: expected {expected}, got {got}")]
     TypeError { expected: String, got: String },
 
+    #[error(
+        "indexed {op} on an unsupported base ({got}): only a `[T]` heap buffer \
+         is indexable by the primitive `Index`/`IndexSet` — library collections \
+         must lower `base[i]` to a subscript"
+    )]
+    UnsupportedIndexBase { op: &'static str, got: String },
+
     #[error("execution step limit exceeded ({limit}) — likely an infinite loop")]
     StepLimitExceeded { limit: u64 },
 }

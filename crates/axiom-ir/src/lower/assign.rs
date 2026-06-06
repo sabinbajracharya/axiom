@@ -3,7 +3,7 @@
 //! Dispatches on the assignment target (name, field, or index). Compound
 //! operators (`+=`, …) read the current value, apply the binary op, then store.
 
-use super::expr::{lower_expr, unit_reg};
+use super::expr::{lower_expr, lower_index_read, lower_index_write, unit_reg};
 use super::helpers::FnLowerCtx;
 use crate::ir::{IrInstr, Reg};
 use axiom_hir::{AssignTarget, Expr};
@@ -91,21 +91,25 @@ fn lower_assign_field(
     });
 }
 
-/// `base[index] op= value`: emit an `IndexSet`, reading the current element
-/// first for compound ops.
+/// `base[index] op= value`: write through the base's indexing operator.
+///
+/// A raw `[T]` heap buffer uses the primitive `IndexSet`; a library collection
+/// or user struct dispatches to its `Type::subscript_set` setter (see
+/// [`lower_index_write`]). For compound ops the old element is read back through
+/// the *same* base type's read path ([`lower_index_read`]) — never a raw
+/// `IrInstr::Index` on a struct — so `base[i] += v` works for library types too.
+/// The index is lowered **once** and reused for the read-back and the write, so
+/// an effectful index expression is not evaluated twice
+/// (`docs/mutable-subscript-design.md` §4.2, O-MS2).
 fn lower_assign_index(base: &Expr, index: &Expr, e: &axiom_hir::AssignExpr, ctx: &mut FnLowerCtx) {
     let base_r = lower_expr(base, ctx);
     let idx_r = lower_expr(index, ctx);
+    let base_ty = ctx.receiver_type(base.id());
     let value = lower_expr(&e.value, ctx);
     let final_val = match e.op {
         axiom_hir::AssignOp::Plain => value,
         compound => {
-            let cur = ctx.fresh_reg();
-            ctx.emit(IrInstr::Index {
-                dst: cur,
-                base: base_r,
-                index: idx_r,
-            });
+            let cur = lower_index_read(base_r, base_ty.as_ref(), idx_r, ctx);
             let tmp = ctx.fresh_reg();
             ctx.emit(IrInstr::BinOp {
                 dst: tmp,
@@ -116,9 +120,5 @@ fn lower_assign_index(base: &Expr, index: &Expr, e: &axiom_hir::AssignExpr, ctx:
             tmp
         }
     };
-    ctx.emit(IrInstr::IndexSet {
-        base: base_r,
-        index: idx_r,
-        value: final_val,
-    });
+    lower_index_write(base_r, base_ty.as_ref(), idx_r, final_val, ctx);
 }

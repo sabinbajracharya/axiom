@@ -231,8 +231,8 @@ impl TypeChecker {
         None
     }
 
-    /// Find a subscript definition for the given type, returning the subscript
-    /// and a type-parameter substitution for generic impls.
+    /// Find the **read** subscript for the given type (the one with a return
+    /// type), returning it and a type-parameter substitution for generic impls.
     fn find_impl_subscript(
         &self,
         type_name: &str,
@@ -240,7 +240,26 @@ impl TypeChecker {
     ) -> Option<(&SubscriptDef, Substitution)> {
         for info in &self.impl_table {
             if info.type_name == type_name {
-                if let Some(sub) = info.subscripts.first() {
+                if let Some(sub) = info.subscripts.iter().find(|s| !s.is_setter) {
+                    let subst = self.build_impl_subst(info, receiver_ty);
+                    return Some((sub, subst));
+                }
+            }
+        }
+        None
+    }
+
+    /// Find the **write** subscript (setter) for the given type, returning it
+    /// and a type-parameter substitution. Used to resolve `base[i] = v`
+    /// (`docs/mutable-subscript-design.md` §4.2).
+    fn find_impl_write_subscript(
+        &self,
+        type_name: &str,
+        receiver_ty: &Ty,
+    ) -> Option<(&SubscriptDef, Substitution)> {
+        for info in &self.impl_table {
+            if info.type_name == type_name {
+                if let Some(sub) = info.subscripts.iter().find(|s| s.is_setter) {
                     let subst = self.build_impl_subst(info, receiver_ty);
                     return Some((sub, subst));
                 }
@@ -473,6 +492,74 @@ impl TypeChecker {
         }
         self.types.insert(index.id, Ty::Error);
         Ty::Error
+    }
+
+    /// Type-check an indexed-place assignment target `base[index] = value`.
+    ///
+    /// A raw `[T]` heap buffer accepts a `T`. A library collection or user
+    /// struct must expose a **write** subscript (`subscript(index, value)`, no
+    /// return type — `docs/mutable-subscript-design.md` §4.2); the assigned
+    /// value is checked against that setter's value-parameter type. A base with
+    /// no writable subscript is a hard error.
+    pub(super) fn check_index_assign(
+        &mut self,
+        base: &Expr,
+        index: &Expr,
+        value_ty: &Ty,
+        assign_id: HirId,
+    ) {
+        let base_ty = self.infer_expr(base);
+        self.infer_expr(index);
+
+        if let Ty::HeapBuffer(elem) = &base_ty {
+            if !helpers::is_error(value_ty) && !helpers::is_error(elem) && value_ty != elem.as_ref()
+            {
+                self.emit(TypeDiagnostic::TypeMismatch {
+                    expected: elem.to_string(),
+                    found: value_ty.to_string(),
+                    span: self.span_for(assign_id),
+                });
+            }
+            return;
+        }
+
+        if helpers::is_error(&base_ty) {
+            return;
+        }
+
+        let Some(name) = Self::type_name_from_ty(&base_ty) else {
+            self.emit(TypeDiagnostic::NoWritableSubscript {
+                ty: base_ty.to_string(),
+                span: self.span_for(assign_id),
+            });
+            return;
+        };
+
+        let Some((sub, subst)) = self.find_impl_write_subscript(&name, &base_ty) else {
+            self.emit(TypeDiagnostic::NoWritableSubscript {
+                ty: name,
+                span: self.span_for(assign_id),
+            });
+            return;
+        };
+
+        // The last setter parameter is the assigned value; check the value type
+        // against it (after substituting the impl's type parameters).
+        if let Some(value_param) = sub.params.last() {
+            if let Some(param_ty) = &value_param.ty {
+                let expected = Self::substitute(&self.resolve_hir_ty(param_ty), &subst);
+                if !helpers::is_error(value_ty)
+                    && !helpers::is_error(&expected)
+                    && *value_ty != expected
+                {
+                    self.emit(TypeDiagnostic::TypeMismatch {
+                        expected: expected.to_string(),
+                        found: value_ty.to_string(),
+                        span: self.span_for(assign_id),
+                    });
+                }
+            }
+        }
     }
 
     pub(super) fn infer_list_lit(&mut self, list: &ListLitExpr) -> Ty {
