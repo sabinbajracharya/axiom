@@ -9,14 +9,6 @@ use crate::types::{FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 
 use axiom_hir::*;
 
-/// A struct's declared type parameters paired with its field types, resolved in
-/// the struct's own type-param scope (see [`TypeChecker::struct_generic_info`]).
-type StructGenericInfo = (Vec<HirTypeParam>, Vec<(String, Ty)>);
-
-/// A generic enum's type parameters paired with its variants (payloads resolved
-/// in the enum's own scope). See [`TypeChecker::enum_generic_info`].
-type EnumGenericInfo = (Vec<HirTypeParam>, Vec<VariantInfo>);
-
 impl TypeChecker {
     pub(super) fn infer_block(&mut self, block: &Block, expected: &Option<Ty>) -> Ty {
         self.env.push_scope();
@@ -466,68 +458,23 @@ impl TypeChecker {
                     });
                 }
             } else if let Err(found) = self.unify(&value_ty, expected_ty, &mut subst) {
-                self.emit(TypeDiagnostic::TypeMismatch {
-                    expected: expected_ty.to_string(),
-                    found: found.to_string(),
-                    span: self.span_for(field.value.id()),
-                });
+                // The forward direction failed. The value may carry a
+                // return-only type parameter (e.g. `heap_alloc(0)`'s `[T]`)
+                // that must bind *from* a concrete field type (`used: [Bool]`).
+                // Accept if the reverse direction unifies — checked in a
+                // throwaway substitution so it can't pollute the struct's
+                // inferred type arguments (which come from the forward pass).
+                let mut reverse = Substitution::new();
+                if self.unify(expected_ty, &value_ty, &mut reverse).is_err() {
+                    self.emit(TypeDiagnostic::TypeMismatch {
+                        expected: expected_ty.to_string(),
+                        found: found.to_string(),
+                        span: self.span_for(field.value.id()),
+                    });
+                }
             }
         }
         subst
-    }
-
-    /// Resolve a struct's declared type parameters and field types with the
-    /// struct's own type parameters in scope. A field declared `value: T`
-    /// resolves to `Ty::TypeParam` keyed by the struct's parameter def_id, so
-    /// callers can substitute concrete type arguments (generic field access)
-    /// or infer them (struct-literal inference). Returns `None` if `name` is
-    /// not a user-defined struct.
-    /// A generic enum's type parameters paired with its variants, the payloads
-    /// resolved in the enum's own type-param scope (so `Some(T)` comes back as
-    /// `Ty::TypeParam`). `None` if `name` is not a user-defined enum. The
-    /// analogue of [`struct_generic_info`](Self::struct_generic_info) for enums.
-    pub(super) fn enum_generic_info(&mut self, name: &str) -> Option<EnumGenericInfo> {
-        let edef = self.hir.items.iter().find_map(|item| match item {
-            Item::EnumDef(e) if e.name == name => Some(e.clone()),
-            _ => None,
-        })?;
-        let saved = std::mem::take(&mut self.current_type_params);
-        self.current_type_params = edef
-            .type_params
-            .iter()
-            .map(|tp| (tp.name.clone(), tp.id, Vec::new()))
-            .collect();
-        let variants = edef
-            .variants
-            .iter()
-            .map(|v| VariantInfo {
-                name: v.name.clone(),
-                def_id: v.id,
-                payload: v.payload.iter().map(|t| self.resolve_hir_ty(t)).collect(),
-            })
-            .collect();
-        self.current_type_params = saved;
-        Some((edef.type_params, variants))
-    }
-
-    pub(super) fn struct_generic_info(&mut self, name: &str) -> Option<StructGenericInfo> {
-        let sdef = self.hir.items.iter().find_map(|item| match item {
-            Item::StructDef(s) if s.name == name => Some(s.clone()),
-            _ => None,
-        })?;
-        let saved = std::mem::take(&mut self.current_type_params);
-        self.current_type_params = sdef
-            .type_params
-            .iter()
-            .map(|tp| (tp.name.clone(), tp.id, Vec::new()))
-            .collect();
-        let fields = sdef
-            .fields
-            .iter()
-            .map(|f| (f.name.clone(), self.resolve_hir_ty(&f.ty)))
-            .collect();
-        self.current_type_params = saved;
-        Some((sdef.type_params, fields))
     }
 
     pub(super) fn infer_assign(&mut self, assign: &AssignExpr) -> Ty {

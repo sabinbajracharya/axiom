@@ -50,4 +50,7 @@ pub enum VmError {
 
     #[error("type error: expected {expected}, got {got}")]
     TypeError { expected: String, got: String },
+
+    #[error("execution step limit exceeded ({limit}) — likely an infinite loop")]
+    StepLimitExceeded { limit: u64 },
 }

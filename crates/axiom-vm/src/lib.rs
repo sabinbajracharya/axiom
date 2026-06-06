@@ -171,9 +171,22 @@ impl Vm {
     /// Single iterative execution loop. Processes instructions and terminators
     /// until the call stack is empty.
     fn run_loop(&mut self) -> Result<(), VmError> {
+        // Hard guard against runaway execution. An infinite loop in `.ax` code
+        // must surface as an error, never spin forever — and with tracing on,
+        // an unbounded loop would also grow the trace until the process OOMs.
+        const MAX_STEPS: u64 = 50_000_000;
+        let max_steps = std::env::var("AXIOM_VM_MAX_STEPS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(MAX_STEPS);
+        let mut steps: u64 = 0;
         loop {
             if self.call_stack.is_empty() {
                 return Ok(());
+            }
+            steps += 1;
+            if steps > max_steps {
+                return Err(VmError::StepLimitExceeded { limit: max_steps });
             }
 
             // Check if current frame has more instructions.

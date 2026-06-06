@@ -260,6 +260,10 @@ fn lower_block(e: &axiom_hir::Block, ctx: &mut FnLowerCtx) -> Reg {
 
 fn lower_if(e: &axiom_hir::IfExpr, ctx: &mut FnLowerCtx) -> Reg {
     let cond = lower_expr(&e.condition, ctx);
+    // One shared result register, written by whichever branch runs (registers
+    // persist across blocks within a frame). An `if` without `else` is
+    // Unit-typed: on the false path `dst` is never written and reads as Unit.
+    let dst = ctx.fresh_reg();
     let then_label = ctx.fresh_label("then");
     let merge_label = ctx.fresh_label("if_merge");
     let else_label = match &e.else_branch {
@@ -273,40 +277,25 @@ fn lower_if(e: &axiom_hir::IfExpr, ctx: &mut FnLowerCtx) -> Reg {
         false_target: else_label.clone(),
     });
 
-    // Then block
+    // Then block: evaluate and store into the shared result.
     ctx.start_block(then_label);
     let then_val = super::stmt::lower_block_expr(&e.then_branch, ctx);
-    let then_copy = ctx.fresh_reg();
-    ctx.emit(IrInstr::Copy {
-        dst: then_copy,
-        src: then_val,
-    });
+    ctx.emit(IrInstr::Copy { dst, src: then_val });
     ctx.terminate(crate::ir::Terminator::Jump {
         target: merge_label.clone(),
     });
 
-    // Else block (if present)
+    // Else block (if present): evaluate and store into the same result.
     if let Some(else_expr) = &e.else_branch {
         ctx.start_block(else_label);
         let else_val = lower_expr(else_expr, ctx);
-        let else_copy = ctx.fresh_reg();
-        ctx.emit(IrInstr::Copy {
-            dst: else_copy,
-            src: else_val,
-        });
+        ctx.emit(IrInstr::Copy { dst, src: else_val });
         ctx.terminate(crate::ir::Terminator::Jump {
             target: merge_label.clone(),
         });
-        let _ = else_copy;
     }
 
-    // Merge block
     ctx.start_block(merge_label);
-    let dst = ctx.fresh_reg();
-    ctx.emit(IrInstr::Copy {
-        dst,
-        src: then_copy,
-    });
     dst
 }
 

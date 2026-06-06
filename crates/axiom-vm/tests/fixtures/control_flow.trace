@@ -2,8 +2,8 @@
 [fn main] %1 = Const(Int(10))
 [fn main] %2 = BinOp Gt(%0, %1)
 [fn main] Branch %2 => then_0
-[fn main] %3 = Const(String("big"))
-[fn main] Call std::io::println(%3)
+[fn main] %4 = Const(String("big"))
+[fn main] Call std::io::println(%4)
 [fn std::io::println] %1 = Const(Int(1))
 [fn std::io::println] 
 [fn extern] write(big) => ()
@@ -17,7 +17,6 @@
 [fn std::io::println] 
 [fn std::io::println] %8 = Const(Unit)
 [fn std::io::println] Return %8
-[fn main] %5 = Copy %4
+[fn main] %3 = Copy %5
 [fn main] Jump if_merge_1
-[fn main] %9 = Copy %5
-[fn main] Return %9
+[fn main] Return %3

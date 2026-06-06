@@ -281,7 +281,10 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
                 name: vname.clone(),
                 def_id: vid,
                 kind: DefKind::Variant,
-                visibility: Visibility::Private,
+                // A variant is as visible as its enum: a `pub enum`'s
+                // constructors must be reachable wherever the enum is (so
+                // `Some`/`None` from the prelude `Option` resolve everywhere).
+                visibility,
                 span: ctx.span_of(v.syntax()),
             });
             VariantDef {

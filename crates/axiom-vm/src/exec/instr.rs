@@ -132,7 +132,12 @@ impl Vm {
                     return Ok(());
                 }
 
-                self.push_frame(&method, all_args)?;
+                // An unqualified method name means the static receiver type was
+                // a type parameter (e.g. `key.hash()` in a generic `impl`, which
+                // is lowered once, not monomorphized). Resolve it dynamically by
+                // the receiver's runtime type → `Int::hash`, `MyKey::hash`, …
+                let target = self.resolve_method_target(&method, &all_args[0]);
+                self.push_frame(&target, all_args)?;
                 let text = format!("MethodCall %{}.{}({})", receiver.0, method, fmt_regs(&args));
                 self.trace_instr(&fn_name, text);
             }
@@ -385,6 +390,28 @@ impl Vm {
     pub(crate) fn trace_instr(&mut self, fn_name: &str, text: String) {
         if let Some(ref mut t) = self.trace {
             t.record(fn_name, text, None);
+        }
+    }
+
+    /// Resolve the IR function name for a method call. A name already qualified
+    /// (`Type::method`) is used as-is. An unqualified name comes from a call on
+    /// a type-parameter receiver (a generic `impl` method is lowered once, not
+    /// monomorphized), so it is dispatched by the receiver's *runtime* type —
+    /// `Int::hash`, `MyKey::hash`, … — falling back to the bare name if no such
+    /// function exists (the caller then surfaces the usual not-found error).
+    fn resolve_method_target(&self, method: &str, receiver: &Value) -> String {
+        if method.contains("::") {
+            return method.to_string();
+        }
+        let type_name = match receiver {
+            Value::Struct { type_name, .. } | Value::Enum { type_name, .. } => type_name.as_str(),
+            other => other.type_name(),
+        };
+        let qualified = format!("{type_name}::{method}");
+        if self.ir.functions.iter().any(|f| f.name == qualified) {
+            qualified
+        } else {
+            method.to_string()
         }
     }
 }

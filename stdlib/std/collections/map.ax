@@ -1,29 +1,179 @@
+// std/collections/map.ax — the hash map.
+//
+// `Map<K, V>` is real Axiom library code: an open-addressing hash table with
+// linear probing, built on the `HeapBuffer<T>` floor (`[T]`). Three parallel
+// buffers hold the keys, values, and slot-occupancy flags; the table doubles
+// (and rehashes) when it passes a 0.75 load factor. Keys are hashed through the
+// `Hashable` bound (`key.hash()`) and compared with `==`. No compiler
+// intrinsics remain for `Map` — every method has a real body (migration M7).
+
 struct Map<K: Hashable + Equatable, V: Deinit> {
-    _placeholder: Int,
+    keys: [K],
+    vals: [V],
+    used: [Bool],
+    count: Int,
+    cap: Int,
 }
 
 impl<K: Hashable + Equatable, V: Deinit> Map<K, V> {
+    // An empty map. Buffers are allocated lazily on the first `set` (capacity
+    // starts at 0), so `new` needs no key/value witness.
     fn new() -> Map<K, V> {
-        todo()
-    }
-
-    fn get(self, key: K) -> V {
-        todo()
-    }
-
-    fn has(self, key: K) -> Bool {
-        todo()
+        Map {
+            keys: heap_alloc(0),
+            vals: heap_alloc(0),
+            used: heap_alloc(0),
+            count: 0,
+            cap: 0,
+        }
     }
 
     fn count(self) -> Int {
-        todo()
+        self.count
     }
 
     fn is_empty(self) -> Bool {
-        todo()
+        self.count == 0
     }
 
+    fn has(self, key: K) -> Bool {
+        self.find_slot(key) >= 0
+    }
+
+    // The value for `key`, or `None` if absent.
+    fn get(self, key: K) -> Option<V> {
+        val slot = self.find_slot(key)
+        if slot < 0 {
+            return None
+        }
+        Some(self.vals[slot])
+    }
+
+    // Insert or overwrite the value for `key`.
+    fn set(inout self, sink key: K, sink value: V) {
+        if self.should_grow() {
+            self.grow()
+        }
+        self.insert_raw(key, value)
+    }
+
+    // ── internals ──────────────────────────────────────────────────────────
+
+    // The home slot for `key`: its hash reduced into `[0, cap)`. Requires
+    // `cap > 0`. `hash` may be negative, so fold the remainder back positive.
+    fn slot_for(self, key: K) -> Int {
+        val m = key.hash() % self.cap
+        if m < 0 {
+            m + self.cap
+        } else {
+            m
+        }
+    }
+
+    fn next_slot(self, i: Int) -> Int {
+        (i + 1) % self.cap
+    }
+
+    // The slot holding `key`, or -1 if absent. Probes from the home slot until
+    // the key is found or an empty slot ends the probe sequence.
+    fn find_slot(self, key: K) -> Int {
+        if self.cap == 0 {
+            return -1
+        }
+        var i = self.slot_for(key)
+        var probes = 0
+        var result = -1
+        loop {
+            if probes == self.cap {
+                break
+            }
+            if self.used[i] == false {
+                break
+            }
+            if self.keys[i] == key {
+                result = i
+                break
+            }
+            i = self.next_slot(i)
+            probes = probes + 1
+        }
+        result
+    }
+
+    // The slot at which `key` should be written: an existing slot for the key,
+    // or the first empty slot on its probe sequence. Requires `cap > 0`.
+    fn probe_insert(self, key: K) -> Int {
+        var i = self.slot_for(key)
+        var result = 0
+        loop {
+            if self.used[i] == false {
+                result = i
+                break
+            }
+            if self.keys[i] == key {
+                result = i
+                break
+            }
+            i = self.next_slot(i)
+        }
+        result
+    }
+
+    // Write `key`/`value` into the table assuming there is room (capacity was
+    // ensured by the caller). Bumps `count` only for a genuinely new key.
+    fn insert_raw(inout self, sink key: K, sink value: V) {
+        val slot = self.probe_insert(key)
+        if self.used[slot] == false {
+            self.count = self.count + 1
+        }
+        self.used[slot] = true
+        self.keys[slot] = key
+        self.vals[slot] = value
+    }
+
+    // Whether the next insert should grow: seed an empty table, else keep the
+    // load factor under 0.75.
+    fn should_grow(self) -> Bool {
+        self.cap == 0 || (self.count + 1) * 4 >= self.cap * 3
+    }
+
+    // Double the capacity (starting at 8), then reinsert the live entries.
+    fn grow(inout self) {
+        var new_cap = self.cap * 2
+        if new_cap == 0 {
+            new_cap = 8
+        }
+        var new_keys: [K] = heap_alloc(new_cap)
+        var new_vals: [V] = heap_alloc(new_cap)
+        var new_used: [Bool] = heap_alloc(new_cap)
+        var j = 0
+        loop if j < new_cap {
+            new_used[j] = false
+            j = j + 1
+        }
+        val old_keys = self.keys
+        val old_vals = self.vals
+        val old_used = self.used
+        val old_cap = self.cap
+        self.keys = new_keys
+        self.vals = new_vals
+        self.used = new_used
+        self.cap = new_cap
+        self.count = 0
+        var k = 0
+        loop if k < old_cap {
+            if old_used[k] {
+                self.insert_raw(old_keys[k], old_vals[k])
+            }
+            k = k + 1
+        }
+        heap_free(old_keys)
+        heap_free(old_vals)
+        heap_free(old_used)
+    }
+
+    // Indexing requires the key to be present; use `get`/`has` otherwise.
     subscript(key: K) -> V {
-        todo()
+        self.vals[self.find_slot(key)]
     }
 }

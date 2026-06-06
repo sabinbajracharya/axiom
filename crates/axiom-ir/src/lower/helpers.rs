@@ -19,6 +19,11 @@ pub(super) struct FnLowerCtx<'a> {
     pub bindings: HashMap<HirId, Reg>,
     /// Current block being built (index into func.blocks).
     pub current_block: usize,
+    /// Whether the current block has already been terminated. Once a block
+    /// diverges (a `break`/`continue`/`return`, or any explicit terminator),
+    /// later instructions and terminators in the same block are dead code and
+    /// must be dropped — the first terminator wins. Reset by `start_block`.
+    block_terminated: bool,
     /// Loop stack: (head_label, exit_label) for break/continue.
     pub loop_stack: Vec<(String, String)>,
     /// Monotonic counter for generating unique labels.
@@ -52,6 +57,7 @@ impl<'a> FnLowerCtx<'a> {
             types,
             bindings: HashMap::new(),
             current_block: 0,
+            block_terminated: false,
             loop_stack: Vec::new(),
             label_counter: 0,
             mono_lookup,
@@ -75,14 +81,26 @@ impl<'a> FnLowerCtx<'a> {
         format!("{prefix}_{idx}")
     }
 
-    /// Emit an instruction into the current block.
+    /// Emit an instruction into the current block. Dropped if the block has
+    /// already diverged (e.g. statements after a `break`) — that code is
+    /// unreachable, and appending it would run after the terminator.
     pub fn emit(&mut self, instr: IrInstr) {
+        if self.block_terminated {
+            return;
+        }
         self.func.blocks[self.current_block].instrs.push(instr);
     }
 
-    /// Terminate the current block.
+    /// Terminate the current block. The first terminator wins: once a block has
+    /// diverged (a `break`/`continue`/`return` inside an `if` branch or match
+    /// arm), a later structural terminator (e.g. the enclosing `if`'s jump to
+    /// its merge block) must not overwrite it.
     pub fn terminate(&mut self, term: Terminator) {
+        if self.block_terminated {
+            return;
+        }
         self.func.blocks[self.current_block].terminator = term;
+        self.block_terminated = true;
     }
 
     /// Start a new block and make it current.
@@ -93,6 +111,7 @@ impl<'a> FnLowerCtx<'a> {
             terminator: Terminator::Unreachable,
         });
         self.current_block = self.func.blocks.len() - 1;
+        self.block_terminated = false;
     }
 
     /// Bind a HirId to a register.
@@ -147,6 +166,14 @@ impl<'a> FnLowerCtx<'a> {
     /// Pop a loop context.
     pub fn pop_loop(&mut self) {
         self.loop_stack.pop();
+    }
+
+    /// The innermost loop's (head, exit) labels, if inside a loop. `break`
+    /// jumps to the exit; `continue` re-enters at the head. `None` when not in
+    /// a loop (typeck rejects `break`/`continue` outside a loop, so the lowerer
+    /// just emits nothing in that case rather than panicking).
+    pub fn current_loop(&self) -> Option<(String, String)> {
+        self.loop_stack.last().cloned()
     }
 
     /// Get the current loop's head label.

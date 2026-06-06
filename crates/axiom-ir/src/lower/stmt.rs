@@ -24,11 +24,19 @@ pub(super) fn lower_stmt(stmt: &Stmt, ctx: &mut FnLowerCtx) {
             ctx.terminate(crate::ir::Terminator::Return(val));
         }
         Stmt::BreakStmt(s) => {
-            let val = s.value.as_ref().map(|v| lower_expr(v, ctx));
-            ctx.terminate(crate::ir::Terminator::Break { value: val });
+            // Evaluate any break value for its side effects (loops are
+            // Unit-typed, so the value itself is discarded), then jump to the
+            // innermost loop's exit. Resolving the target here — rather than at
+            // runtime — keeps loop control flow as plain block jumps.
+            let _ = s.value.as_ref().map(|v| lower_expr(v, ctx));
+            if let Some((_, exit)) = ctx.current_loop() {
+                ctx.terminate(crate::ir::Terminator::Jump { target: exit });
+            }
         }
         Stmt::ContinueStmt(_) => {
-            ctx.terminate(crate::ir::Terminator::Continue);
+            if let Some((head, _)) = ctx.current_loop() {
+                ctx.terminate(crate::ir::Terminator::Jump { target: head });
+            }
         }
         Stmt::YieldStmt(s) => {
             // For v0, yield evaluates its expression (same as expr stmt).

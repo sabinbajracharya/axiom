@@ -19,8 +19,7 @@ fn main() -> fn() -> Unit {
   Jump loop_body_4
   loop_body_4:
   %7 = Const Int(42)
-  %8 = Const Unit
-  Jump loop_head_3
+  Jump loop_exit_5
   loop_exit_5:
   %9 = Const Unit
   %10 = Const Unit

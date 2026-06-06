@@ -2,9 +2,9 @@
 [fn main] %1 = Const(Int(10))
 [fn main] %2 = BinOp Gt(%0, %1)
 [fn main] Branch %2 => then_0
-[fn main] %3 = Const(String("{}"))
+[fn main] %4 = Const(String("{}"))
 [fn main] 
-[fn main] Call std::io::println(%4)
+[fn main] Call std::io::println(%5)
 [fn std::io::println] %1 = Const(Int(1))
 [fn std::io::println] 
 [fn extern] write(42) => ()
@@ -18,14 +18,13 @@
 [fn std::io::println] 
 [fn std::io::println] %8 = Const(Unit)
 [fn std::io::println] Return %8
-[fn main] %6 = Copy %5
+[fn main] %3 = Copy %6
 [fn main] Jump if_merge_1
-[fn main] %7 = Copy %6
-[fn main] %8 = Const(Int(8))
-[fn main] %9 = BinOp Add(%0, %8)
-[fn main] %10 = Const(String("{}"))
+[fn main] %7 = Const(Int(8))
+[fn main] %8 = BinOp Add(%0, %7)
+[fn main] %9 = Const(String("{}"))
 [fn main] 
-[fn main] Call std::io::println(%11)
+[fn main] Call std::io::println(%10)
 [fn std::io::println] %1 = Const(Int(1))
 [fn std::io::println] 
 [fn extern] write(50) => ()
@@ -39,4 +38,4 @@
 [fn std::io::println] 
 [fn std::io::println] %8 = Const(Unit)
 [fn std::io::println] Return %8
-[fn main] Return %12
+[fn main] Return %11

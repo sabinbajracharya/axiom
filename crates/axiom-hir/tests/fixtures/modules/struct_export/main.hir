@@ -144,25 +144,144 @@ ImplDef(5) List→0<T: Deinit→<unresolved>> methods=[
   SubscriptDef(121) (index) -> T→<unresolved> body
     tail: Path(127) self→<unresolved>.Field(126) buf[Path(128) index→<unresolved>]
 ]
-StructDef(0) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private _placeholder: Int→<unresolved>]
-ImplDef(4) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[
-  FnDef(7) name=new vis=private params=[] return=Map→0<K→5, V→6> {
-    tail: Call(10) todo→1000005()
-  }
-  FnDef(11) name=get vis=private params=[let self: _, let key: K→5] return=V→6 {
-    tail: Call(16) todo→1000005()
-  }
-  FnDef(17) name=has vis=private params=[let self: _, let key: K→5] return=Bool→<unresolved> {
-    tail: Call(22) todo→1000005()
+StructDef(0) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private keys: [K→1], private vals: [V→2], private used: [Bool→<unresolved>], private count: Int→<unresolved>, private cap: Int→<unresolved>]
+ImplDef(8) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[
+  FnDef(11) name=new vis=private params=[] return=Map→0<K→9, V→10> {
+    tail: StructLit(14) Map→0 { keys: Call(15) heap_alloc→1000007(Lit(16) Int(0)), vals: Call(17) heap_alloc→1000007(Lit(18) Int(0)), used: Call(19) heap_alloc→1000007(Lit(20) Int(0)), count: Lit(21) Int(0), cap: Lit(22) Int(0) }
   }
   FnDef(23) name=count vis=private params=[let self: _] return=Int→<unresolved> {
-    tail: Call(27) todo→1000005()
+    tail: Path(28) self→24.Field(27) count
   }
-  FnDef(28) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
-    tail: Call(32) todo→1000005()
+  FnDef(29) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
+    tail: Bin(33) ==(Path(35) self→30.Field(34) count, Lit(36) Int(0))
   }
-  SubscriptDef(33) (key) -> V→<unresolved> body
-    tail: Call(37) todo→<unresolved>()
+  FnDef(37) name=has vis=private params=[let self: _, let key: K→9] return=Bool→<unresolved> {
+    tail: Bin(42) >=(Path(44) self→38.Method(43) find_slot(Path(45) key→39), Lit(46) Int(0))
+  }
+  FnDef(47) name=get vis=private params=[let self: _, let key: K→9] return=Option→0<V→10> {
+    ValStmt(55) Ident(51) slot→51: _ = Path(53) self→48.Method(52) find_slot(Path(54) key→49)
+    ExprStmt(56) If(57) Bin(58) <(Path(59) slot→51, Lit(60) Int(0)) Block(61) {
+      tail: Block(63) {
+        ReturnStmt(65) Path(64) None→3
+      }
+    }
+    tail: Call(67) Some→2(Path(70) self→48.Field(69) vals[Path(71) slot→51])
+  }
+  FnDef(72) name=set vis=private params=[inout self: _, sink key: K→9, sink value: V→10] return=_ {
+    ExprStmt(77) If(78) Path(80) self→73.Method(79) should_grow() Block(81) {
+      tail: Path(84) self→73.Method(83) grow()
+    }
+    tail: Path(87) self→73.Method(86) insert_raw(Path(88) key→74, Path(89) value→75)
+  }
+  FnDef(90) name=slot_for vis=private params=[let self: _, let key: K→9] return=Int→<unresolved> {
+    ValStmt(100) Ident(94) m→94: _ = Bin(95) %(Path(97) key→92.Method(96) hash(), Path(99) self→91.Field(98) cap)
+    tail: If(102) Bin(103) <(Path(104) m→94, Lit(105) Int(0)) Block(106) {
+      tail: Bin(108) +(Path(109) m→94, Path(111) self→91.Field(110) cap)
+    } else Block(112) {
+      tail: Path(114) m→94
+    }
+  }
+  FnDef(115) name=next_slot vis=private params=[let self: _, let i: Int→<unresolved>] return=Int→<unresolved> {
+    tail: Bin(120) %(Bin(121) +(Path(122) i→117, Lit(123) Int(1)), Path(125) self→116.Field(124) cap)
+  }
+  FnDef(126) name=find_slot vis=private params=[let self: _, let key: K→9] return=Int→<unresolved> {
+    ExprStmt(130) If(131) Bin(132) ==(Path(134) self→127.Field(133) cap, Lit(135) Int(0)) Block(136) {
+      tail: Block(138) {
+        ReturnStmt(141) Unary(139) -(Lit(140) Int(1))
+      }
+    }
+    VarStmt(146) Ident(142) i→142: _ = Path(144) self→127.Method(143) slot_for(Path(145) key→128)
+    VarStmt(149) Ident(147) probes→147: _ = Lit(148) Int(0)
+    VarStmt(153) Ident(150) result→150: _ = Unary(151) -(Lit(152) Int(1))
+    ExprStmt(154) Loop(155) Block(156) {
+      ExprStmt(157) If(158) Bin(159) ==(Path(160) probes→147, Path(162) self→127.Field(161) cap) Block(163) {
+        tail: Block(165) {
+          BreakStmt(166)
+        }
+      }
+      ExprStmt(167) If(168) Bin(169) ==(Path(172) self→127.Field(171) used[Path(173) i→142], Lit(174) Bool(false)) Block(175) {
+        tail: Block(177) {
+          BreakStmt(178)
+        }
+      }
+      ExprStmt(179) If(180) Bin(181) ==(Path(184) self→127.Field(183) keys[Path(185) i→142], Path(186) key→128) Block(187) {
+        ExprStmt(188) result→150 = Path(190) i→142
+        tail: Block(192) {
+          BreakStmt(193)
+        }
+      }
+      ExprStmt(194) i→142 = Path(197) self→127.Method(196) next_slot(Path(198) i→142)
+      tail: probes→147 = Bin(201) +(Path(202) probes→147, Lit(203) Int(1))
+    }
+    tail: Path(205) result→150
+  }
+  FnDef(206) name=probe_insert vis=private params=[let self: _, let key: K→9] return=Int→<unresolved> {
+    VarStmt(214) Ident(210) i→210: _ = Path(212) self→207.Method(211) slot_for(Path(213) key→208)
+    VarStmt(217) Ident(215) result→215: _ = Lit(216) Int(0)
+    ExprStmt(218) Loop(219) Block(220) {
+      ExprStmt(221) If(222) Bin(223) ==(Path(226) self→207.Field(225) used[Path(227) i→210], Lit(228) Bool(false)) Block(229) {
+        ExprStmt(230) result→215 = Path(232) i→210
+        tail: Block(234) {
+          BreakStmt(235)
+        }
+      }
+      ExprStmt(236) If(237) Bin(238) ==(Path(241) self→207.Field(240) keys[Path(242) i→210], Path(243) key→208) Block(244) {
+        ExprStmt(245) result→215 = Path(247) i→210
+        tail: Block(249) {
+          BreakStmt(250)
+        }
+      }
+      tail: i→210 = Path(254) self→207.Method(253) next_slot(Path(255) i→210)
+    }
+    tail: Path(257) result→215
+  }
+  FnDef(258) name=insert_raw vis=private params=[inout self: _, sink key: K→9, sink value: V→10] return=_ {
+    ValStmt(267) Ident(263) slot→263: _ = Path(265) self→259.Method(264) probe_insert(Path(266) key→260)
+    ExprStmt(268) If(269) Bin(270) ==(Path(273) self→259.Field(272) used[Path(274) slot→263], Lit(275) Bool(false)) Block(276) {
+      tail: Path(279) self→259.count = Bin(280) +(Path(282) self→259.Field(281) count, Lit(283) Int(1))
+    }
+    ExprStmt(284) Path(287) self→259.Field(286) used[Path(288) slot→263] = Lit(289) Bool(true)
+    ExprStmt(290) Path(293) self→259.Field(292) keys[Path(294) slot→263] = Path(295) key→260
+    tail: Path(299) self→259.Field(298) vals[Path(300) slot→263] = Path(301) value→261
+  }
+  FnDef(302) name=should_grow vis=private params=[let self: _] return=Bool→<unresolved> {
+    tail: Bin(306) ||(Bin(307) ==(Path(309) self→303.Field(308) cap, Lit(310) Int(0)), Bin(311) >=(Bin(312) *(Bin(313) +(Path(315) self→303.Field(314) count, Lit(316) Int(1)), Lit(317) Int(4)), Bin(318) *(Path(320) self→303.Field(319) cap, Lit(321) Int(3))))
+  }
+  FnDef(322) name=grow vis=private params=[inout self: _] return=_ {
+    VarStmt(330) Ident(325) new_cap→325: _ = Bin(326) *(Path(328) self→323.Field(327) cap, Lit(329) Int(2))
+    ExprStmt(331) If(332) Bin(333) ==(Path(334) new_cap→325, Lit(335) Int(0)) Block(336) {
+      tail: new_cap→325 = Lit(339) Int(8)
+    }
+    VarStmt(343) Ident(340) new_keys→340: [K→<unresolved>] = Call(341) heap_alloc→1000007(Path(342) new_cap→325)
+    VarStmt(347) Ident(344) new_vals→344: [V→<unresolved>] = Call(345) heap_alloc→1000007(Path(346) new_cap→325)
+    VarStmt(351) Ident(348) new_used→348: [Bool→<unresolved>] = Call(349) heap_alloc→1000007(Path(350) new_cap→325)
+    VarStmt(354) Ident(352) j→352: _ = Lit(353) Int(0)
+    ExprStmt(355) LoopCond(356) Bin(368) <(Path(369) j→352, Path(370) new_cap→325) Block(357) {
+      ExprStmt(358) Path(360) new_used→348[Path(361) j→352] = Lit(362) Bool(false)
+      tail: j→352 = Bin(365) +(Path(366) j→352, Lit(367) Int(1))
+    }
+    ValStmt(374) Ident(371) old_keys→371: _ = Path(373) self→323.Field(372) keys
+    ValStmt(378) Ident(375) old_vals→375: _ = Path(377) self→323.Field(376) vals
+    ValStmt(382) Ident(379) old_used→379: _ = Path(381) self→323.Field(380) used
+    ValStmt(386) Ident(383) old_cap→383: _ = Path(385) self→323.Field(384) cap
+    ExprStmt(387) Path(389) self→323.keys = Path(390) new_keys→340
+    ExprStmt(391) Path(393) self→323.vals = Path(394) new_vals→344
+    ExprStmt(395) Path(397) self→323.used = Path(398) new_used→348
+    ExprStmt(399) Path(401) self→323.cap = Path(402) new_cap→325
+    ExprStmt(403) Path(405) self→323.count = Lit(406) Int(0)
+    VarStmt(409) Ident(407) k→407: _ = Lit(408) Int(0)
+    ExprStmt(410) LoopCond(411) Bin(433) <(Path(434) k→407, Path(435) old_cap→383) Block(412) {
+      ExprStmt(413) If(414) Path(416) old_used→379[Path(417) k→407] Block(418) {
+        tail: Path(421) self→323.Method(420) insert_raw(Path(423) old_keys→371[Path(424) k→407], Path(426) old_vals→375[Path(427) k→407])
+      }
+      tail: k→407 = Bin(430) +(Path(431) k→407, Lit(432) Int(1))
+    }
+    ExprStmt(436) Call(437) heap_free→1000010(Path(438) old_keys→371)
+    ExprStmt(439) Call(440) heap_free→1000010(Path(441) old_vals→375)
+    tail: Call(443) heap_free→1000010(Path(444) old_used→379)
+  }
+  SubscriptDef(445) (key) -> V→<unresolved> body
+    tail: Path(451) self→<unresolved>.Field(450) vals[Path(453) self→<unresolved>.Method(452) find_slot(Path(454) key→<unresolved>)]
 ]
 UseItem(0) core::platform::write
 FnDef(1) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
@@ -172,8 +291,8 @@ FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(12) Call(13) write→0(Lit(14) Int(1), Path(16) s→10.Method(15) as_bytes())
   ExprStmt(17) Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
 }
-UseItem(123) models::Point
-FnDef(124) name=main vis=private params=[] return=_ {
-  ValStmt(130) Ident(126) p→126: _ = StructLit(127) Point→131 { x: Lit(128) Int(1), y: Lit(129) Int(2) }
+UseItem(447) models::Point
+FnDef(448) name=main vis=private params=[] return=_ {
+  ValStmt(454) Ident(450) p→450: _ = StructLit(451) Point→455 { x: Lit(452) Int(1), y: Lit(453) Int(2) }
 }
-StructDef(131) name=Point vis=pub fields=[pub x: Int→<unresolved>, pub y: Int→<unresolved>]
+StructDef(455) name=Point vis=pub fields=[pub x: Int→<unresolved>, pub y: Int→<unresolved>]

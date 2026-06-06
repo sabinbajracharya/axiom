@@ -21,6 +21,7 @@ mod helpers;
 mod infer;
 mod methods;
 mod stmt;
+mod typeinfo;
 mod unify;
 
 use crate::error::TypeDiagnostic;

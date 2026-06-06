@@ -49,24 +49,14 @@ fn self_param(convention: CallingConvention, ty: HirTy) -> Param {
     }
 }
 
-/// Helper to build a named parameter.
-fn named_param(id: HirId, convention: CallingConvention, name: &str, ty: HirTy) -> Param {
-    Param {
-        id,
-        convention,
-        name: name.to_string(),
-        ty: Some(ty),
-    }
-}
-
 impl TypeChecker {
-    /// Register inherent methods for built-in types (Map, String).
+    /// Register inherent methods for built-in types (String floor ops).
     ///
-    /// `List` has no entry here any more: it is real library code in
-    /// `stdlib/std/collections/list.ax`, built on the `HeapBuffer<T>` floor
-    /// ops (migration M6). `Map` follows in M7.
+    /// Neither `List` nor `Map` has an entry here any more: both are real
+    /// library code in `stdlib/std/collections/*.ax`, built on the
+    /// `HeapBuffer<T>` floor ops (migrations M6/M7). What remains is the
+    /// irreducible String/Bytes/hash floor.
     pub(super) fn register_builtin_methods(&mut self) {
-        self.register_map_methods();
         self.register_string_methods();
         self.register_hash_methods();
     }
@@ -94,48 +84,6 @@ impl TypeChecker {
                 type_param_bounds: HashMap::new(),
             });
         }
-    }
-
-    fn register_map_methods(&mut self) {
-        let k_tp = HirTypeParam {
-            id: HirId(200),
-            name: "K".to_string(),
-            bounds: vec![],
-        };
-        let v_tp = HirTypeParam {
-            id: HirId(201),
-            name: "V".to_string(),
-            bounds: vec![],
-        };
-        let k_ty = HirTy::TypeParam(k_tp.clone());
-        let v_ty = HirTy::TypeParam(v_tp.clone());
-        let map_ty = HirTy::Instance(axiom_hir::InstanceTy {
-            name: axiom_hir::NameRef::unresolved("Map"),
-            args: vec![k_ty.clone(), v_ty.clone()],
-        });
-        let tps = vec![k_tp, v_tp];
-
-        // Only `set` remains as a compiler intrinsic. The other Map methods
-        // (get, has, count, is_empty, subscript) are defined in stdlib/std/collections/map.ax.
-        let methods = vec![make_fn(
-            "set",
-            tps,
-            vec![
-                self_param(CallingConvention::Inout, map_ty),
-                named_param(HirId(203), CallingConvention::Sink, "key", k_ty),
-                named_param(HirId(204), CallingConvention::Sink, "value", v_ty),
-            ],
-            None,
-        )];
-
-        self.impl_table.push(ImplInfo {
-            trait_name: None,
-            type_name: "Map".to_string(),
-            methods,
-            subscripts: vec![],
-            type_params: vec![("K".to_string(), HirId(200)), ("V".to_string(), HirId(201))],
-            type_param_bounds: HashMap::new(),
-        });
     }
 
     fn register_string_methods(&mut self) {
@@ -257,17 +205,16 @@ mod tests {
     }
 
     #[test]
-    fn test_builtin_map_methods_registered() {
+    fn test_no_builtin_map_methods_registered() {
+        // `Map` is fully library code now (M7): no compiler-registered methods.
         let mut checker = make_checker("fn main() {}");
         checker.register_builtin_methods();
-        let map_impl = checker
-            .impl_table
-            .iter()
-            .find(|i| i.trait_name.is_none() && i.type_name == "Map")
-            .unwrap();
-        let names: Vec<_> = map_impl.methods.iter().map(|m| m.name.as_str()).collect();
-        // Only `set` remains as compiler intrinsic. get/has/count/is_empty
-        // are now defined in stdlib/std/collections/map.ax.
-        assert_eq!(names, vec!["set"]);
+        assert!(
+            !checker
+                .impl_table
+                .iter()
+                .any(|i| i.trait_name.is_none() && i.type_name == "Map"),
+            "Map should have no compiler-registered impl methods"
+        );
     }
 }

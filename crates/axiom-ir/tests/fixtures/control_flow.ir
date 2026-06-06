@@ -5,17 +5,16 @@ fn main() -> fn() -> Unit {
   %2 = BinOp > %0 %1
   Branch %2 then_0 else_2
   then_0:
-  %3 = Const String("positive")
-  %4 = Call print [%3]
-  %5 = Copy %4
+  %4 = Const String("positive")
+  %5 = Call print [%4]
+  %3 = Copy %5
   Jump if_merge_1
   else_2:
   %6 = Const String("non-positive")
   %7 = Call print [%6]
-  %8 = Copy %7
+  %3 = Copy %7
   Jump if_merge_1
   if_merge_1:
-  %9 = Copy %5
-  Return %9
+  Return %3
 }
 
