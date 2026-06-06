@@ -75,38 +75,48 @@ the `symbols.rs` single-source-of-truth discipline the lexer already follows
 §6.2 "no raw stdlib-name strings" guard) fails the build if a qualified `List::…` string
 reappears outside the module.
 
-### 3.2 Step 2 — Resolve a *real* `def_id` (kill the `HirId(0)` lie) — [Deferred]
+### 3.2 Step 2 — Resolve a *real* `def_id` (kill the `HirId(0)` lie) — [Done]
 
-During name resolution (or a small post-resolution step), look up the actual stdlib
-`List` item, capture its **real `DefId`**, and stash it in a context that typeck/lowering
-read. `infer_list_lit` then builds `Ty::Instance` with the true id. Benefits:
+After name resolution, the multi-module driver (`check_modules`) collects every
+`@lang("…")` binding from the **stdlib** HIR and resolves each required lang item to its
+**real `DefId`** (`axiom_hir::resolve_lang_items` → `LangItems`). `infer_list_lit` and
+`build_impl_self_pattern` now stamp the list type's `Ty::Instance` with the true id
+(falling back to the inert `HirId(0)` only in the deliberate no-stdlib test mode, where
+the field is never read anyway). Benefits, realized:
 
-- removes the placeholder `HirId(0)` (C1, C2);
-- a **missing/duplicate `List`** becomes a *defined, clear compiler error at a single
-  point* ("required lang type `List` not found") instead of a silent wrong pointer.
+- removes the placeholder `HirId(0)` for the list type (C1, C2);
+- a **missing/duplicate `List`** binding becomes a *defined compiler diagnostic at a single
+  point* (`MissingLangItem`/`DuplicateLangItem`) instead of a silent wrong pointer.
 
-### 3.3 Step 3 — Lang items: tag the binding in the stdlib — [Deferred] (end-state)
+### 3.3 Step 3 — Lang items: tag the binding in the stdlib — [Done]
 
-The stdlib type declares *itself* as the one the compiler should use:
+The stdlib type declares *itself* as the one the compiler should use, via an `@lang("…")`
+attribute (lexed as `Punct::At`, parsed as an `Attr`/`AttrList` node, lowered to a
+`lang_tag` on the HIR `StructDef`/`FnDef`):
 
 ```axiom
-@lang("list")            // attribute / annotation — exact spelling TBD (open Q O1)
+@lang("list")
 struct List<T: Deinit> { ... }
+
+@lang("list_new")
+fn new() -> List<T> { ... }
 
 @lang("list_with_capacity")
 fn with_capacity(capacity: Int) -> List<T> { ... }
+
+@lang("list_push")
+fn push(inout self, sink element: T) { ... }
 ```
 
-The compiler resolves "the type tagged `list`" rather than matching the string `"List"`.
-Now the name is **not hardcoded anywhere** — rename `List` → `Vector` and, as long as the
-tag moves with it, `[...]` keeps working. This is exactly how Rust binds `for`↔`Iterator`,
-`?`↔`Try`, range literals, etc. (`#[lang = "..."]`). It is the natural home for the *whole*
-family of couplings (§5), which is why it's worth the build cost **once several exist**,
-not for `List` alone.
+The compiler resolves "the def tagged `list`" rather than matching the string `"List"`.
+The name is no longer load-bearing — rename `List` → `Vector` and, as long as the tag moves
+with it, `[...]` keeps working. `@lang` tags are honored **only inside the stdlib**; a tag in
+user code is rejected (`LangItemOutsideStdlib`) so user code can't hijack a lang item.
 
-Registry shape: `LangItems { list: DefId, list_new: DefId, list_with_capacity: DefId,
-list_push: DefId, map: DefId, … }`, populated once after resolution, read by typeck, mono,
-and IR lowering. Step 2's "real `def_id`" generalises into this.
+Registry shape (`axiom_hir::LangItems`): `{ list, list_new, list_with_capacity, list_push }`
+as `Option<DefId>`, populated once after resolution, read by typeck (and, next, IR lowering
+and the desugar pass). New keys join `REQUIRED_LANG_ITEMS`; a required key with no stdlib
+binding fails the consistency check.
 
 ## 4. The desugaring stage — where should sugar expand? — [Decided: interim] / [Deferred: end-state]
 
@@ -223,7 +233,8 @@ that shows the call chain.
    string-keyed). Green before behaviour changes. ✅ **Done** — `axiom-hir/src/lang.rs` +
    `lang::tests` source-scan drift guard.
 2. **§3.2/§3.3 lang-item registry** — resolve real `def_id`s; consistency test (§6.2) goes
-   green; `infer_list_lit` switches off `HirId(0)`. *No desugaring moved yet.*
+   green; `infer_list_lit` switches off `HirId(0)`. *No desugaring moved yet.* ✅ **Done** —
+   `@lang` attribute + `axiom_hir::LangItems`; `tests/lang_items.rs` consistency + policy.
 3. **§6.3 coverage invariant** + goldens for the *existing* IR desugaring — lock current
    behaviour before relocating it.
 4. **§4 HIR desugar pass** — introduce the pass; move list-literal desugaring HIR-ward
@@ -237,6 +248,8 @@ that shows the call chain.
 
 ### 8.1 Decisions captured by this doc (not open)
 
+- **Lang-item tag syntax is the `@lang("…")` attribute** (O1, resolved) — self-describing on
+  the def, honored only inside the stdlib.
 - **Prelude visibility stays independent from lang-item binding.** Lang items are compiler
   binding metadata, not automatic prelude imports.
 - **HIR desugar ordering:** resolve declarations + lang items first, then desugar, then
@@ -247,7 +260,6 @@ that shows the call chain.
 
 | # | Question | Lean |
 |---|---|---|
-| O1 | Lang-item tag syntax — `@lang("list")` attribute vs a compiler-side allow-list vs a `prelude`-style registry file? | attribute on the def (self-describing, Rust-like) |
 | O3 | Is `subscript` (C4) a lang item, or does name-convention dispatch stay? | keep convention unless it bites |
 
 ## 9. Cross-references

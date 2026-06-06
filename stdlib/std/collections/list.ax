@@ -6,6 +6,7 @@
 // `List` — every method below has a real body (migration M6; see
 // docs/builtin-to-stdlib-migration.md).
 
+@lang("list")
 struct List<T: Deinit> {
     buf: [T],
     count: Int,
@@ -15,6 +16,7 @@ struct List<T: Deinit> {
 impl<T: Deinit> List<T> {
     // An empty list. The backing buffer is allocated lazily on first `push`
     // (capacity starts at 0), so `new` never needs an element witness.
+    @lang("list_new")
     fn new() -> List<T> {
         List { buf: heap_alloc(0), count: 0, cap: 0 }
     }
@@ -23,6 +25,7 @@ impl<T: Deinit> List<T> {
     // front, so pushing up to `capacity` items never reallocates. The list-literal
     // lowering uses this (`[a, b, c]` → `with_capacity(3)` + pushes) so a
     // fixed-size literal allocates exactly once instead of growing 0 → 4 → 8 → …
+    @lang("list_with_capacity")
     fn with_capacity(capacity: Int) -> List<T> {
         List { buf: heap_alloc(capacity), count: 0, cap: capacity }
     }
@@ -40,6 +43,7 @@ impl<T: Deinit> List<T> {
     }
 
     // Append `element`, growing the buffer first if it is full.
+    @lang("list_push")
     fn push(inout self, sink element: T) {
         if self.count == self.cap {
             self.grow()

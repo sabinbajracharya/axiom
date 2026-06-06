@@ -36,6 +36,7 @@ fn make_fn(
             tail: None,
         },
         extern_abi: None,
+        lang_tag: None,
     }
 }
 
@@ -155,7 +156,7 @@ mod tests {
         let result = axiom_parser::parse(source);
         let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
         let hir = lower(&root, source, None);
-        TypeChecker::new(hir)
+        TypeChecker::new(hir, axiom_hir::LangItems::default())
     }
 
     #[test]

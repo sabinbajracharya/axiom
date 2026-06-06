@@ -39,6 +39,165 @@ pub fn subscript_fn(type_name: &str) -> String {
     format!("{type_name}::{SUBSCRIPT}")
 }
 
+// ── Lang items ────────────────────────────────────────────────────────────────
+//
+// A lang item is a stdlib definition the compiler is welded to, bound by a
+// `@lang("key")` attribute rather than matched by spelling
+// (`docs/lang-items-and-desugaring-design.md` §3.3). The registry below resolves
+// every required key to the **real** stdlib `DefId`, killing the placeholder
+// `HirId(0)` that list-literal typing used to fabricate (§3.2).
+
+use crate::error::HirDiagnostic;
+use crate::hir::{HirId, Item};
+use axiom_lexer::Span;
+
+/// The `@lang("…")` key for the list type backing `[a, b, c]`.
+pub const LANG_LIST: &str = "list";
+/// The `@lang("…")` key for `List::new`.
+pub const LANG_LIST_NEW: &str = "list_new";
+/// The `@lang("…")` key for `List::with_capacity`.
+pub const LANG_LIST_WITH_CAPACITY: &str = "list_with_capacity";
+/// The `@lang("…")` key for `List::push`.
+pub const LANG_LIST_PUSH: &str = "list_push";
+
+/// Every lang-item key the compiler requires the stdlib to bind exactly once.
+/// Adding a key here without a stdlib `@lang` binding fails the build (the
+/// registry consistency guarantee, §6.2) — the lang-item analogue of an unnamed
+/// `TokenKind` failing the lexer's symbol-consistency test.
+pub const REQUIRED_LANG_ITEMS: &[&str] = &[
+    LANG_LIST,
+    LANG_LIST_NEW,
+    LANG_LIST_WITH_CAPACITY,
+    LANG_LIST_PUSH,
+];
+
+/// The compiler-required lang items, resolved to their real stdlib `DefId`s.
+/// Populated once after name resolution; read by typeck (and, later, the HIR
+/// desugar pass) so synthesized list-literal types/calls point at the true
+/// `List` definition instead of a placeholder.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LangItems {
+    pub list: Option<HirId>,
+    pub list_new: Option<HirId>,
+    pub list_with_capacity: Option<HirId>,
+    pub list_push: Option<HirId>,
+}
+
+impl LangItems {
+    /// Look up a resolved lang item by key.
+    fn get(&self, key: &str) -> Option<HirId> {
+        match key {
+            LANG_LIST => self.list,
+            LANG_LIST_NEW => self.list_new,
+            LANG_LIST_WITH_CAPACITY => self.list_with_capacity,
+            LANG_LIST_PUSH => self.list_push,
+            _ => None,
+        }
+    }
+
+    /// Record a lang item, returning `false` if the key was already bound
+    /// (a duplicate) or is not a recognized key (an orphan tag).
+    fn set(&mut self, key: &str, def_id: HirId) -> SetOutcome {
+        let slot = match key {
+            LANG_LIST => &mut self.list,
+            LANG_LIST_NEW => &mut self.list_new,
+            LANG_LIST_WITH_CAPACITY => &mut self.list_with_capacity,
+            LANG_LIST_PUSH => &mut self.list_push,
+            _ => return SetOutcome::Orphan,
+        };
+        if slot.is_some() {
+            return SetOutcome::Duplicate;
+        }
+        *slot = Some(def_id);
+        SetOutcome::Bound
+    }
+}
+
+enum SetOutcome {
+    Bound,
+    Duplicate,
+    Orphan,
+}
+
+/// A `@lang("key")` binding discovered in a module's HIR: the key and the real
+/// `DefId` it annotates.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LangBinding {
+    pub key: String,
+    pub def_id: HirId,
+}
+
+/// Collect every `@lang("…")` binding in a module's items — top-level structs
+/// and functions, plus impl-associated methods (where `List::new`/`push`/… live,
+/// so a `Def`-only scan would miss them).
+pub fn collect_lang_bindings(items: &[Item]) -> Vec<LangBinding> {
+    let mut out = Vec::new();
+    for item in items {
+        match item {
+            Item::StructDef(s) => push_tag(&mut out, &s.lang_tag, s.id),
+            Item::FnDef(f) => push_tag(&mut out, &f.lang_tag, f.id),
+            Item::ImplDef(i) => {
+                for m in &i.methods {
+                    push_tag(&mut out, &m.lang_tag, m.id);
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+fn push_tag(out: &mut Vec<LangBinding>, tag: &Option<String>, def_id: HirId) {
+    if let Some(key) = tag {
+        out.push(LangBinding {
+            key: key.clone(),
+            def_id,
+        });
+    }
+}
+
+/// Assemble the lang-item registry from the bindings found in the **stdlib**.
+/// Produces a consistency diagnostic for every drift (§6.2/§6.5):
+///
+/// - a duplicate binding for one key → [`HirDiagnostic::DuplicateLangItem`];
+/// - a `@lang` tag with no recognized key → [`HirDiagnostic::OrphanLangItem`];
+/// - (when `enforce_required`) a required key with no binding →
+///   [`HirDiagnostic::MissingLangItem`].
+///
+/// `enforce_required` is `true` exactly when the stdlib is loaded; the bare
+/// no-stdlib test mode deliberately has no lang items and skips the requirement.
+pub fn resolve_lang_items(
+    stdlib_bindings: &[LangBinding],
+    enforce_required: bool,
+) -> (LangItems, Vec<HirDiagnostic>) {
+    let mut items = LangItems::default();
+    let mut diags = Vec::new();
+    for binding in stdlib_bindings {
+        match items.set(&binding.key, binding.def_id) {
+            SetOutcome::Bound => {}
+            SetOutcome::Duplicate => diags.push(HirDiagnostic::DuplicateLangItem {
+                key: binding.key.clone(),
+                span: Span { lo: 0, hi: 0 },
+            }),
+            SetOutcome::Orphan => diags.push(HirDiagnostic::OrphanLangItem {
+                key: binding.key.clone(),
+                span: Span { lo: 0, hi: 0 },
+            }),
+        }
+    }
+    if enforce_required {
+        for key in REQUIRED_LANG_ITEMS {
+            if items.get(key).is_none() {
+                diags.push(HirDiagnostic::MissingLangItem {
+                    key: (*key).to_string(),
+                    span: Span { lo: 0, hi: 0 },
+                });
+            }
+        }
+    }
+    (items, diags)
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
@@ -48,6 +207,108 @@ mod tests {
     fn test_subscript_fn_qualifies() {
         assert_eq!(subscript_fn("List"), "List::subscript");
         assert_eq!(subscript_fn("Grid"), "Grid::subscript");
+    }
+
+    fn binding(key: &str, id: usize) -> LangBinding {
+        LangBinding {
+            key: key.to_string(),
+            def_id: HirId(id),
+        }
+    }
+
+    fn full_bindings() -> Vec<LangBinding> {
+        vec![
+            binding(LANG_LIST, 1),
+            binding(LANG_LIST_NEW, 2),
+            binding(LANG_LIST_WITH_CAPACITY, 3),
+            binding(LANG_LIST_PUSH, 4),
+        ]
+    }
+
+    #[test]
+    fn test_resolve_lang_items_complete_set_is_clean() {
+        let (items, diags) = resolve_lang_items(&full_bindings(), true);
+        assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
+        assert_eq!(items.list, Some(HirId(1)));
+        assert_eq!(items.list_new, Some(HirId(2)));
+        assert_eq!(items.list_with_capacity, Some(HirId(3)));
+        assert_eq!(items.list_push, Some(HirId(4)));
+    }
+
+    #[test]
+    fn test_resolve_lang_items_missing_required_emits_diagnostic() {
+        // Drop `list_push`; the requirement check should flag exactly it.
+        let mut bindings = full_bindings();
+        bindings.pop();
+        let (_items, diags) = resolve_lang_items(&bindings, true);
+        assert_eq!(diags.len(), 1, "diags: {diags:?}");
+        assert!(matches!(
+            &diags[0],
+            HirDiagnostic::MissingLangItem { key, .. } if key == LANG_LIST_PUSH
+        ));
+    }
+
+    #[test]
+    fn test_resolve_lang_items_no_enforcement_skips_missing() {
+        // The no-stdlib mode: an empty binding set is fine when not enforcing.
+        let (items, diags) = resolve_lang_items(&[], false);
+        assert!(diags.is_empty(), "diags: {diags:?}");
+        assert_eq!(items, LangItems::default());
+    }
+
+    #[test]
+    fn test_resolve_lang_items_duplicate_emits_diagnostic() {
+        let mut bindings = full_bindings();
+        bindings.push(binding(LANG_LIST, 99));
+        let (_items, diags) = resolve_lang_items(&bindings, true);
+        assert!(
+            diags.iter().any(
+                |d| matches!(d, HirDiagnostic::DuplicateLangItem { key, .. } if key == LANG_LIST)
+            ),
+            "expected DuplicateLangItem, got {diags:?}"
+        );
+    }
+
+    #[test]
+    fn test_resolve_lang_items_orphan_tag_emits_diagnostic() {
+        let mut bindings = full_bindings();
+        bindings.push(binding("not_a_lang_item", 50));
+        let (_items, diags) = resolve_lang_items(&bindings, true);
+        assert!(
+            diags.iter().any(|d| matches!(
+                d,
+                HirDiagnostic::OrphanLangItem { key, .. } if key == "not_a_lang_item"
+            )),
+            "expected OrphanLangItem, got {diags:?}"
+        );
+    }
+
+    #[test]
+    fn test_collect_lang_bindings_from_struct_and_impl_methods() {
+        // `@lang` on a struct and on impl-associated methods are all collected,
+        // including the methods that a `Def`-only scan would miss.
+        let source = "\
+@lang(\"list\")
+struct List<T> { count: Int }
+impl<T> List<T> {
+    @lang(\"list_new\")
+    fn new() -> List<T> { List { count: 0 } }
+    fn untagged() -> Int { 0 }
+}
+";
+        let result = axiom_parser::parse(source);
+        let root = <axiom_parser::ast::SourceFile as axiom_parser::ast::AstNode>::cast(result.tree)
+            .unwrap();
+        let (items, _defs, _diags, _nid) = crate::lower_structural(&root, source, 0);
+        let bindings = collect_lang_bindings(&items);
+        let keys: Vec<&str> = bindings.iter().map(|b| b.key.as_str()).collect();
+        assert!(keys.contains(&LANG_LIST), "keys: {keys:?}");
+        assert!(keys.contains(&LANG_LIST_NEW), "keys: {keys:?}");
+        assert_eq!(
+            bindings.len(),
+            2,
+            "untagged methods must not appear: {keys:?}"
+        );
     }
 
     /// Drift guard (`docs/lang-items-and-desugaring-design.md` §6.2, "no raw

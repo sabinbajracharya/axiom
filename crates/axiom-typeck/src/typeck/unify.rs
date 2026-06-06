@@ -137,10 +137,13 @@ mod tests {
 
     #[test]
     fn test_unify_type_param_with_concrete() {
-        let checker = TypeChecker::new(axiom_hir::Hir {
-            items: vec![],
-            diagnostics: vec![],
-        });
+        let checker = TypeChecker::new(
+            axiom_hir::Hir {
+                items: vec![],
+                diagnostics: vec![],
+            },
+            axiom_hir::LangItems::default(),
+        );
         let mut subst = Substitution::new();
         // unify Int with T → T = Int
         assert!(checker.unify(&Ty::Int, &tp("T", 0), &mut subst).is_ok());
@@ -156,10 +159,13 @@ mod tests {
 
     #[test]
     fn test_unify_type_param_conflict() {
-        let checker = TypeChecker::new(axiom_hir::Hir {
-            items: vec![],
-            diagnostics: vec![],
-        });
+        let checker = TypeChecker::new(
+            axiom_hir::Hir {
+                items: vec![],
+                diagnostics: vec![],
+            },
+            axiom_hir::LangItems::default(),
+        );
         let mut subst = Substitution::new();
         assert!(checker.unify(&Ty::Int, &tp("T", 0), &mut subst).is_ok());
         // T is bound to Int; unifying with Float should fail.
@@ -168,10 +174,13 @@ mod tests {
 
     #[test]
     fn test_unify_same_concrete() {
-        let checker = TypeChecker::new(axiom_hir::Hir {
-            items: vec![],
-            diagnostics: vec![],
-        });
+        let checker = TypeChecker::new(
+            axiom_hir::Hir {
+                items: vec![],
+                diagnostics: vec![],
+            },
+            axiom_hir::LangItems::default(),
+        );
         let mut subst = Substitution::new();
         assert!(checker.unify(&Ty::Int, &Ty::Int, &mut subst).is_ok());
         assert!(checker.unify(&Ty::Bool, &Ty::Float, &mut subst).is_err());

@@ -32,6 +32,10 @@ pub struct FnDef {
     /// `Some("C")` for `extern "C" fn`, `Some("")` for `extern fn`, `None` for
     /// regular functions. Extern functions have no user-written body.
     pub extern_abi: Option<String>,
+    /// The `@lang("…")` binding tag, if this fn is a compiler-recognized lang
+    /// item (e.g. `list_new`). `None` for ordinary functions. See
+    /// `docs/lang-items-and-desugaring-design.md` §3.3.
+    pub lang_tag: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +53,9 @@ pub struct StructDef {
     pub visibility: Visibility,
     pub type_params: Vec<HirTypeParam>,
     pub fields: Vec<FieldDef>,
+    /// The `@lang("…")` binding tag, if this struct is a compiler-recognized
+    /// lang item (e.g. `list`). `None` for ordinary structs.
+    pub lang_tag: Option<String>,
 }
 
 #[derive(Debug, Clone)]

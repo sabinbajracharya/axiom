@@ -360,6 +360,7 @@ mod tests {
                     tail: None,
                 },
                 extern_abi: None,
+                lang_tag: None,
             })],
             diagnostics: vec![],
         };

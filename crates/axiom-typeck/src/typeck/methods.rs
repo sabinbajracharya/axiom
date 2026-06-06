@@ -280,9 +280,22 @@ impl TypeChecker {
             .collect();
         Ty::Instance(InstanceTy {
             name: info.type_name.clone(),
-            def_id: HirId(0),
+            def_id: self.lang_def_id_for_type(&info.type_name),
             args,
         })
+    }
+
+    /// The real stdlib `DefId` for a type that is a compiler lang item (today:
+    /// `List`), or the `HirId(0)` placeholder for ordinary types — whose
+    /// `Instance.def_id` is never read downstream, so the placeholder is inert.
+    /// This kills the `HirId(0)` lie for the list type specifically (C2, §3.2).
+    fn lang_def_id_for_type(&self, type_name: &str) -> HirId {
+        if type_name == axiom_hir::lang::LIST {
+            if let Some(id) = self.lang_items.list {
+                return id;
+            }
+        }
+        HirId(0)
     }
 
     /// Check a method call against a resolved FnDef: arity, arg types, return type.
@@ -485,7 +498,7 @@ impl TypeChecker {
         }
         let ty = Ty::Instance(InstanceTy {
             name: axiom_hir::lang::LIST.to_string(),
-            def_id: HirId(0),
+            def_id: self.lang_items.list.unwrap_or(HirId(0)),
             args: vec![first_ty],
         });
         self.types.insert(list.id, ty.clone());

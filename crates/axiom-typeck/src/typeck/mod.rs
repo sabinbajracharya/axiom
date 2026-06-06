@@ -37,7 +37,15 @@ use std::collections::HashMap;
 /// Never panics on user-reachable input. Returns a Thir even if
 /// type errors exist; diagnostics are in `thir.diagnostics`.
 pub fn check(hir: Hir) -> Thir {
-    let mut checker = TypeChecker::new(hir);
+    check_with_lang_items(hir, axiom_hir::LangItems::default())
+}
+
+/// Type-check with a resolved lang-item registry. The multi-module driver
+/// (`check_modules`) builds the registry from the stdlib and passes it here so
+/// list-literal types resolve to the real `List` def; the bare `check` keeps an
+/// empty registry for compiler-isolation tests.
+pub fn check_with_lang_items(hir: Hir, lang_items: axiom_hir::LangItems) -> Thir {
+    let mut checker = TypeChecker::new(hir, lang_items);
     checker.collect_pass();
     checker.check_pass();
     Thir {
@@ -77,6 +85,10 @@ struct TypeChecker {
     /// Populated during collect_pass for all generic functions.
     /// Used by bound checking to find the bounds for a callee's type params.
     type_param_bounds: HashMap<HirId, Vec<String>>,
+    /// Compiler-required lang items resolved to real stdlib DefIds. Empty in the
+    /// no-stdlib test mode. Read when synthesizing list-literal types so they
+    /// point at the true `List` def instead of a placeholder (§3.2).
+    lang_items: axiom_hir::LangItems,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,7 +221,7 @@ impl TypeEnv {
 }
 
 impl TypeChecker {
-    fn new(hir: Hir) -> Self {
+    fn new(hir: Hir, lang_items: axiom_hir::LangItems) -> Self {
         TypeChecker {
             hir,
             types: TypeMap::new(),
@@ -222,6 +234,7 @@ impl TypeChecker {
             impl_table: Vec::new(),
             current_self_type: None,
             type_param_bounds: HashMap::new(),
+            lang_items,
         }
     }
 

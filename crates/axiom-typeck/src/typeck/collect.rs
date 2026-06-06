@@ -455,6 +455,7 @@ impl TypeChecker {
                     return_type: m.return_type.clone(),
                     body,
                     extern_abi: None,
+                    lang_tag: None,
                 })
             })
             .collect()

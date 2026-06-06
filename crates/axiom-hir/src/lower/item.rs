@@ -83,6 +83,7 @@ fn lower_fn_inner(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
         return_type,
         body,
         extern_abi: f.extern_abi(),
+        lang_tag: lang_tag_of(f.attr_list()),
     }
 }
 
@@ -248,7 +249,19 @@ fn lower_struct_def(s: &ast::StructDef, ctx: &mut LowerCtx) -> StructDef {
         visibility,
         type_params,
         fields,
+        lang_tag: lang_tag_of(s.attr_list()),
     }
+}
+
+/// Extract the `@lang("…")` binding tag from an item's attribute list, if any.
+/// Only the `lang` attribute is recognized; its single string argument is the
+/// lang-item key. See `docs/lang-items-and-desugaring-design.md` §3.3.
+fn lang_tag_of(attrs: Option<ast::AttrList>) -> Option<String> {
+    attrs?
+        .attrs()
+        .into_iter()
+        .find(|a| a.name().as_deref() == Some("lang"))
+        .and_then(|a| a.arg())
 }
 
 fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {

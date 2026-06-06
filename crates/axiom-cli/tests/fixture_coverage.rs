@@ -123,6 +123,7 @@ fn default_exclusions() -> BTreeSet<(String, String)> {
 
     // ── Parser-only ──
     for feature in [
+        "attributes",
         "closures_scope",
         "comments",
         "error_handling",

@@ -30,6 +30,9 @@ mod serialize;
 
 pub use error::HirDiagnostic;
 pub use hir::*;
+pub use lang::{
+    collect_lang_bindings, resolve_lang_items, LangBinding, LangItems, REQUIRED_LANG_ITEMS,
+};
 pub use lower::{lower, lower_structural, Def, DefKind};
 pub use resolve::{build_global_exports, resolve_with_globals, GlobalExports};
 pub use serialize::serialize;

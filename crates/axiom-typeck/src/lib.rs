@@ -35,7 +35,7 @@ pub use error::TypeDiagnostic;
 pub use mono::{monomorphize, MonoInstance, MonoResult};
 pub use serialize::serialize;
 pub use thir::{Thir, TypeMap};
-pub use typeck::check;
+pub use typeck::{check, check_with_lang_items};
 pub use types::{EnumTy, FnTy, StructTy, Ty, TypeParamId};
 
 /// Compile a set of `(module_name, source)` modules together into one `Thir`.
@@ -75,19 +75,45 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
 
     let mut all_items: Vec<axiom_hir::Item> = Vec::new();
     let mut all_diags: Vec<axiom_hir::HirDiagnostic> = Vec::new();
+    // Lang-item bindings discovered in the stdlib; any `@lang` tag in a
+    // non-stdlib module is rejected so user code can't hijack a lang item.
+    let mut stdlib_bindings: Vec<axiom_hir::LangBinding> = Vec::new();
+    let mut stdlib_present = false;
     for (name, items, defs, diags) in &mut lowered {
         let mut items = std::mem::take(items);
         let mut diagnostics = std::mem::take(diags);
         axiom_hir::resolve_with_globals(&mut items, defs, &mut diagnostics, &exports, name);
+        let bindings = axiom_hir::collect_lang_bindings(&items);
+        if is_stdlib_module(name) {
+            stdlib_present = true;
+            stdlib_bindings.extend(bindings);
+        } else {
+            for b in bindings {
+                diagnostics.push(axiom_hir::HirDiagnostic::LangItemOutsideStdlib {
+                    key: b.key,
+                    span: axiom_lexer::Span { lo: 0, hi: 0 },
+                });
+            }
+        }
         all_diags.append(&mut diagnostics);
         all_items.append(&mut items);
     }
+
+    let (lang_items, mut lang_diags) =
+        axiom_hir::resolve_lang_items(&stdlib_bindings, stdlib_present);
+    all_diags.append(&mut lang_diags);
 
     let hir = axiom_hir::Hir {
         items: all_items,
         diagnostics: all_diags,
     };
-    check(hir)
+    check_with_lang_items(hir, lang_items)
+}
+
+/// Whether a module path belongs to the embedded standard library. Lang-item
+/// `@lang` tags are honored only here; everywhere else they are an error.
+fn is_stdlib_module(name: &str) -> bool {
+    name.starts_with("core") || name.starts_with("std")
 }
 
 /// Bare type-check — the deliberate, **labeled** no-stdlib mode: the user source

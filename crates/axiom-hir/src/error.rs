@@ -27,6 +27,14 @@ pub enum HirDiagnostic {
         module: String,
         span: Span,
     },
+    #[error("required lang item `{key}` was not found in the standard library")]
+    MissingLangItem { key: String, span: Span },
+    #[error("lang item `{key}` is bound more than once")]
+    DuplicateLangItem { key: String, span: Span },
+    #[error("unknown lang item `{key}`: no compiler consumer for this `@lang` tag")]
+    OrphanLangItem { key: String, span: Span },
+    #[error("`@lang` attributes are only allowed in the standard library (found `{key}`)")]
+    LangItemOutsideStdlib { key: String, span: Span },
 }
 
 impl HirDiagnostic {
@@ -36,7 +44,11 @@ impl HirDiagnostic {
             | HirDiagnostic::DuplicateDefinition { span, .. }
             | HirDiagnostic::ArityMismatch { span, .. }
             | HirDiagnostic::NotYetSupported { span, .. }
-            | HirDiagnostic::PrivateImport { span, .. } => *span,
+            | HirDiagnostic::PrivateImport { span, .. }
+            | HirDiagnostic::MissingLangItem { span, .. }
+            | HirDiagnostic::DuplicateLangItem { span, .. }
+            | HirDiagnostic::OrphanLangItem { span, .. }
+            | HirDiagnostic::LangItemOutsideStdlib { span, .. } => *span,
         }
     }
 
