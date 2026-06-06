@@ -9,7 +9,7 @@
 ## 0. The concern this answers
 
 A handful of language features are *defined* in terms of specific standard-library
-types: `[a, b, c]` means `List`, `["k": v]` will mean `Map`, `for x in xs` will mean
+types: `[a, b, c]` means `List`, `["k": v]` will mean `Map`, `loop x in xs` will mean
 `Iterator`, `?`/`try` mean `Option`/`Result`. That compiler→stdlib link is legitimate
 and unavoidable — the language deliberately welds this syntax to those types.
 
@@ -127,7 +127,7 @@ decides whether anything is wrong:
 - **Loose sense (almost certainly what M1 meant):** HIR is a *lowered, trivia-stripped,
   ID-assigned, name-resolved* tree — a simplified representation of the CST/AST. HIR **is**
   that. M1's actual deliverable was "name-resolved tree + resolution diagnostics + drift
-  guard" — **no sugar-expansion transforms**, and `for`-loops are kept structural to this
+  guard" — **no sugar-expansion transforms**, and `loop … in` iterator loops are kept structural to this
   day. Under this (intended) reading, putting list-literal *sugar expansion* in IR
   **violates nothing.**
 - **Strict sense (sugar constructs rewritten into core forms):** HIR does **none** of this
@@ -150,8 +150,16 @@ lowering** as a sound pragmatic choice, and the shipped behaviour is correct.
   - one place owns "syntax sugar → core", instead of logic spread across IR `lower_*`.
 
 **Decision rule (the trigger):** introduce the HIR desugar pass when the *second or third*
-literal/sugar form appears (map/set literals, `for`→iterator). Until then, IR placement is
+literal/sugar form appears (map/set literals, `loop x in`→iterator). Until then, IR placement is
 interim debt — tracked here, not forgotten.
+
+> **Which sugar should fire it [Decided — guidance]:** prefer a **spec-decided** form as the
+> second sugar that lands the pass — `a..b` range, compound assign `+=`, or `loop x in`→iterator
+> (all [Decided] in `DESIGN_SPEC.md`; see §5). **Do not let the two soft rows gate Step 4:**
+> set literals `{1,2,3}` carry an unresolved grammar ambiguity (§5), and `subscript` stays a
+> keyword name-convention (O3, §8.2) — neither is a clean trigger. Map literal syntax is decided
+> in `collection-type-design.md` §6.2 but not the top spec, so it's a fine *follow-on* but a
+> weaker *first* trigger than the three spec-decided forms.
 
 > **Status (Step 4):** the trigger has **not** fired — list literals are still the only
 > sugar — so the HIR-pass *relocation* deliberately stays put: moving one sugar into a new
@@ -159,7 +167,7 @@ interim debt — tracked here, not forgotten.
 > shares the phase, and an independent review agreed forcing it now is premature complexity.
 > The **user-visible** half of Step 4 *did* land: **empty `[]`** is now supported
 > (annotation-driven — `val xs: List<Int> = []` lowers to `List::new()`; unannotated `[]`
-> stays ambiguous). When map/set/`for` arrive, the relocation lands with them (lang-item
+> stays ambiguous). When map/set/`loop x in` arrive, the relocation lands with them (lang-item
 > `def_id`s, already resolved in §3.2/§3.3, are ready to point the HIR-emitted calls at).
 
 > Cross-check: this is the **same trigger** as the lang-items build (§3.3) and they should
@@ -174,12 +182,19 @@ interim debt — tracked here, not forgotten.
 | `[]` empty literal | `List` | **done** — annotation-driven, lowers to `List::new()` | HIR desugar + lang item |
 | `["k": v]` map literal | `Map` | not implemented (`collection-type-design.md` §6.2) | HIR desugar + lang item |
 | `{1, 2, 3}` set literal | `Set` | not implemented; grammar ambiguity w/ blocks (open) | HIR desugar + lang item |
-| `for x in xs { }` | `Iterator` | loops kept structural in HIR | desugar to `next()` loop + `Iterator` lang item |
+| `loop x in xs { }` | `Iterator` | loops kept structural in HIR | desugar to `next()` loop + `Iterator` lang item |
 | `a..b` range literal | `Range` | not implemented | lang item |
-| `?` / `try` | `Option` / `Result` | error-handling sugar (`DESIGN_SPEC.md` §6.5/§6.4) | lang items when wired |
+| `?` / `try` | `Option` / `Result` | error-handling sugar (`DESIGN_SPEC.md` §6.5/§6.3) | lang items when wired |
 | `base[i]` subscript | `<T>::subscript` | name-convention dispatch (C4) | keep convention, or formalise as lang trait method |
 | compound assign `+=` etc. | operator traits | single mechanism (`DESIGN_SPEC`) | desugar candidate |
 | import gating not enforced | stdlib visibility | `List`/`Map` resolve without `use` (`modules-design.md`) | **related** — lang-item binding and user prelude/import visibility must stay separate decisions |
+
+> **Spec-fidelity note (range row):** `DESIGN_SPEC.md` commits to the range **operators**
+> `..`/`..=` ([Decided] — precedence table §2.7, used in `loop i in 0..n` §7.1 and range
+> patterns `1..=9` §7.2) but does **not** name a `Range` *type*. The "couples to `Range`"
+> target here is the natural desugaring target, not a spec-stated type — confirm/name it when
+> the range sugar is actually wired. Every other row's coupling type (`List`/`Map`/`Set`/
+> `Iterator`/`Option`/`Result`) is a named type in `DESIGN_SPEC.md` (§3.2 / §6).
 
 ## 6. Harness & constraints (the drift guards) — mirroring the other layers
 
@@ -256,7 +271,7 @@ that shows the call chain.
    per the design and an independent review. The user-visible part **is done**: empty `[]`
    (annotation-driven) — `axiom-typeck` `try_annotated_empty_list`; `list_e2e` +
    `collections` tests.
-5. **Extend** to the next sugar (map/set/`for`) — each adds one desugar rule + one fixture
+5. **Extend** to the next sugar (map/set/`loop x in`) — each adds one desugar rule + one fixture
    + one lang item; the invariants in §6 need **zero** changes if the architecture is
    data-driven (the real test of the design — `lexer-testing.md` §5.3). This is the step that
    fires the §4 trigger and lands the HIR desugar pass alongside the new sugar.
@@ -277,11 +292,11 @@ that shows the call chain.
 
 | # | Question | Lean |
 |---|---|---|
-| O3 | Is `subscript` (C4) a lang item, or does name-convention dispatch stay? | keep convention unless it bites |
+| O3 | Is `subscript` (C4) a lang item, or does name-convention dispatch stay? | **Keep the keyword-convention** — `subscript` is a *keyword* (§4.4), not a free-form stdlib name, so the placeholder-`def_id`/typo/drift fragility that lang items fix for C1–C3 doesn't apply; and it is **1:many / user-extensible** (any type may `impl` it), so it doesn't fit the 1:1 *function*-lang-item shape. **Flip only on a concrete trigger:** (a) generics need to bound on indexability (`fn f<C: Index>(…)`) — a name convention can't carry a trait bound; or (b) the Cranelift backend needs static dispatch instead of the VM's name-keyed lookup. **If flipped, formalize as a core *trait* (`Index`/`Subscriptable`, like `Iterator` §stdlib), not a function lang item.** |
 
 ## 9. Cross-references
 
-- `DESIGN_SPEC.md` §15 (open questions), §14 (roadmap), §6.4 (`try`) and §6.5 (`?`).
+- `DESIGN_SPEC.md` §15 (open questions), §14 (roadmap), §6.3 (`try`) and §6.5 (`?`).
 - `collection-type-design.md` §6 (literal syntax), §8 (testing spec).
 - `ir-design.md` (current IR `lower_list_lit`), `builtin-to-stdlib-migration.md` (M6/M7),
   `struct-v0-plan.md` (the `builtin_types` removal lineage).
