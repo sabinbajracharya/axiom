@@ -1,6 +1,6 @@
 # Lang Items & Desugaring — Design Plan
 
-> **Status: [Deferred].** Nothing here is built yet. This doc records *the plan* so
+> **Status: [Deferred implementation; design decisions captured].** Nothing here is built yet. This doc records *the plan* so
 > the work is not forgotten and lands consistently when the trigger fires (§7). The
 > current behaviour (list literals desugar in IR via hardcoded `"List"` strings) is
 > **correct and shipped** — this is about paying down a known coupling cleanly, not
@@ -154,10 +154,10 @@ interim debt — tracked here, not forgotten.
 | `{1, 2, 3}` set literal | `Set` | not implemented; grammar ambiguity w/ blocks (open) | HIR desugar + lang item |
 | `for x in xs { }` | `Iterator` | loops kept structural in HIR | desugar to `next()` loop + `Iterator` lang item |
 | `a..b` range literal | `Range` | not implemented | lang item |
-| `?` / `try` | `Option` / `Result` | error-handling sugar (`DESIGN_SPEC` §) | lang items when wired |
+| `?` / `try` | `Option` / `Result` | error-handling sugar (`DESIGN_SPEC.md` §6.5/§6.4) | lang items when wired |
 | `base[i]` subscript | `<T>::subscript` | name-convention dispatch (C4) | keep convention, or formalise as lang trait method |
 | compound assign `+=` etc. | operator traits | single mechanism (`DESIGN_SPEC`) | desugar candidate |
-| import gating not enforced | stdlib visibility | `List`/`Map` resolve without `use` (see memory `import-gating-not-enforced`, `modules-design.md`) | **related** — lang-item types may legitimately be prelude-visible; decide intersection |
+| import gating not enforced | stdlib visibility | `List`/`Map` resolve without `use` (`modules-design.md`) | **related** — lang-item binding and user prelude/import visibility must stay separate decisions |
 
 ## 6. Harness & constraints (the drift guards) — mirroring the other layers
 
@@ -229,22 +229,29 @@ that shows the call chain.
    + one lang item; the invariants in §6 need **zero** changes if the architecture is
    data-driven (the real test of the design — `lexer-testing.md` §5.3).
 
-## 8. Open questions (mirroring `DESIGN_SPEC` §15)
+## 8. Decisions now vs remaining open questions (mirroring `DESIGN_SPEC` §15)
+
+### 8.1 Decisions captured by this doc (not open)
+
+- **Prelude visibility stays independent from lang-item binding.** Lang items are compiler
+  binding metadata, not automatic prelude imports.
+- **HIR desugar ordering:** resolve declarations + lang items first, then desugar, then
+  resolve synthesized call paths before typecheck.
+- **Empty `[]` support** should land with the HIR-side list-literal desugar move.
+
+### 8.2 Remaining open questions
 
 | # | Question | Lean |
 |---|---|---|
 | O1 | Lang-item tag syntax — `@lang("list")` attribute vs a compiler-side allow-list vs a `prelude`-style registry file? | attribute on the def (self-describing, Rust-like) |
-| O2 | Do lang-item types auto-enter the prelude (visible without `use`)? Intersects import-gating (memory `import-gating-not-enforced`). | likely yes for `List`/`Option`/`Result`; decide explicitly |
 | O3 | Is `subscript` (C4) a lang item, or does name-convention dispatch stay? | keep convention unless it bites |
-| O4 | Does the HIR desugar pass run before or after name resolution? (It needs resolved lang-item ids, but its *output* calls need resolving too.) | a small resolve step after desugar, or desugar mid-resolution |
-| O5 | Empty `[]` — enable via `List::new()` as part of this work, or separately? | fold into §4 (cheap once desugar is HIR-side) |
 
 ## 9. Cross-references
 
-- `DESIGN_SPEC.md` §15 (open questions), §14 (roadmap), §error-handling (`?`/`try`).
+- `DESIGN_SPEC.md` §15 (open questions), §14 (roadmap), §6.4 (`try`) and §6.5 (`?`).
 - `collection-type-design.md` §6 (literal syntax), §8 (testing spec).
 - `ir-design.md` (current IR `lower_list_lit`), `builtin-to-stdlib-migration.md` (M6/M7),
   `struct-v0-plan.md` (the `builtin_types` removal lineage).
 - `v0-roadmap.md` M1 (HIR described as the "desugared" layer — the basis for §4).
-- `modules-design.md` + memory `import-gating-not-enforced` (O2 intersection).
+- `modules-design.md` (O2 intersection).
 - `lexer-testing.md` §4/§5/§9 and `axiom-vm/tests/invariants.rs` (harness templates).
