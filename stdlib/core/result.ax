@@ -1,0 +1,14 @@
+// core/result.ax -- the error-carrying result type.
+//
+// `Result<T, E>` represents an operation that may fail: `Ok(value)` or
+// `Err(error)`. It is the foundation of Axiom's error handling (§6):
+// `try` propagates `Err`, `catch` handles it, `errdefer` cleans up on
+// the error path. Part of the implicit prelude, so `Result`, `Ok`, and
+// `Err` are in scope everywhere (see `resolve::PRELUDE_MODULES`).
+//
+// Error-union sugar: `E!T` is shorthand for `Result<T, E>`.
+
+pub enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}

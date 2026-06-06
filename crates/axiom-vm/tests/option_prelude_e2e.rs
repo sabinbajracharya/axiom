@@ -20,3 +20,16 @@ fn test_prelude_option() {
     );
     assert!(out.contains('5'), "got: {out:?}");
 }
+#[test]
+fn test_prelude_result() {
+    let out = run_output(
+        r#"fn main() {
+    val a: Result<Int, String> = Result::Ok(42)
+    val b: Result<Int, String> = Result::Err("boom")
+    val ra = match a { Ok(x) => x, Err(_) => 0 }
+    val rb = match b { Ok(x) => x, Err(_) => -1 }
+    print(format("{} {}", ra, rb))
+}"#,
+    );
+    assert!(out.contains("42 -1"), "got: {out:?}");
+}

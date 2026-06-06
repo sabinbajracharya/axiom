@@ -69,6 +69,10 @@ ImplDef(84) Hashable→7 for Bool→1000002 methods=[
     tail: Path(90) self→86.Method(89) hash_raw()
   }
 ]
+EnumDef(0) name=Result<T, E> vis=pub variants=[
+  Variant(3) name=Ok(T→1)
+  Variant(4) name=Err(E→2)
+]
 ImplDef(0) String→1000003 methods=[
   FnDef(1) name=len vis=private params=[let self: _] return=Int→<unresolved> {
     tail: Path(7) self→2.Method(6) as_bytes().Method(5) len()
