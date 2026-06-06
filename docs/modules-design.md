@@ -1,6 +1,10 @@
 # Modules Design — Multi-File Compilation & Imports
 
-> **Status:** Phases 1–3 implemented and tested. Phase 4 (prelude) deferred pending stdlib.
+> **Status:** Phases 1–3 implemented and tested. Phase 4 (prelude) **now implemented**:
+> `PRELUDE_MODULES = ["core::traits", "core::option", "std::io"]` are auto-injected
+> (`crates/axiom-hir/src/resolve/mod.rs`). ⚠️ Per-module import-gating is **not** enforced —
+> any `pub` type / associated fn (`List`, `Map`, …) still resolves without `use`. See the
+> "Known gaps and limitations" table (Import-gating not enforced) for the two ways forward.
 > **Decisions baked in:** module paths use `::` (§10.1), one file = one module, `pub` visibility
 > by default private (§10.3), `use` import syntax (§10.2), three-tier stdlib layering:
 > `core` (auto-imported) → `collections` (explicit) → `std` (explicit, hosted).
@@ -205,10 +209,14 @@ Type checking passes. ✅
 
 **Test:** Two-file program compiles end-to-end and runs in the VM. ✅
 
-### Phase 4 — Prelude ⏸ DEFERRED
+### Phase 4 — Prelude 🟡 PARTIAL
 
 **Goal:** `Option`, `Result`, `Some`, `None`, `Ok`, `Err` available without `use`.
-**Blocked on:** stdlib `core` module must exist first.
+**Status:** the prelude *mechanism* is implemented — `PRELUDE_MODULES`
+(`core::traits`, `core::option`, `std::io`) are auto-injected at lowest priority,
+and the stdlib `core`/`std` modules exist as `.ax`. What is **not** done is the
+flip side: enforcing that *non*-prelude names (`List`, `Map`, …) require an
+explicit `use`. They currently resolve unit-wide. See the gaps table.
 
 **Stdlib layout (three-tier):**
 
@@ -245,8 +253,9 @@ code uses, it stays explicit. This matches the singular idiom principle: effects
 
 - [ ] Create `core/` directory with `option.ax`, `result.ax`
 - [ ] Create `prelude.ax` (compiler-internal file that re-exports from `core`)
-- [ ] Compiler auto-imports prelude items into every module's name resolution scope
-- [ ] Prelude items are lowest priority — explicit definitions shadow them
+- [x] Compiler auto-imports prelude items into every module's name resolution scope
+      (`inject_prelude` over `PRELUDE_MODULES` in `crates/axiom-hir/src/resolve/mod.rs`)
+- [x] Prelude items are lowest priority — explicit definitions shadow them (`or_insert`)
 - [x] `extern "C" fn` syntax: lexer keywords, parser grammar, AST accessor, HIR field, IR flag, VM dispatch
 - [x] `stdlib/io.ax` created with `pub extern "C" fn print/println`; exports via module system
 - [x] `core/platform.ax` created (design target — extern fns stay in io.ax until safe wrappers land)
@@ -254,9 +263,11 @@ code uses, it stays explicit. This matches the singular idiom principle: effects
 - [x] `is_extern` propagation: IR lowering reads `extern_abi` from HIR, sets `is_extern: true`
 - [ ] `core/platform.ax`: move extern "C" fns from io.ax, io.ax imports from core::platform (needs safe wrapper design)
 - [ ] Remove `print`/`println` from `builtin_def_id()` / `builtin_fn()` — single-file path still needs builtins
-- [ ] Single-file path loads stdlib (currently only multi-file uses module system)
-- [ ] Test: `let x: Option<Int> = Some(42)` works without any `use` statement
-- [ ] Test: `use collections::List` works, `List` without import does not
+- [x] Single-file path loads stdlib (`axiom_stdlib::with_main` prepends every stdlib module)
+- [x] Test: `let x: Option<Int> = Some(42)` works without any `use` statement
+- [ ] Test: `use collections::List` works, `List` without import does **not**
+      — ⚠️ blocked: import-gating is not enforced, so `List` without `use` resolves today
+      (see "Import-gating not enforced" in the gaps table)
 
 ### Known gaps and limitations
 
@@ -270,6 +281,7 @@ code uses, it stays explicit. This matches the singular idiom principle: effects
 | **Field-level visibility not enforced** | `pub struct Foo { pub x, y }` — `y` accessible across modules | Needs type checker enforcement |
 | **No re-exports** (`pub use`) | Can't re-export items from submodules | Deferred |
 | **CLI pipeline doesn't use `with_stdlib()`** | `axiom-cli::compile_source` parses user source directly; stdlib only loaded in `axiom-typeck::check_source_with_stdlib`. Blocks removing `print`/`println` from builtins. | Needs CLI pipeline refactor to prepend stdlib before parse+lower |
+| **Import-gating not enforced** (`List`/`Map` work without `use`) | Only the value prelude is *intentionally* free — `print`/`println` (`std::io`), `Option`/`Some`/`None` (`core::option`), and the core traits (`core::traits`), via `PRELUDE_MODULES` in `crates/axiom-hir/src/resolve/mod.rs`. But **type names and associated-function calls resolve unit-wide**, so `List`, `Map`, `List::new()` etc. compile with no `use` even though they are *not* in the prelude. This is looser than the §10 design (collections should be an explicit `use`). | **Two options, very different sizes.** (a) *Small (hours):* add `std::collections::list`/`::map` to `PRELUDE_MODULES` to make them officially prelude — one-line-ish + regenerate goldens. (b) *Big (days, design decision):* enforce per-module import-gating so unimported names fail to resolve — touches cross-module name resolution, requires correct `use` in every `.ax` file + test, and interacts with the prelude rules. Decide in DESIGN_SPEC §10 before doing (b). |
 
 ---
 
