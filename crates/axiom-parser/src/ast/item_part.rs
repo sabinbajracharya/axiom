@@ -28,6 +28,68 @@ impl Visibility {
     }
 }
 
+/// A list of leading attributes on an item (`@lang("list") @other(...)`).
+pub struct AttrList(SyntaxNode);
+
+impl AstNode for AttrList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::AttrList
+    }
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(node.kind()) {
+            Some(Self(node))
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.0
+    }
+}
+
+impl AttrList {
+    pub fn attrs(&self) -> Vec<Attr> {
+        child_nodes_of(&self.0)
+    }
+}
+
+/// One attribute: `@ name ( "arg" )`, e.g. `@lang("list")`.
+pub struct Attr(SyntaxNode);
+
+impl AstNode for Attr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::Attr
+    }
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(node.kind()) {
+            Some(Self(node))
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.0
+    }
+}
+
+impl Attr {
+    /// The attribute name (e.g. `lang`).
+    pub fn name(&self) -> Option<String> {
+        child_node::<Name>(&self.0).and_then(|n| n.text())
+    }
+
+    /// The decoded string argument (e.g. `list` for `@lang("list")`), without
+    /// the surrounding quotes. `None` when the attribute has no string argument.
+    pub fn arg(&self) -> Option<String> {
+        let token = child_token(&self.0, SyntaxKind::StrLit)?;
+        let text = token.text();
+        if text.len() < 2 {
+            return None;
+        }
+        Some(text[1..text.len() - 1].to_string())
+    }
+}
+
 pub struct ParamList(SyntaxNode);
 
 impl AstNode for ParamList {

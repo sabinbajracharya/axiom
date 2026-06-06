@@ -32,12 +32,13 @@ const ITEM_START: &[K] = &[
 /// Whether the current token can begin an item (so an item loop should try to
 /// parse one rather than treating it as garbage to resync past).
 pub(super) fn at_item_start(p: &Parser) -> bool {
-    p.at_any(ITEM_START) || p.at_contextual("const")
+    p.at(K::At) || p.at_any(ITEM_START) || p.at_contextual("const")
 }
 
 /// Parse one top-level (or nested) item, recovering on anything unexpected.
 pub(super) fn item(p: &mut Parser) {
     let m = p.start();
+    opt_attributes(p);
     opt_visibility(p);
     // `extern "ABI"` is a prefix modifier for function declarations (§12.1).
     // Consume it before the keyword dispatch so `pub extern "C" fn` works.
@@ -71,6 +72,34 @@ fn opt_visibility(p: &mut Parser) {
         p.bump();
         m.complete(p, K::Visibility);
     }
+}
+
+/// Parse zero or more leading attributes. An attribute is `@ Ident ( StrLit )`,
+/// e.g. `@lang("list")` — the compiler→stdlib lang-item binding
+/// (`docs/lang-items-and-desugaring-design.md` §3.3). Kept deliberately narrow:
+/// exactly one string argument, no general meta-item grammar.
+fn opt_attributes(p: &mut Parser) {
+    if !p.at(K::At) {
+        return;
+    }
+    let list = p.start();
+    while p.at(K::At) {
+        let attr = p.start();
+        p.bump(); // @
+                  // attribute name (e.g. `lang`)
+        {
+            let nm = p.start();
+            p.expect(K::Ident);
+            nm.complete(p, K::Name);
+        }
+        // `( "arg" )`
+        if p.eat(K::LParen) {
+            p.expect(K::StrLit);
+            p.expect(K::RParen);
+        }
+        attr.complete(p, K::Attr);
+    }
+    list.complete(p, K::AttrList);
 }
 
 fn name(p: &mut Parser) {
@@ -283,7 +312,7 @@ fn impl_block(p: &mut Parser, m: Marker) {
 /// `{ method* }` shared by traits and impls. Each member may carry `pub`. A
 /// member begins with `fn`, `subscript`, or `pub`; anything else is garbage.
 fn at_member_start(p: &Parser) -> bool {
-    p.at(K::KwFn) || p.at(K::KwSubscript) || p.at(K::KwPub) || p.at(K::KwExtern)
+    p.at(K::At) || p.at(K::KwFn) || p.at(K::KwSubscript) || p.at(K::KwPub) || p.at(K::KwExtern)
 }
 
 fn member_list(p: &mut Parser, kind: K) {
@@ -292,6 +321,7 @@ fn member_list(p: &mut Parser, kind: K) {
     while !p.at(K::RBrace) && !p.at_end() {
         if at_member_start(p) {
             let im = p.start();
+            opt_attributes(p);
             opt_visibility(p);
             // `extern "ABI"` prefix for method declarations.
             if p.at(K::KwExtern) {

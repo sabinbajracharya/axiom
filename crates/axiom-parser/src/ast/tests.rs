@@ -22,6 +22,8 @@ fn can_cast_item(kind: SyntaxKind) -> bool {
 
 fn can_cast_item_part(kind: SyntaxKind) -> bool {
     Visibility::can_cast(kind)
+        || AttrList::can_cast(kind)
+        || Attr::can_cast(kind)
         || ParamList::can_cast(kind)
         || Param::can_cast(kind)
         || SelfParam::can_cast(kind)

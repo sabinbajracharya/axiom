@@ -98,7 +98,9 @@ mod tests {
     fn test_top_level_garbage_run_collapses_to_one_error() {
         // A run of non-item tokens at file scope resyncs to the next item: ONE
         // diagnostic + ONE Error node for the run, then the `fn` parses cleanly.
-        let src = "@ @ @ fn f() {}\n";
+        // (`%` is genuine garbage at item scope — unlike `@`, which now starts
+        // an attribute.)
+        let src = "% % % fn f() {}\n";
         let result = parse(src);
         let item_errs = result
             .errors

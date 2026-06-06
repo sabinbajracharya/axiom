@@ -179,6 +179,7 @@ fn simple_delim(c: char) -> Option<crate::token::Punct> {
         ';' => Some(Punct::Semicolon),
         '^' => Some(Punct::Caret),
         '?' => Some(Punct::Question),
+        '@' => Some(Punct::At),
         _ => None,
     }
 }

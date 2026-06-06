@@ -1,0 +1,11 @@
+@lang("list")
+struct List<T> {
+    count: Int,
+}
+
+impl<T> List<T> {
+    @lang("list_new")
+    fn new() -> List<T> {
+        List { count: 0 }
+    }
+}

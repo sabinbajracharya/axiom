@@ -173,6 +173,7 @@ pub fn punct_label(p: Punct) -> &'static str {
         Punct::SlashEq => "SlashEq",
         Punct::PercentEq => "PercentEq",
         Punct::Question => "Question",
+        Punct::At => "At",
     }
 }
 

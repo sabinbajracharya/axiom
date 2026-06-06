@@ -165,10 +165,12 @@ fn test_unterminated_string_reports_error_but_tiles() {
 }
 
 #[test]
-fn test_unknown_char_becomes_unknown_token() {
+fn test_at_lexes_as_punct() {
+    // `@` introduces an attribute (e.g. `@lang("list")`); it is real punctuation,
+    // not an unknown char. See docs/lang-items-and-desugaring-design.md §3.3.
     let result = lex("@");
-    assert_eq!(result.tokens[0].kind, TokenKind::Unknown);
-    assert_eq!(result.errors.len(), 1);
+    assert_eq!(result.tokens[0].kind, TokenKind::Punct(Punct::At));
+    assert!(result.errors.is_empty());
 }
 
 #[test]

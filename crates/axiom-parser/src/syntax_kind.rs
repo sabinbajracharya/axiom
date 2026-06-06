@@ -143,6 +143,7 @@ syntax_kinds! {
         SlashEq,
         PercentEq,
         Question,
+        At,
         // an unexpected source character (paired with a diagnostic)
         Unknown,
         // end of input — never placed in the tree, but a valid kind to peek
@@ -206,6 +207,8 @@ syntax_kinds! {
         ErrorSetDef,
         // item parts
         Visibility,
+        AttrList,
+        Attr,
         ParamList,
         Param,
         SelfParam,
@@ -422,6 +425,7 @@ fn punct_kind(p: Punct) -> SyntaxKind {
         Punct::SlashEq => SyntaxKind::SlashEq,
         Punct::PercentEq => SyntaxKind::PercentEq,
         Punct::Question => SyntaxKind::Question,
+        Punct::At => SyntaxKind::At,
     }
 }
 

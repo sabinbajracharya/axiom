@@ -151,6 +151,7 @@ pub enum Punct {
     SlashEq,
     PercentEq,
     Question,
+    At,
 }
 
 impl Punct {
@@ -197,6 +198,7 @@ impl Punct {
         Punct::SlashEq,
         Punct::PercentEq,
         Punct::Question,
+        Punct::At,
     ];
 }
 
