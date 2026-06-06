@@ -5,3 +5,4 @@
 *.ast text eol=lf
 *.stderr text eol=lf
 *.ax text eol=lf
+*.ax linguist-language=C
