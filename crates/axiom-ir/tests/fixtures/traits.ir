@@ -8,6 +8,12 @@ fn Circle::area(self: Circle) -> fn(Circle) -> Float {
   Return %5
 }
 
+fn Circle::name(self: <Self>) -> String {
+  entry:
+  %1 = Const String("shape")
+  Return %1
+}
+
 fn main() -> fn() -> Unit {
   entry:
   %0 = Const Float(3)

@@ -46,6 +46,12 @@ pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
             for sub in &impl_def.subscripts {
                 lower_subscript(sub, ctx, &type_name);
             }
+            // A trait default method the impl does not override is lowered as a
+            // copy named `Type::method`, so `value.method()` dispatches to it by
+            // the receiver's runtime type. The body is `Self`-generic (calls on
+            // `self` stay unqualified and resolve at runtime), so the copies are
+            // identical apart from their name.
+            lower_inherited_defaults(impl_def, ctx, &type_name);
         }
         Item::StructDef(_) | Item::TraitDef(_) | Item::SubscriptDef(_) | Item::UseItem(_) => {}
     }
@@ -237,6 +243,81 @@ fn lower_subscript(sub: &axiom_hir::SubscriptDef, ctx: &mut LowerCtx, type_prefi
 
     ctx.functions.push(IrFunction {
         name: format!("{type_prefix}::subscript"),
+        type_params: Vec::new(),
+        generic_origin: None,
+        params,
+        return_type,
+        blocks: fn_ctx.func.blocks,
+        next_reg: fn_ctx.func.next_reg,
+        is_extern: false,
+    });
+}
+
+/// Lower each trait default method that `impl_def` inherits (does not override)
+/// as a `Type::method` IR function. Called from `lower_item` for trait impls.
+fn lower_inherited_defaults(impl_def: &axiom_hir::ImplDef, ctx: &mut LowerCtx, type_prefix: &str) {
+    let Some(trait_nr) = &impl_def.trait_name else {
+        return;
+    };
+    let trait_name = name_ref_text(trait_nr);
+    let overridden: Vec<String> = impl_def.methods.iter().map(|m| m.name.clone()).collect();
+    // Clone the inherited defaults out first so the `ctx.thir` borrow ends
+    // before lowering, which needs `&mut ctx`.
+    let defaults: Vec<axiom_hir::TraitMethod> = ctx
+        .thir
+        .hir
+        .items
+        .iter()
+        .find_map(|item| match item {
+            Item::TraitDef(t) if t.name == trait_name => Some(t),
+            _ => None,
+        })
+        .map(|t| {
+            t.methods
+                .iter()
+                .filter(|m| m.body.is_some() && !overridden.iter().any(|o| o == &m.name))
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_default();
+    for m in &defaults {
+        lower_trait_default(m, ctx, type_prefix);
+    }
+}
+
+/// Lower a trait default method body as the IR function `Type::method`. The
+/// body is `Self`-generic: calls on `self` stay unqualified and resolve to the
+/// receiver's concrete impl at runtime (see `resolve_method_target` in the VM).
+fn lower_trait_default(m: &axiom_hir::TraitMethod, ctx: &mut LowerCtx, type_prefix: &str) {
+    let Some(body) = &m.body else {
+        return;
+    };
+    let mut fn_ctx = FnLowerCtx::new(&ctx.thir.types, &ctx.mono_lookup, None, &ctx.thir.hir.items);
+
+    let params: Vec<IrParam> = m
+        .params
+        .iter()
+        .map(|p| {
+            let reg = fn_ctx.fresh_reg();
+            let ty = ctx.thir.types.get(&p.id).cloned().unwrap_or(Ty::Error);
+            fn_ctx.bind(p.id, reg);
+            IrParam {
+                reg,
+                name: p.name.clone(),
+                ty,
+                convention: p.convention,
+            }
+        })
+        .collect();
+
+    let return_type = ctx.thir.types.get(&m.id).cloned().unwrap_or(Ty::Unit);
+
+    fn_ctx.start_block("entry".to_string());
+    let tail_reg = super::stmt::lower_block_expr(body, &mut fn_ctx);
+    fn_ctx.ensure_return(Some(tail_reg));
+
+    ctx.functions.push(IrFunction {
+        name: format!("{type_prefix}::{}", m.name),
         type_params: Vec::new(),
         generic_origin: None,
         params,

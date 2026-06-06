@@ -363,20 +363,7 @@ impl TypeChecker {
 
                 // Completeness check: every required trait method must be provided.
                 if let Some(ref tn) = trait_name {
-                    if let Some(trait_info) = self.trait_registry.get(tn).cloned() {
-                        for required in &trait_info.required_methods {
-                            let has_method =
-                                impl_def.methods.iter().any(|m| m.name == required.name);
-                            if !has_method {
-                                self.emit(TypeDiagnostic::MissingTraitMethod {
-                                    trait_name: tn.clone(),
-                                    type_name: type_name_text.clone(),
-                                    method: required.name.clone(),
-                                    span: self.span_for(impl_def.id),
-                                });
-                            }
-                        }
-                    }
+                    self.check_impl_completeness(tn, &type_name_text, impl_def);
                 }
 
                 // Collect the impl's type parameters for generic matching.
@@ -394,16 +381,83 @@ impl TypeChecker {
                     }
                 }
 
+                // Method dispatch table: the impl's own methods, plus the
+                // trait's default-bodied methods that this impl does *not*
+                // override. Including the defaults here lets `find_impl_method`
+                // resolve a call like `dog.score()` to the trait default when
+                // `Dog` provides no `score` of its own.
+                let mut methods = impl_def.methods.clone();
+                if let Some(ref tn) = trait_name {
+                    let overridden: Vec<String> =
+                        impl_def.methods.iter().map(|m| m.name.clone()).collect();
+                    methods.extend(self.trait_default_fndefs(tn, &overridden));
+                }
+
                 self.impl_table.push(ImplInfo {
                     trait_name,
                     type_name: type_name_text,
-                    methods: impl_def.methods.clone(),
+                    methods,
                     subscripts: impl_def.subscripts.clone(),
                     type_params,
                     type_param_bounds: tp_bounds,
                 });
             }
         }
+    }
+
+    /// Emit a `MissingTraitMethod` diagnostic for every required (body-less)
+    /// trait method the impl fails to provide. Default-bodied methods are not
+    /// required — the impl inherits them (see `trait_default_fndefs`).
+    fn check_impl_completeness(&mut self, trait_name: &str, type_name: &str, impl_def: &ImplDef) {
+        let Some(trait_info) = self.trait_registry.get(trait_name).cloned() else {
+            return;
+        };
+        for required in &trait_info.required_methods {
+            let has_method = impl_def.methods.iter().any(|m| m.name == required.name);
+            if !has_method {
+                self.emit(TypeDiagnostic::MissingTraitMethod {
+                    trait_name: trait_name.to_string(),
+                    type_name: type_name.to_string(),
+                    method: required.name.clone(),
+                    span: self.span_for(impl_def.id),
+                });
+            }
+        }
+    }
+
+    /// Synthesize `FnDef`s for a trait's default-bodied methods that an impl
+    /// does not override. These are added to the impl's dispatch table so a
+    /// call to a default method on a concrete receiver resolves like any other
+    /// method. Only the signature is consulted at the call site (arity, arg and
+    /// return types); the body is type-checked once in `check_trait_defaults`.
+    fn trait_default_fndefs(&self, trait_name: &str, overridden: &[String]) -> Vec<FnDef> {
+        let Some(trait_def) = self.hir.items.iter().find_map(|item| match item {
+            Item::TraitDef(t) if t.name == trait_name => Some(t),
+            _ => None,
+        }) else {
+            return Vec::new();
+        };
+        trait_def
+            .methods
+            .iter()
+            .filter_map(|m| {
+                let body = m.body.clone()?;
+                if overridden.iter().any(|o| o == &m.name) {
+                    return None;
+                }
+                Some(FnDef {
+                    id: m.id,
+                    name: m.name.clone(),
+                    module_path: String::new(),
+                    visibility: Visibility::Public,
+                    type_params: Vec::new(),
+                    params: m.params.clone(),
+                    return_type: m.return_type.clone(),
+                    body,
+                    extern_abi: None,
+                })
+            })
+            .collect()
     }
 
     /// Resolve an `HirTy` (the type syntax in the source) to a `Ty` (the

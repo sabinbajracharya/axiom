@@ -59,17 +59,29 @@ struct Person { name: String }
 impl Greet for Person { }
 fn main() -> String { val p = Person { name: \"A\" } p.greet() }",
     );
-    let missing: Vec<_> = thir
-        .diagnostics
-        .iter()
-        .filter(|d| d.kind() == "missing_trait_method")
-        .collect();
-    // Default methods are not required — impl can be empty.
-    // Note: method dispatch for default methods is not yet implemented,
-    // so we only check that the empty impl doesn't emit missing_trait_method.
+    // Default methods are not required — the impl can be empty — and calling the
+    // inherited default (`p.greet()`) dispatches to the trait body.
     assert!(
-        missing.is_empty(),
-        "expected no missing methods for default, got: {:?}",
+        thir.diagnostics.is_empty(),
+        "expected default method to be inherited and dispatched, got: {:?}",
+        thir.diagnostics
+    );
+}
+
+#[test]
+fn test_default_method_dispatch_through_bound() {
+    // A default method called through a generic bound (`T: Greet`) resolves via
+    // the trait's default body — the concrete impl need not override it.
+    let thir = check_source(
+        "trait Greet { fn greet(self) -> String { \"hi\" } }
+struct Person { name: String }
+impl Greet for Person { }
+fn run<T: Greet>(x: T) -> String { x.greet() }
+fn main() -> String { val p = Person { name: \"A\" } run(p) }",
+    );
+    assert!(
+        thir.diagnostics.is_empty(),
+        "expected default dispatch through bound, got: {:?}",
         thir.diagnostics
     );
 }

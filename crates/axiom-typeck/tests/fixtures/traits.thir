@@ -4,7 +4,7 @@ TraitDef(2) name=Shape vis=private
     Param(4) self : _
     Return : Float→<unresolved>
   Method(5) name=name DEFAULT
-    Param(6) self : _
+    Param(6) self : Self
     Return : String→<unresolved>
 ImplDef(10) trait=Shape for=Circle
   FnDef(11) name=area vis=private params=[let self: Circle] return=Float→<unresolved> : (Circle) -> Float

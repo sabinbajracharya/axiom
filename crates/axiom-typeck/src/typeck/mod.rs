@@ -226,6 +226,7 @@ impl TypeChecker {
     }
 
     fn check_pass(&mut self) {
+        self.check_trait_defaults();
         // Clone required: check_fn_body borrows self mutably while iterating.
         for item in self.hir.items.clone() {
             match item {
@@ -269,6 +270,80 @@ impl TypeChecker {
                 _ => {}
             }
         }
+    }
+
+    /// Type-check each trait's default-bodied methods once, treating `Self` as
+    /// an abstract type parameter bounded by the trait (and its supertraits).
+    /// A call like `self.legs()` in the default body resolves through those
+    /// bounds and lowers to a runtime-dispatched call — so the single checked
+    /// body works for every implementor.
+    fn check_trait_defaults(&mut self) {
+        for item in self.hir.items.clone() {
+            let Item::TraitDef(t) = item else {
+                continue;
+            };
+            self.register_trait_self(&t);
+            for m in &t.methods {
+                if let Some(body) = &m.body {
+                    self.check_trait_default_body(m, body);
+                }
+            }
+            self.current_self_type = None;
+            self.current_type_params.clear();
+        }
+    }
+
+    /// Set up the type-param scope for checking a trait's default bodies: `Self`
+    /// is a type parameter (keyed by the trait's `HirId`) bounded by the trait
+    /// itself plus its supertraits. Returns the `Self` type.
+    fn register_trait_self(&mut self, t: &TraitDef) -> crate::types::Ty {
+        let mut bounds = vec![t.name.clone()];
+        bounds.extend(t.supertraits.iter().map(|b| collect::name_text(&b.name)));
+        self.type_param_bounds.insert(t.id, bounds);
+        self.current_type_params = t
+            .type_params
+            .iter()
+            .map(|tp| {
+                let tb = tp
+                    .bounds
+                    .iter()
+                    .map(|b| collect::name_text(&b.name))
+                    .collect();
+                (tp.name.clone(), tp.id, tb)
+            })
+            .collect();
+        let self_ty = crate::types::Ty::TypeParam(crate::types::TypeParamId {
+            name: "Self".to_string(),
+            index: 0,
+            def_id: t.id,
+        });
+        self.current_self_type = Some(self_ty.clone());
+        self_ty
+    }
+
+    /// Type-check one trait default method body. `self` binds to the abstract
+    /// `Self` type; the resolved return type is recorded at the method's
+    /// `HirId` for IR lowering.
+    fn check_trait_default_body(&mut self, m: &TraitMethod, body: &Block) {
+        self.register_params(&m.params);
+        let return_type = m
+            .return_type
+            .as_ref()
+            .map(|t| self.resolve_hir_ty(t))
+            .unwrap_or(crate::types::Ty::Unit);
+        let body_type = self.check_block(body, &return_type);
+        if !helpers::is_error(&body_type)
+            && !helpers::is_error(&return_type)
+            && body_type != return_type
+        {
+            self.emit(TypeDiagnostic::ReturnTypeMismatch {
+                expected: return_type.to_string(),
+                found: body_type.to_string(),
+                span: self.span_for(m.id),
+            });
+        }
+        self.types.insert(m.id, return_type);
+        self.env.pop_scope();
     }
 
     /// Resolve the `Self` type for an impl block (the type being implemented).

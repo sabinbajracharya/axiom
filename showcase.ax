@@ -3,8 +3,9 @@
 // ║  run:  cargo run -p axiom-cli -- run showcase.ax               ║
 // ║                                                                ║
 // ║  Exercises: val/var bindings · let/inout/sink conventions ·    ║
-// ║  user traits + generic-bound dispatch · generic structs &      ║
-// ║  enums · exhaustive match (payload + literal + wildcard) ·     ║
+// ║  user traits + generic-bound dispatch · trait default methods ·║
+// ║  generic structs & enums · exhaustive match (payload +         ║
+// ║  literal + wildcard) ·                                         ║
 // ║  Option (prelude) · List<T> & Map<K,V> · every comparison &    ║
 // ║  boolean operator · if/else as expression · while & infinite   ║
 // ║  loops with break/continue · recursion · format/println.       ║
@@ -16,6 +17,10 @@
 trait Animal {
     fn sound(let self) -> String;
     fn legs(let self) -> Int;
+    // A *default method*: it has a body, so implementors inherit it unless they
+    // override it. The body calls `self.legs()`, which dispatches to each
+    // implementor's own `legs` at runtime.
+    fn agility(let self) -> Int { self.legs() * 2 }
 }
 
 struct Dog { age: Int }
@@ -33,6 +38,8 @@ impl Animal for Cat {
 impl Animal for Spider {
     fn sound(let self) -> String { "..." }
     fn legs(let self) -> Int { 8 }
+    // Spider overrides the default — a leggy creature is nimble.
+    fn agility(let self) -> Int { 100 }
 }
 
 // Generic dispatch: works for any `T` that implements `Animal`.
@@ -107,6 +114,11 @@ fn main() {
     describe(d)
     describe(c)
     describe(s)
+
+    println("== trait default methods (inherited vs overridden) ==")
+    // Dog & Cat inherit `agility` (legs*2); Spider overrides it.
+    println(format("  dog.agility    (default 4*2) = {}", d.agility()))
+    println(format("  spider.agility (overridden)  = {}", s.agility()))
 
     println("== generic struct (mixed type args) ==")
     val p = Pair { first: 7, second: "seven" }
