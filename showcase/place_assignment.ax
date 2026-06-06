@@ -17,12 +17,26 @@
 // ║  docs/mutable-subscript-design.md.                            ║
 // ╚══════════════════════════════════════════════════════════════╝
 
-// ─────────────── struct with read+write subscript ───────────────
-struct Cell { v: Int }
+// ─────────── struct with single-param read+write subscript ───────────
+// Grid<Int> stored in a flat heap buffer. `grid[i]` indexes linearly;
+// a helper `at_row_col` maps (row,col) through the subscript.
+struct Grid {
+    buf: [Int],
+    cols: Int,
+}
 
-impl Cell {
-    subscript(i: Int) -> Int { self.v }
-    subscript(i: Int, value: Int) { self.v = value }
+impl Grid {
+    subscript(i: Int) -> Int { self.buf[i] }
+    subscript(i: Int, value: Int) { self.buf[i] = value }
+}
+
+fn alloc_grid(rows: Int, cols: Int) -> Grid {
+    var buf: [Int] = heap_alloc(rows * cols)
+    Grid { buf: buf, cols: cols }
+}
+
+fn at_row_col(g: Grid, row: Int, col: Int) -> Int {
+    g[row * g.cols + col]
 }
 
 // ──────────────────── top-level entry ───────────────────
@@ -92,27 +106,28 @@ fn main() {
     // ═══════════════════════════════════════════════════════════
     // 3. User struct — writes through write subscript setter
     // ═══════════════════════════════════════════════════════════
-    println("== user struct: plain assign + compound ==")
-    var c = Cell { v: 10 }
-    println(format("  initial        = {}", c[0]))
+    println("== Grid<Int> subscript: plain assign + compound ==")
+    var g = alloc_grid(2, 3)        // 2 rows × 3 cols = 6 elements
+    g[0] = 10                       // linear: row 0, col 0
+    g[1] = 20                       // linear: row 0, col 1
+    g[2] = 30                       // linear: row 0, col 2
+    g[3] = 40                       // linear: row 1, col 0
+    g[4] = 50                       // linear: row 1, col 1
+    g[5] = 60                       // linear: row 1, col 2
+    println(format("  via at_row_col  g(0,0)={}  g(1,1)={}",
+        at_row_col(g, 0, 0), at_row_col(g, 1, 1)))
 
-    c[0] = 40 + 7      // plain =  —  47
-    println(format("  after c[0]=47  = {}", c[0]))
+    g[0] = g[3] + g[4]              // 40 + 50 = 90 (cross-element assign)
+    println(format("  g[0]=g[3]+g[4] = {}", g[0]))
 
-    c[0] += 3          // 47 +  3 = 50
-    println(format("  after c[0]+=3  = {}", c[0]))
-
-    c[0] -= 10         // 50 - 10 = 40
-    println(format("  after c[0]-=10 = {}", c[0]))
-
-    c[0] *= 2          // 40 *  2 = 80
-    println(format("  after c[0]*=2  = {}", c[0]))
-
-    c[0] /= 5          // 80 /  5 = 16
-    println(format("  after c[0]/=5  = {}", c[0]))
-
-    c[0] %= 3          // 16 %  3 = 1
-    println(format("  after c[0]%=3  = {}", c[0]))
+    g[5] += 7                       // 60 +  7 = 67
+    g[1] -= 5                       // 20 -  5 = 15
+    g[2] *= 2                       // 30 *  2 = 60
+    g[3] /= 4                       // 40 /  4 = 10
+    g[4] %= 3                       // 50 %  3 = 2
+    println(format("  += {}  -= {}  *= {}  /= {}  %= {}",
+        g[5], g[1], g[2], g[3], g[4]))
 
     println("== all indexed-place assignment paths: ok ==")
+    heap_free(g.buf)
 }
