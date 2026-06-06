@@ -1,8 +1,10 @@
 # Migrating Compiler Built-ins → `stdlib` (`core`)
 
-> **Status:** Planned — not started. This is the umbrella plan for retiring every
-> compiler-baked built-in that is *expressible in Axiom* and moving it into real
-> `stdlib/core/*.ax` code. It is the same migration `print`/`println` already
+> **Status:** ✅ **Complete.** Every expressible-in-Axiom stand-in (M1–M7) has been
+> retired into real `stdlib/*.ax` code; the only built-ins left are the §2a "STAY"
+> floor (`format`, `todo`, platform externs, `String::as_bytes`, `Bytes::len`, the
+> per-scalar `hash_raw`, primitive type names, scalar operators). This was the same
+> migration `print`/`println` already
 > completed (see [`string-format-and-print-retire.md`](string-format-and-print-retire.md))
 > applied to the rest of the stand-ins.
 >
@@ -85,6 +87,10 @@ stdlib/
 
 ### 2b. MIGRATE — stand-ins baked into the compiler (the work of this plan)
 
+> ✅ **All rows below (M1–M7) are migrated.** The "Where it lives now" column is historical
+> — those `register_builtin_*` stand-ins no longer exist; each symbol is now real library
+> code at its target home. See the per-phase status in §4.
+
 | # | Stand-in | Where it lives now | Target home | Bottoms out on |
 |---|---|---|---|---|
 | M1 | trait **declarations** `Deinit` `Equatable` `Hashable` `Ord` | `typeck/builtin.rs::register_builtin_traits` | `stdlib/core/traits.ax` (`core::traits`) | nothing (pure decls) |
@@ -104,13 +110,10 @@ stdlib/
 
 ## 3. Prerequisites (must land before/with the migration)
 
-- [ ] **P0 — Relocate existing stdlib files to the §1a layout.** `git mv stdlib/io.ax
-      stdlib/std/io.ax`; `git mv stdlib/collections/ stdlib/std/collections/`. Update the
-      `with_stdlib` concatenation list, `discover_library` walk (already path-relative), every
-      `use`/path that names `io::`/`collections::`, and the fixtures/goldens that reference
-      them. Module paths become `std::io` / `std::collections::*`. Regen goldens; gate green.
-      *(Pure move + path-rename; no semantics change. Do this first so later phases target the
-      final paths.)*
+- [x] **P0 — Relocate existing stdlib files to the §1a layout.** ✅ Done: stdlib now lives
+      at `stdlib/std/io.ax`, `stdlib/std/collections/{list,map}.ax`, and `stdlib/core/*.ax`.
+      Module paths are `std::io` / `std::collections::*` / `core::*`. The embedded loader walks
+      the tree path-relative; fixtures/goldens reference the final paths. Gate green.
 - [x] **P1 — `core` bodies load and type-check in *every* path.** ✅ Done by
       [`stdlib-loading-unification.md`](stdlib-loading-unification.md): the four divergent
       loaders are collapsed into one. The stdlib is **embedded** (`axiom-stdlib` build.rs) and
@@ -119,24 +122,23 @@ stdlib/
       exports-only/no-bodies path. Any new `core/*.ax` file is auto-embedded (drift-guarded)
       and loaded everywhere; just add it to the implicit prelude if it should resolve without
       `use`.
-- [ ] **P2 — core test/golden harness asserts clean.** Extend the VM golden + typeck
-      harness (already tightened to assert `thir.diagnostics.is_empty()`) to cover the
-      `core` modules, so a broken `core/*.ax` fails the build instead of silently falling
-      back to a built-in.
-- [ ] **P3 — minimal scalar floor primitives identified & named.** Confirm `==`/`<`/
-      arithmetic are VM operators (they are). Add the *one* new floor op each later phase
-      needs: a per-scalar `hash` (for M4) and a `Bytes` length op (for M5). Keep these as
-      named VM intrinsics behind the same `is_builtin` door — they are the irreducible
+- [x] **P2 — core test/golden harness asserts clean.** ✅ Satisfied: every compilation path
+      compiles the *whole* embedded stdlib (`core` + `std`) through `check_modules`, and the
+      corpus feature harness (`axiom-cli/tests/features.rs`) plus the VM/HIR goldens assert
+      both `thir.hir.diagnostics` (name resolution) and `thir.diagnostics` (types) are clean.
+      A broken `core/*.ax` or `std/*.ax` now fails the build rather than silently falling back.
+- [x] **P3 — minimal scalar floor primitives identified & named.** ✅ Done: `==`/`<`/
+      arithmetic are VM operators; the two new floor ops landed as named VM intrinsics behind
+      `is_builtin` — per-scalar `hash_raw` (M4) and `Bytes::len` (M5). They are the irreducible
       floor, not stand-ins.
 - [x] **P4 — `HeapBuffer<T>` growable primitive + subscript** (gates M6/M7). Done in **D1**:
       the heap-backed growable buffer with the four floor ops + subscript read/write, exposed
       to Axiom. (`Deinit`/refcounting is Perceus/v1 territory; the caller tracks length, as
       `List` will via its `count`/`cap` fields.) List/Map can now be written in Axiom.
-- [ ] **P5 — decision: explicit per-primitive impls vs. a `derive`.** The current
-      auto-impl table generates `4×{Equatable,Hashable,Ord}` + `5×Deinit` impls. Decide
-      whether `core` writes these out explicitly (simplest; no new machinery; singular-idiom
-      friendly) or whether we introduce a `derive` mechanism first. **Default: explicit
-      impls** — defer `derive` until duplication actually hurts.
+- [x] **P5 — decision: explicit per-primitive impls vs. a `derive`.** ✅ Decided: **explicit
+      impls** (no `derive` machinery). `core/primitives.ax` + `core/string.ax` write out the
+      `{Equatable,Hashable,Ord}` + `Deinit` impls by hand — simplest, singular-idiom friendly.
+      `derive` stays deferred (§5) until duplication actually hurts.
 
 ---
 
@@ -173,12 +175,11 @@ stdlib/
       is now gone entirely. Fixed `resolve_impl_self_type` for primitive impls (was `Ty::Error`).
       Regen + e2e. *(M4)*
 
-### Phase C — `String::len` → library
-- [ ] **C1.** Add the `Bytes` length floor op (P3). Write `impl String { fn len(let self)
-      -> Int { … self.as_bytes() … } }` in `stdlib/core/string.ax`. Remove `len` from
-      `register_string_methods` **and** from VM `is_builtin`/`call_builtin`
-      (`builtin_string_len`). `as_bytes` stays (it's the floor). Regen + `format_e2e`-style
-      e2e test. *(M5)*
+### Phase C — `String::len` → library ✅ DONE (M5)
+- [x] **C1.** ✅ Added the `Bytes::len` floor op. `core/string.ax` has the real
+      `fn len(let self) -> Int { self.as_bytes().len() }`. Removed `len` from
+      `register_string_methods` and from VM `is_builtin`/`call_builtin` (the VM now asserts
+      `!is_builtin("String::len")`). `as_bytes` stays (the floor). Regen + e2e. *(M5)*
 
 ### Phase D — collections (largest; gated on P4 = `HeapBuffer<T>`)
 - [x] **D1.** Landed `HeapBuffer<T>` (P4): the four floor ops are exposed to Axiom as
@@ -203,17 +204,33 @@ stdlib/
       `check_expr` adopts the expected type when the inferred one unifies modulo type
       parameters (so `List::new`'s phantom `T` binds from the declared `List<Int>`). The IR
       assignment-lowering cluster moved to `crates/axiom-ir/src/lower/assign.rs` (600-line cap).
-- [ ] **D3.** Implement real `stdlib/std/collections/map.ax` bodies on `HeapBuffer` +
-      `Hashable` (needs B3). Remove `register_map_methods` (incl. the `set` intrinsic). Add
-      map e2e tests. Regen. *(M7)*
+- [x] **D3.** ✅ Implemented real `stdlib/std/collections/map.ax`: `struct Map<K, V>` as an
+      open-addressing hash table (linear probing, 0.75 load factor, grow+rehash) on the
+      `HeapBuffer<T>` floor — three parallel buffers (keys/vals/used), keys hashed through the
+      `Hashable` bound and compared with `==`, `get` returns `Option<V>`. Removed
+      `register_map_methods` (incl. the `set` intrinsic). Added `axiom-vm/tests/map_e2e.rs`
+      (set/get/has/count, overwrite, absent→`None`, grow/rehash, String keys). Regen. *(M7)*
+      Completing M7 surfaced and fixed three latent cross-layer bugs (first code to exercise
+      `break` inside `if`, `loop { … break }`, and a `pub enum`'s constructors from another
+      module): IR lowering now lets the first terminator win (a `break`/`return` inside an
+      `if`/match arm is no longer overwritten by the enclosing jump); `break`/`continue` lower
+      directly to `Jump` loop_exit/loop_head; enum variants inherit their enum's visibility
+      (so prelude `Some`/`None` resolve everywhere). A VM step cap
+      (`AXIOM_VM_MAX_STEPS`, default 50M) guards against runaway loops. (commit `b14ca6d`)
 
-### Phase E — cleanup & docs
-- [ ] **E1.** `typeck/builtin.rs` now holds *only* the irreducible floor (or is deleted if
-      the floor ops live elsewhere). Confirm no `register_builtin_*` stand-in remains.
-- [ ] **E2.** Update `DESIGN_SPEC.md` §11 (mark `core` primitive methods / traits as real
-      library code), §14 roadmap row, and this doc's status. Update per-folder READMEs.
-- [ ] **E3.** Final inventory check: the only built-ins left are the §2a "STAY" set
-      (`format`, `todo`, primitive type names, platform externs, `as_bytes`, scalar floor).
+### Phase E — cleanup & docs ✅ DONE
+- [x] **E1.** ✅ `typeck/builtin.rs` holds *only* the irreducible floor: `register_string_methods`
+      (`String::as_bytes`), `register_bytes_methods` (`Bytes::len`), and `register_hash_methods`
+      (per-scalar `hash_raw`). No `register_builtin_*` stand-in remains — `register_builtin_traits`,
+      `register_builtin_impls`, `register_list_methods`, `register_map_methods`, and the old
+      `String::len` are all gone.
+- [x] **E2.** ✅ Updated `DESIGN_SPEC.md` §11 (core primitive methods/traits + `List`/`Map`
+      marked as real library code; migration noted complete), the §14 roadmap row, this doc's
+      status header + all checkboxes, and the touched crate READMEs.
+- [x] **E3.** ✅ Final inventory confirmed. The only built-ins left are the §2a "STAY" set:
+      VM `is_builtin` = `{format, String::as_bytes, Bytes::len, {Int,Float,Bool,String}::hash_raw}`,
+      plus the `core::platform` externs (`write`/`read`/`close`), `todo`, the primitive type
+      names, and scalar operators (`==`/`<`/`+`/…). No `todo()`/placeholder remains in `stdlib/`.
 
 ---
 

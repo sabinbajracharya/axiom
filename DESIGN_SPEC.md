@@ -604,7 +604,10 @@ string.ax` → `core::string`, `stdlib/std/collections/list.ax` → `std::collec
 
 - **`core`** (always available — the implicit prelude): `Option`, `Result`, the core
   traits (`Deinit`, `Equatable`, `Hashable`, `Ord`, `Iterator` + adapters), primitive
-  methods, and `String`. *(`core` is the minimal always-on layer. It is **not** strictly
+  methods, and `String`. *(The core traits and the primitive trait impls + `String::len`
+  are **real library code** in `stdlib/core/*.ax` — not compiler built-ins — bottoming out
+  only on the irreducible scalar/`Bytes` floor; see migration note below.)* *(`core` is the
+  minimal always-on layer. It is **not** strictly
   allocation-free like Rust's `core`: `String` is the deliberate exception — it is the
   one string type, backs every literal and `format`, and has no borrowed `&str`
   counterpart to live below it. The growable general-purpose containers are **not** in
@@ -616,9 +619,10 @@ string.ax` → `core::string`, `stdlib/std/collections/list.ax` → `std::collec
   - **Collections live in `std::collections`, not `core`** [Decided] — they require a heap
     allocator (Rust keeps `Vec`/`HashMap` in `alloc`/`std`, never `core`), and §10.2
     already imports them as `use std::collections::{Map, Set}`. This resolves the earlier
-    `core`-vs-`std` contradiction toward `std`. Migration of these from compiler built-ins
-    to real `std::collections` `.ax` code is tracked in
-    [`docs/builtin-to-stdlib-migration.md`](docs/builtin-to-stdlib-migration.md).
+    `core`-vs-`std` contradiction toward `std`. **`List<T>` and `Map<K,V>` are now real
+    `std::collections` `.ax` code** on the `HeapBuffer<T>` floor — the compiler built-in
+    stand-ins are gone (migration ✅ complete; see
+    [`docs/builtin-to-stdlib-migration.md`](docs/builtin-to-stdlib-migration.md)).
 - **Formatting:** `string::format("{} = {}", k, v)` — **one** formatting mechanism. String interpolation is **not** added unless we drop `format` (singular idiom forbids both; §15).
   - **`print`/`println` are `String`-only** (`fn print(s: String)`); the idiomatic way to
     print a non-string is `println(string::format("{}", x))`. They are ordinary
@@ -714,7 +718,7 @@ Each stage is independently shippable and testable. Risk is retired front-to-bac
 
 **Spike 0 — Memory-model prototype (throwaway).** §4.10. Retire the single biggest risk (exclusivity + subscripts + closure capture + minimal Perceus). **Exit gate: Path A confirmed tolerable, or fall back to Path B.** *Nothing permanent is built until this passes.*
 
-**v0 — End-to-end skeleton, NO memory model.** Lex → parse → typecheck → IR → Cranelift, for a value-semantics subset with naive "copy/refcount everything" (no exclusivity, no Perceus optimization). Goal: a `hello.ax` and basic programs run natively. Proves the pipeline. Includes the dual-backend + parity harness early. **Also includes:** user-defined structs, `HeapBuffer<T>` primitive, `Deinit` auto-impl, subscript declarations, generic struct method resolution, and migration of `List<T>`/`Map<K,V>` from compiler built-ins to library types (see `docs/struct-v0-plan.md`).
+**v0 — End-to-end skeleton, NO memory model.** Lex → parse → typecheck → IR → Cranelift, for a value-semantics subset with naive "copy/refcount everything" (no exclusivity, no Perceus optimization). Goal: a `hello.ax` and basic programs run natively. Proves the pipeline. Includes the dual-backend + parity harness early. **Also includes:** user-defined structs, `HeapBuffer<T>` primitive, `Deinit` auto-impl, subscript declarations, generic struct method resolution, and migration of `List<T>`/`Map<K,V>` from compiler built-ins to library types (✅ **done** — `List`/`Map` are real `std::collections` `.ax` code; see `docs/builtin-to-stdlib-migration.md`).
 
 **v1 — The memory model.** Fold the spiked ownership pass + Perceus + reuse analysis into the real compiler. Enums, traits, generics (full), `match` exhaustiveness, `val`/`var`, the three conventions, error handling (`try`/`catch`/`errdefer`/error sets). **This is the language's identity landing.** Closures with the spiked capture model. Diagnostics for exclusivity errors held to release-gating quality.
 

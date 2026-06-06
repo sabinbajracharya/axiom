@@ -49,6 +49,7 @@ mode for compiler-isolation tests. See `docs/stdlib-loading-unification.md`.
 | `src/typeck/collect.rs` | Pass 1: collect fn signatures, struct/enum defs | `collect_pass` |
 | `src/typeck/infer.rs` | Expression type rules: literals, paths, binary/unary ops, calls, fields | `infer_expr`, `check_expr` |
 | `src/typeck/control.rs` | Control-flow type rules: blocks, if/else, match, loop, struct lit, assign | `infer_block`, `infer_if`, `infer_match` |
+| `src/typeck/typeinfo.rs` | Generic type-def introspection: a struct's fields / an enum's variant payloads resolved in the type's own type-param scope | `struct_generic_info`, `enum_generic_info` |
 | `src/typeck/stmt.rs` | Statement typing and pattern binding | `type_stmt`, `define_pattern_bindings` |
 | `src/typeck/helpers.rs` | Small pure helpers: `is_error`, `is_numeric`, `infer_lit`, `call_name` | — |
 | `src/exhaustiveness.rs` | Match exhaustiveness checking for enums | `check_match_exhaustiveness` |
