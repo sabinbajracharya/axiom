@@ -6,6 +6,7 @@
 
 use crate::hir::*;
 
+mod escape;
 mod types;
 use types::{fmt_ty, fmt_ty_maybe};
 
@@ -577,7 +578,7 @@ fn fmt_lit(kind: &LitKind) -> String {
         LitKind::Int(i) => format!("Int({i})"),
         LitKind::Float(f) => format!("Float({f})"),
         LitKind::Bool(b) => format!("Bool({b})"),
-        LitKind::String(s) => format!("String(\"{}\")", s),
+        LitKind::String(s) => format!("String(\"{}\")", escape::escape_str(s)),
         LitKind::Unit => "Unit".to_string(),
     }
 }

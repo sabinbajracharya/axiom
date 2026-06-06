@@ -302,14 +302,15 @@ fn resolve_use_path(
 
 // ── Name resolution helpers ──────────────────────────────────────────────────
 
-/// Resolve a NameRef by looking it up in the given scope.
-pub(crate) fn resolve_name_ref(
+/// Try to resolve a NameRef against the scope's bindings or the builtins,
+/// rewriting it to `Resolved` on success. Returns whether it resolved. Emits
+/// no diagnostic — callers that require resolution use [`resolve_name_ref`].
+pub(crate) fn try_resolve_name_ref(
     nr: &mut NameRef,
     bindings: &HashMap<String, (DefId, DefKind)>,
-    diagnostics: &mut Vec<HirDiagnostic>,
-) {
+) -> bool {
     let text = match nr {
-        NameRef::Resolved(_) => return,
+        NameRef::Resolved(_) => return true,
         NameRef::Unresolved(u) => u.text.clone(),
     };
 
@@ -318,18 +319,33 @@ pub(crate) fn resolve_name_ref(
             def_id: *def_id,
             text,
         });
-        return;
+        return true;
     }
 
     if let Some(def_id) = builtin_def_id(&text) {
         *nr = NameRef::Resolved(ResolvedName { def_id, text });
-        return;
+        return true;
     }
 
-    diagnostics.push(HirDiagnostic::UnresolvedName {
-        name: text,
-        span: Span { lo: 0, hi: 0 },
-    });
+    false
+}
+
+/// Resolve a NameRef by looking it up in the given scope, emitting an
+/// `UnresolvedName` diagnostic if it is not found.
+pub(crate) fn resolve_name_ref(
+    nr: &mut NameRef,
+    bindings: &HashMap<String, (DefId, DefKind)>,
+    diagnostics: &mut Vec<HirDiagnostic>,
+) {
+    if try_resolve_name_ref(nr, bindings) {
+        return;
+    }
+    if let NameRef::Unresolved(u) = nr {
+        diagnostics.push(HirDiagnostic::UnresolvedName {
+            name: u.text.clone(),
+            span: Span { lo: 0, hi: 0 },
+        });
+    }
 }
 
 /// Reserved HirId range for builtins. Real definitions start above this.

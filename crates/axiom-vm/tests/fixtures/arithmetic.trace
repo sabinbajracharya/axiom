@@ -12,10 +12,12 @@
 [fn output] 13 7 30
 [fn std::io::println] 
 [fn std::io::println] %4 = Const(Int(1))
-[fn std::io::println] %5 = Const(String("\\n"))
+[fn std::io::println] %5 = Const(String("\n"))
 [fn std::io::println] 
-[fn extern] write(\n) => ()
-[fn output] \n
+[fn extern] write(
+) => ()
+[fn output] 
+
 [fn std::io::println] 
 [fn std::io::println] %8 = Const(Unit)
 [fn std::io::println] Return %8

@@ -179,10 +179,36 @@ fn lit_kind_from_token(token: &axiom_parser::SyntaxToken) -> LitKind {
         SyntaxKind::StrLit => {
             let text = token.text();
             let inner = &text[1..text.len().saturating_sub(1)];
-            LitKind::String(inner.to_string())
+            LitKind::String(decode_str_escapes(inner))
         }
         SyntaxKind::KwTrue => LitKind::Bool(true),
         SyntaxKind::KwFalse => LitKind::Bool(false),
         _ => LitKind::Unit,
     }
+}
+
+/// Decode the escape sequences a string literal may contain — `\n`, `\t`, `\r`,
+/// `\0`, `\\`, `\"` — into the actual characters for the runtime string value.
+/// The lexer has already validated escapes, so an unrecognized one keeps its
+/// trailing character verbatim rather than erroring again.
+fn decode_str_escapes(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            out.push(c);
+            continue;
+        }
+        match chars.next() {
+            Some('n') => out.push('\n'),
+            Some('t') => out.push('\t'),
+            Some('r') => out.push('\r'),
+            Some('0') => out.push('\0'),
+            Some('\\') => out.push('\\'),
+            Some('"') => out.push('"'),
+            Some(other) => out.push(other),
+            None => out.push('\\'),
+        }
+    }
+    out
 }

@@ -128,7 +128,17 @@ fn resolve_expr_names(expr: &mut Expr, scope: &mut Scope, diagnostics: &mut Vec<
 }
 
 fn resolve_call_names(c: &mut CallExpr, scope: &mut Scope, diagnostics: &mut Vec<HirDiagnostic>) {
-    resolve_name_ref(&mut c.callee, &scope.bindings, diagnostics);
+    if c.qualifier.is_some() {
+        // Qualified call (`Type::method()`): the callee segment is an associated
+        // function or method, resolved by the type checker against the
+        // qualifier's type — not as a bare name here. Attempt a bare-name
+        // resolution anyway so enum constructors (`Maybe::Just`) still bind, but
+        // don't error if it isn't a top-level name (the type checker will, if it
+        // is genuinely missing).
+        super::try_resolve_name_ref(&mut c.callee, &scope.bindings);
+    } else {
+        resolve_name_ref(&mut c.callee, &scope.bindings, diagnostics);
+    }
     for arg in &mut c.args {
         resolve_expr_names(arg, scope, diagnostics);
     }
