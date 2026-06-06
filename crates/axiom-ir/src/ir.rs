@@ -139,8 +139,6 @@ pub enum IrInstr {
         scrutinee: Reg,
         index: usize,
     },
-    /// r = [elem1, elem2, ...]
-    ListNew { dst: Reg, elements: Vec<Reg> },
     /// r = heap_alloc(count) — allocate a buffer for `count` elements, return pointer.
     HeapAlloc { dst: Reg, count: Reg },
     /// heap_free(ptr) — free a heap-allocated buffer.

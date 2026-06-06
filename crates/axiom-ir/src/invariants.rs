@@ -146,7 +146,6 @@ fn instr_dst(instr: &IrInstr) -> Option<Reg> {
         | IrInstr::StructNew { dst, .. }
         | IrInstr::EnumNew { dst, .. }
         | IrInstr::VariantPayload { dst, .. }
-        | IrInstr::ListNew { dst, .. }
         | IrInstr::HeapAlloc { dst, .. }
         | IrInstr::HeapGet { dst, .. } => Some(*dst),
         IrInstr::HeapFree { .. }
@@ -172,7 +171,6 @@ fn instr_used_regs(instr: &IrInstr) -> Vec<Reg> {
         IrInstr::StructNew { fields, .. } => fields.iter().map(|(_, r)| *r).collect(),
         IrInstr::EnumNew { payload, .. } => payload.clone(),
         IrInstr::VariantPayload { scrutinee, .. } => vec![*scrutinee],
-        IrInstr::ListNew { elements, .. } => elements.clone(),
         IrInstr::Const { .. } => vec![],
         IrInstr::HeapAlloc { count, .. } => vec![*count],
         IrInstr::HeapFree { ptr } => vec![*ptr],

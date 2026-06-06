@@ -303,12 +303,16 @@ Builtin collection indexing is treated as **disjoint storage**:
 ### 6.1 List literals
 
 ```axiom
-val xs: List<Int> = [1, 2, 3]       // desugars to List::from_array([1, 2, 3])
+val xs: List<Int> = [1, 2, 3]       // desugars to List::new() + push(1)/push(2)/push(3)
 val ys = [1, 2, 3]                   // type inferred as List<Int>
 val empty: List<Int> = []            // desugars to List::new()
 ```
 
-- `[1, 2, 3]` is sugar for `List::from_array(...)`.
+- `[1, 2, 3]` is sugar for `List::new()` followed by a `push` per element. There is
+  **no list intrinsic** — the literal lowers to exactly the stdlib calls a user would
+  write by hand (IR `lower_list_lit`), so `List<T>` stays ordinary library code over
+  `HeapBuffer<T>`. (A `List::from_array` fast path may replace the per-element pushes
+  later; it is not required for correctness.)
 - The type of the list is inferred from context or from the element types.
 - Empty list `[]` requires a type annotation (can't infer `T` from nothing).
 

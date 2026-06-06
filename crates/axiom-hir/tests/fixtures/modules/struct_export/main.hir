@@ -114,39 +114,42 @@ ImplDef(5) List→0<T: Deinit→<unresolved>> methods=[
   FnDef(7) name=new vis=private params=[] return=List→0<T→6> {
     tail: StructLit(10) List→0 { buf: Call(11) heap_alloc→1000007(Lit(12) Int(0)), count: Lit(13) Int(0), cap: Lit(14) Int(0) }
   }
-  FnDef(15) name=count vis=private params=[let self: _] return=Int→<unresolved> {
-    tail: Path(20) self→16.Field(19) count
+  FnDef(15) name=with_capacity vis=private params=[let capacity: Int→<unresolved>] return=List→0<T→6> {
+    tail: StructLit(19) List→0 { buf: Call(20) heap_alloc→1000007(Path(21) capacity→16), count: Lit(22) Int(0), cap: Path(23) capacity→16 }
   }
-  FnDef(21) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
-    tail: Bin(25) ==(Path(27) self→22.Field(26) count, Lit(28) Int(0))
+  FnDef(24) name=count vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(29) self→25.Field(28) count
   }
-  FnDef(29) name=capacity vis=private params=[let self: _] return=Int→<unresolved> {
-    tail: Path(34) self→30.Field(33) cap
+  FnDef(30) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
+    tail: Bin(34) ==(Path(36) self→31.Field(35) count, Lit(37) Int(0))
   }
-  FnDef(35) name=push vis=private params=[inout self: _, sink element: T→6] return=_ {
-    ExprStmt(39) If(40) Bin(41) ==(Path(43) self→36.Field(42) count, Path(45) self→36.Field(44) cap) Block(46) {
-      tail: Path(49) self→36.Method(48) grow()
+  FnDef(38) name=capacity vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(43) self→39.Field(42) cap
+  }
+  FnDef(44) name=push vis=private params=[inout self: _, sink element: T→6] return=_ {
+    ExprStmt(48) If(49) Bin(50) ==(Path(52) self→45.Field(51) count, Path(54) self→45.Field(53) cap) Block(55) {
+      tail: Path(58) self→45.Method(57) grow()
     }
-    ExprStmt(50) Path(53) self→36.Field(52) buf[Path(55) self→36.Field(54) count] = Path(56) element→37
-    tail: Path(59) self→36.count = Bin(60) +(Path(62) self→36.Field(61) count, Lit(63) Int(1))
+    ExprStmt(59) Path(62) self→45.Field(61) buf[Path(64) self→45.Field(63) count] = Path(65) element→46
+    tail: Path(68) self→45.count = Bin(69) +(Path(71) self→45.Field(70) count, Lit(72) Int(1))
   }
-  FnDef(64) name=grow vis=private params=[inout self: _] return=_ {
-    VarStmt(72) Ident(67) new_cap→67: _ = Bin(68) *(Path(70) self→65.Field(69) cap, Lit(71) Int(2))
-    ExprStmt(73) If(74) Bin(75) ==(Path(76) new_cap→67, Lit(77) Int(0)) Block(78) {
-      tail: new_cap→67 = Lit(81) Int(4)
+  FnDef(73) name=grow vis=private params=[inout self: _] return=_ {
+    VarStmt(81) Ident(76) new_cap→76: _ = Bin(77) *(Path(79) self→74.Field(78) cap, Lit(80) Int(2))
+    ExprStmt(82) If(83) Bin(84) ==(Path(85) new_cap→76, Lit(86) Int(0)) Block(87) {
+      tail: new_cap→76 = Lit(90) Int(4)
     }
-    VarStmt(85) Ident(82) new_buf→82: [T→<unresolved>] = Call(83) heap_alloc→1000007(Path(84) new_cap→67)
-    VarStmt(88) Ident(86) i→86: _ = Lit(87) Int(0)
-    ExprStmt(89) LoopCond(90) Bin(105) <(Path(106) i→86, Path(108) self→65.Field(107) count) Block(91) {
-      ExprStmt(92) Path(94) new_buf→82[Path(95) i→86] = Path(98) self→65.Field(97) buf[Path(99) i→86]
-      tail: i→86 = Bin(102) +(Path(103) i→86, Lit(104) Int(1))
+    VarStmt(94) Ident(91) new_buf→91: [T→<unresolved>] = Call(92) heap_alloc→1000007(Path(93) new_cap→76)
+    VarStmt(97) Ident(95) i→95: _ = Lit(96) Int(0)
+    ExprStmt(98) LoopCond(99) Bin(114) <(Path(115) i→95, Path(117) self→74.Field(116) count) Block(100) {
+      ExprStmt(101) Path(103) new_buf→91[Path(104) i→95] = Path(107) self→74.Field(106) buf[Path(108) i→95]
+      tail: i→95 = Bin(111) +(Path(112) i→95, Lit(113) Int(1))
     }
-    ExprStmt(109) Call(110) heap_free→1000010(Path(112) self→65.Field(111) buf)
-    ExprStmt(113) Path(115) self→65.buf = Path(116) new_buf→82
-    tail: Path(119) self→65.cap = Path(120) new_cap→67
+    ExprStmt(118) Call(119) heap_free→1000010(Path(121) self→74.Field(120) buf)
+    ExprStmt(122) Path(124) self→74.buf = Path(125) new_buf→91
+    tail: Path(128) self→74.cap = Path(129) new_cap→76
   }
-  SubscriptDef(121) (self, index) -> T→6 body
-    tail: Path(128) self→122.Field(127) buf[Path(129) index→123]
+  SubscriptDef(130) (self, index) -> T→6 body
+    tail: Path(137) self→131.Field(136) buf[Path(138) index→132]
 ]
 StructDef(0) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private keys: [K→1], private vals: [V→2], private used: [Bool→<unresolved>], private count: Int→<unresolved>, private cap: Int→<unresolved>]
 ImplDef(8) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[

@@ -19,7 +19,6 @@ pub enum Value {
         variant: String,
         payload: Vec<Value>,
     },
-    List(Vec<Value>),
     Bytes(Vec<u8>),
     HeapPtr(usize),
 }
@@ -46,7 +45,6 @@ impl Value {
             Value::Unit => "Unit",
             Value::Struct { .. } => "Struct",
             Value::Enum { .. } => "Enum",
-            Value::List(_) => "List",
             Value::Bytes(_) => "Bytes",
             Value::HeapPtr(_) => "HeapPtr",
         }
@@ -89,16 +87,6 @@ impl fmt::Display for Value {
                 }
                 Ok(())
             }
-            Value::List(items) => {
-                write!(f, "[")?;
-                for (i, val) in items.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{val}")?;
-                }
-                write!(f, "]")
-            }
             Value::Bytes(b) => {
                 write!(f, "[")?;
                 for (i, byte) in b.iter().enumerate() {
@@ -122,7 +110,6 @@ impl PartialEq for Value {
             (Value::Bool(a), Value::Bool(b)) => a == b,
             (Value::String(a), Value::String(b)) => a == b,
             (Value::Unit, Value::Unit) => true,
-            (Value::List(a), Value::List(b)) => a == b,
             (Value::Bytes(a), Value::Bytes(b)) => a == b,
             (Value::HeapPtr(a), Value::HeapPtr(b)) => a == b,
             // Struct/Enum: compare by type + fields/variant+payload
@@ -203,12 +190,6 @@ mod tests {
     }
 
     #[test]
-    fn test_value_display_list() {
-        let v = Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)]);
-        assert_eq!(v.to_string(), "[1, 2, 3]");
-    }
-
-    #[test]
     fn test_value_display_heapptr() {
         assert_eq!(Value::HeapPtr(7).to_string(), "HeapPtr(7)");
     }
@@ -226,7 +207,7 @@ mod tests {
     fn test_value_type_name() {
         assert_eq!(Value::Int(0).type_name(), "Int");
         assert_eq!(Value::Bool(false).type_name(), "Bool");
-        assert_eq!(Value::List(vec![]).type_name(), "List");
+        assert_eq!(Value::Bytes(vec![]).type_name(), "Bytes");
     }
 
     #[test]

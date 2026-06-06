@@ -162,9 +162,6 @@ impl Vm {
                 let base_val = self.current_frame()?.read_reg(base)?.clone();
                 let idx_val = self.current_frame()?.read_reg(index)?.clone();
                 let val = match (&base_val, &idx_val) {
-                    (Value::List(items), Value::Int(i)) => {
-                        items.get(*i as usize).cloned().unwrap_or(Value::Unit)
-                    }
                     (Value::HeapPtr(addr), Value::Int(i)) => {
                         self.heap.get(*addr, *i as usize)?.clone()
                     }
@@ -235,21 +232,6 @@ impl Vm {
                     fmt_regs(&payload)
                 );
                 self.write_and_advance(dst, val, &fn_name, text)?;
-            }
-            IrInstr::ListNew { dst, elements } => {
-                let vals: Vec<Value> = {
-                    let frame = self.current_frame()?;
-                    elements
-                        .iter()
-                        .map(|r| frame.read_reg(*r).cloned())
-                        .collect::<Result<_, _>>()?
-                };
-                self.write_and_advance(
-                    dst,
-                    Value::List(vals),
-                    &fn_name,
-                    format!("%{} = ListNew [{}]", dst.0, fmt_regs(&elements)),
-                )?;
             }
             IrInstr::HeapAlloc { dst, count } => {
                 let n = match self.current_frame()?.read_reg(count)? {
@@ -329,18 +311,11 @@ impl Vm {
                     Value::Int(i) => *i as usize,
                     _ => 0,
                 };
-                // Index-write goes through the shared heap for a `HeapBuffer`
-                // pointer, or mutates a `List` value in place.
-                let mut base_val = self.current_frame()?.read_reg(base)?.clone();
-                match &mut base_val {
-                    Value::HeapPtr(addr) => self.heap.set(*addr, idx, val)?,
-                    Value::List(items) => {
-                        if idx < items.len() {
-                            items[idx] = val;
-                        }
-                        self.current_frame_mut()?.write_reg(base, base_val)?;
-                    }
-                    _ => {}
+                // Index-write goes through the shared heap: the base is a
+                // `HeapBuffer` pointer (the `[T]` floor). Higher-level
+                // collections like `List` write through their own subscript.
+                if let Value::HeapPtr(addr) = *self.current_frame()?.read_reg(base)? {
+                    self.heap.set(addr, idx, val)?;
                 }
                 self.trace_instr(
                     &fn_name,

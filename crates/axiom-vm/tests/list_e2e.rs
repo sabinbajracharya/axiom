@@ -39,6 +39,39 @@ fn test_list_push_count_and_subscript() {
 }
 
 #[test]
+fn test_list_literal_desugars_to_stdlib() {
+    // `[10, 20, 30]` is sugar for `List::new()` + a `push` per element — it must
+    // produce a real `List<Int>` struct, so `count()`/subscript work on it just
+    // like on a list built by hand. (Before M6's literal migration this lowered
+    // to a compiler-native `Value::List` and silently returned `()`.)
+    // Distinctive prefixes so the assertions match the *rendered* output, not a
+    // stray element literal echoed in the trace.
+    let out = run_output(
+        r#"fn main() {
+    var xs: List<Int> = [10, 20, 30]
+    print(format("count={}", xs.count()))
+    print(format("elem={}", xs[1]))
+}"#,
+    );
+    assert!(out.contains("count=3"), "expected count 3, got: {out:?}");
+    assert!(out.contains("elem=20"), "expected element 20, got: {out:?}");
+}
+
+#[test]
+fn test_list_literal_preallocates_exact_capacity() {
+    // A fixed-size literal must allocate exactly once: `[10, 20, 30]` lowers to
+    // `List::with_capacity(3)` + pushes, so capacity is exactly 3 — not the 4
+    // that `new()` + grow-doubling (0 → 4) would leave.
+    let out = run_output(
+        r#"fn main() {
+    var xs: List<Int> = [10, 20, 30]
+    print(format("cap={}", xs.capacity()))
+}"#,
+    );
+    assert!(out.contains("cap=3"), "expected capacity 3, got: {out:?}");
+}
+
+#[test]
 fn test_list_grows_past_initial_capacity() {
     // Initial cap is 0 → grows to 4 → grows to 8; pushing 5 elements crosses a
     // growth boundary and must preserve earlier elements.

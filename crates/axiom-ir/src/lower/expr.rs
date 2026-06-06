@@ -263,11 +263,44 @@ fn lower_struct_lit(e: &axiom_hir::StructLitExpr, ctx: &mut FnLowerCtx) -> Reg {
     dst
 }
 
+/// `[a, b, c]` is sugar for building a stdlib `List<T>` by hand — there is no
+/// compiler-native list value. A non-empty literal pre-sizes the list to its
+/// known length (`List::with_capacity(n)`) and then `push`es each element, so a
+/// fixed-size literal allocates exactly once instead of regrowing 0 → 4 → 8 → …
+/// An empty literal has no size to pre-size to, so it lowers to `List::new()`
+/// (the first later `push` allocates). `push`'s `inout self` writes the growing
+/// list back into `list` after each call; elements evaluate left-to-right first.
 fn lower_list_lit(e: &axiom_hir::ListLitExpr, ctx: &mut FnLowerCtx) -> Reg {
     let elements: Vec<Reg> = e.elements.iter().map(|el| lower_expr(el, ctx)).collect();
-    let dst = ctx.fresh_reg();
-    ctx.emit(IrInstr::ListNew { dst, elements });
-    dst
+    let list = ctx.fresh_reg();
+    if elements.is_empty() {
+        ctx.emit(IrInstr::Call {
+            dst: list,
+            function: "List::new".to_string(),
+            args: vec![],
+        });
+        return list;
+    }
+    let cap = ctx.fresh_reg();
+    ctx.emit(IrInstr::Const {
+        dst: cap,
+        value: IrConst::Int(elements.len() as i64),
+    });
+    ctx.emit(IrInstr::Call {
+        dst: list,
+        function: "List::with_capacity".to_string(),
+        args: vec![cap],
+    });
+    for element in elements {
+        let dst = ctx.fresh_reg();
+        ctx.emit(IrInstr::MethodCall {
+            dst,
+            receiver: list,
+            method: "List::push".to_string(),
+            args: vec![element],
+        });
+    }
+    list
 }
 
 fn lower_block(e: &axiom_hir::Block, ctx: &mut FnLowerCtx) -> Reg {

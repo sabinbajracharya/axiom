@@ -164,9 +164,6 @@ fn serialize_instr_complex(instr: &IrInstr) -> String {
             variant,
             fmt_regs(payload)
         ),
-        IrInstr::ListNew { dst, elements } => {
-            format!("{} = ListNew [{}]", fmt_reg(*dst), fmt_regs(elements))
-        }
         _ => serialize_instr_mut(instr),
     }
 }

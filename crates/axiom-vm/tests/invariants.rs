@@ -24,7 +24,6 @@ fn test_ir_instr_variants_covered() {
         "Copy",
         "StructNew",
         "EnumNew",
-        "ListNew",
         "HeapAlloc",
         "HeapFree",
         "HeapGet",
@@ -32,7 +31,7 @@ fn test_ir_instr_variants_covered() {
     ];
     assert_eq!(
         variants.len(),
-        15,
+        14,
         "IrInstr variant count changed — update exec/instr.rs"
     );
 }

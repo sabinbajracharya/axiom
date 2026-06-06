@@ -236,7 +236,6 @@ mod tests {
                 | IrInstr::Index { dst, .. }
                 | IrInstr::StructNew { dst, .. }
                 | IrInstr::EnumNew { dst, .. }
-                | IrInstr::ListNew { dst, .. }
                 | IrInstr::HeapAlloc { dst, .. } => dst.0 + 1,
                 IrInstr::HeapFree { .. }
                 | IrInstr::HeapSet { .. }

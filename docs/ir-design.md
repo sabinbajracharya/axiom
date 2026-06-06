@@ -170,8 +170,6 @@ pub enum IrInstr {
         variant: String,
         payload: Vec<Reg>,
     },
-    /// r = [elem1, elem2, ...]
-    ListNew { dst: Reg, elements: Vec<Reg> },
     /// r = heap_alloc(count) — allocate buffer for `count` elements, return pointer.
     HeapAlloc { dst: Reg, count: Reg },
     /// heap_free(ptr) — free a heap-allocated buffer.
@@ -276,7 +274,7 @@ zero or more `IrInstr`s into the current block.
 | `Field(base, f)` | lower base → `%b`, `Field { dst: %n, %b, f }` | `%n` |
 | `Index(base, idx)` | lower base → `%b`, lower idx → `%i`, `Index { dst: %n, %b, %i }` | `%n` |
 | `StructLit(T, fields)` | lower each field value → `%f_i`, `StructNew { dst: %n, T, [(name, %f_i), ...] }` | `%n` |
-| `ListLit(elems)` | lower each elem → `%e_i`, `ListNew { dst: %n, [%e_0, ...] }` | `%n` |
+| `ListLit(elems)` | lower each elem → `%e_i`, then desugar to `Call List::new() → %n` + a `MethodCall %n.List::push(%e_i)` per element (no list intrinsic — `List<T>` is stdlib over `HeapBuffer<T>`) | `%n` |
 | `HeapAlloc(count)` | lower count → `%c`, `HeapAlloc { dst: %n, %c }` | `%n` (pointer) |
 | `HeapFree(ptr)` | lower ptr → `%p`, `HeapFree { ptr: %p }` | — |
 | `HeapGet(ptr, idx)` | lower ptr → `%p`, lower idx → `%i`, `HeapGet { dst: %n, %p, %i }` | `%n` |
