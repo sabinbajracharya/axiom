@@ -1,0 +1,10 @@
+fn main() {
+    val n = 6
+    var left = 0
+    var right = n - 1
+    loop if left <= right {
+        val mid = left + (right - left) / 2
+        println(format("{}", mid))
+        left = mid + 1
+    }
+}

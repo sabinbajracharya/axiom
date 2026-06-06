@@ -1,0 +1,14 @@
+fn main() {
+    val r = search(0)
+    println(format("{}", r))
+}
+
+fn search(target: Int) -> Int {
+    var left = 0
+    var right = 5
+    loop if left <= right {
+        val mid = left + (right - left) / 2
+        left = mid + 1
+    }
+    -1
+}

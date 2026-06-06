@@ -70,16 +70,11 @@ impl<T: Deinit> List<T> {
         self.cap = new_cap
     }
 
-    subscript(index: Int) -> T {
+    subscript(self, index: Int) -> T {
         self.buf[index]
     }
 
-    // The write half of indexing: `xs[i] = v` desugars to this setter
-    // (`docs/mutable-subscript-design.md` §4.2). A subscript with no return type
-    // is a setter; its last parameter is the assigned value and its receiver is
-    // `inout`. The body writes through `self.buf` (a real `[T]`), which the
-    // primitive index-write already handles.
-    subscript(index: Int, value: T) {
+    subscript(inout self, index: Int, value: T) {
         self.buf[index] = value
     }
 }

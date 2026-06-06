@@ -97,10 +97,10 @@ fn test_user_struct_write_subscript_plain() {
     let out = run_program(
         r#"struct Pair { a: Int, b: Int }
 impl Pair {
-    subscript(i: Int) -> Int {
+    subscript(self, i: Int) -> Int {
         if i == 0 { self.a } else { self.b }
     }
-    subscript(i: Int, value: Int) {
+    subscript(inout self, i: Int, value: Int) {
         if i == 0 { self.a = value } else { self.b = value }
     }
 }
@@ -119,10 +119,10 @@ fn test_user_struct_write_subscript_compound() {
     let out = run_program(
         r#"struct Pair { a: Int, b: Int }
 impl Pair {
-    subscript(i: Int) -> Int {
+    subscript(self, i: Int) -> Int {
         if i == 0 { self.a } else { self.b }
     }
-    subscript(i: Int, value: Int) {
+    subscript(inout self, i: Int, value: Int) {
         if i == 0 { self.a = value } else { self.b = value }
     }
 }

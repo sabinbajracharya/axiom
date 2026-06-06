@@ -385,6 +385,15 @@ impl AstNode for SubscriptDef {
 }
 
 impl SubscriptDef {
+    pub fn self_param(&self) -> Option<SelfParam> {
+        self.param_list().and_then(|pl| pl.self_param())
+    }
+    pub fn is_inout(&self) -> bool {
+        self.self_param()
+            .and_then(|sp| sp.convention_token())
+            .map(|t| t.text() == "inout")
+            .unwrap_or(false)
+    }
     pub fn param_list(&self) -> Option<ParamList> {
         child_node(&self.0)
     }

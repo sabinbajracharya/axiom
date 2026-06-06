@@ -26,8 +26,8 @@ struct Grid {
 }
 
 impl Grid {
-    subscript(i: Int) -> Int { self.buf[i] }
-    subscript(i: Int, value: Int) { self.buf[i] = value }
+    subscript(self, i: Int) -> Int { self.buf[i] }
+    subscript(inout self, i: Int, value: Int) { self.buf[i] = value }
 }
 
 fn alloc_grid(rows: Int, cols: Int) -> Grid {

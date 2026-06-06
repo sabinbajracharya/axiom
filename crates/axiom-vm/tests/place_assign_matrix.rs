@@ -97,8 +97,8 @@ fn program_for(target: &str, base: Option<&str>, op: &str) -> String {
         ),
         ("Index", Some("UserStruct")) => format!(
             "struct Cell {{ v: Int }}\n\
-             impl Cell {{\n    subscript(i: Int) -> Int {{ self.v }}\n    \
-             subscript(i: Int, value: Int) {{ self.v = value }}\n}}\n\
+             impl Cell {{\n    subscript(self, i: Int) -> Int {{ self.v }}\n    \
+             subscript(inout self, i: Int, value: Int) {{ self.v = value }}\n}}\n\
              fn main() {{\n    var c = Cell {{ v: {SEED} }}\n    c[0] {op} {rhs}\n    \
              print(format(\"{{}}\", c[0]))\n}}\n"
         ),

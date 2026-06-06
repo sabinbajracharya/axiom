@@ -349,10 +349,22 @@ fn member_list(p: &mut Parser, kind: K) {
     m.complete(p, kind);
 }
 
-/// `subscript(params) -> RetType { body }`. No name — identified by signature.
+/// `subscript (self, params) -> RetType { body }`.
+/// `self` (or `inout self`) is a required first parameter.
 fn subscript_def(p: &mut Parser, m: Marker) {
     p.bump(); // subscript
-    param_list(p);
+              // Parse ( self, param* ) — inline so we can require self-first.
+    let pl = p.start();
+    p.expect(K::LParen);
+    param(p); // first param must be self / inout self / let self
+    while !p.at(K::RParen) && !p.at_end() {
+        if !p.eat(K::Comma) {
+            break;
+        }
+        param(p);
+    }
+    p.expect(K::RParen);
+    pl.complete(p, K::ParamList);
     if p.eat(K::Arrow) {
         let r = p.start();
         ty(p);

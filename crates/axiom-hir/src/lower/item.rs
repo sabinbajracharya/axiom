@@ -440,36 +440,13 @@ fn lower_impl_block(i: &ast::ImplBlock, ctx: &mut LowerCtx) -> ImplDef {
 fn lower_subscript_def(s: &ast::SubscriptDef, ctx: &mut LowerCtx) -> SubscriptDef {
     let id = ctx.alloc_id();
     let return_type = s.ret_type().and_then(|r| r.ty().map(|t| lower_ty(&t, ctx)));
-    // A subscript with no return type is a *setter* (`base[i] = v`): its last
-    // parameter is the assigned value and it mutates the receiver, so its
-    // synthesized `self` is `inout`. A subscript *with* a return type is a read
-    // projection whose `self` is an immutable `let` borrow
-    // (`docs/mutable-subscript-design.md` §4.2).
-    let is_setter = return_type.is_none();
-    // A subscript operates on an implicit receiver. Synthesize a `self`
-    // parameter (the grammar has no `self` token here) so the body's `self`
-    // resolves, type-checks, and lowers exactly like a method's — the subscript
-    // becomes the function `Type::subscript`/`Type::subscript_set(self, …)`.
-    let self_id = ctx.alloc_id();
-    ctx.defs.push(Def {
-        name: "self".to_string(),
-        def_id: self_id,
-        kind: DefKind::Param,
-        visibility: Visibility::Private,
-        span: ctx.span_of(s.syntax()),
-    });
-    let self_convention = if is_setter {
-        CallingConvention::Inout
-    } else {
-        CallingConvention::Let
-    };
-    let mut params = vec![Param {
-        id: self_id,
-        convention: self_convention,
-        name: "self".to_string(),
-        ty: None,
-    }];
-    params.extend(lower_params(s.param_list(), ctx));
+    // `self` is an explicit first parameter in subscripts.
+    // `is_setter` is derived from the `self` convention: `inout self` → setter.
+    let params = lower_params(s.param_list(), ctx);
+    let is_setter = params
+        .first()
+        .map(|p| p.name == "self" && p.convention == CallingConvention::Inout)
+        .unwrap_or(false);
     let body = s
         .body()
         .map(|b| lower_block(&b, ctx))

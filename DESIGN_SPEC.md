@@ -307,9 +307,17 @@ compiler** implements the write half through an **interim setter-desugar** inste
 since the full memory model (Perceus + exclusivity enforcement, §14) does not land
 until v1. The interim approach:
 
-- A library type defines a **write subscript** as a method with an extra `value`
-  parameter and no return type: `subscript(index: Int, value: T) { self.buf[index] = value }`.
-  The HIR distinguishes read vs. write subscripts via `SubscriptDef.is_setter`.
+- A library type defines a **write subscript** as a method with an explicit
+  `inout self` receiver and an extra `value` parameter with no return type:
+  `subscript(inout self, index: Int, value: T) { self.buf[index] = value }`.
+  The read subscript uses bare `self` (or `let self`):
+  `subscript(self, index: Int) -> T { self.buf[index] }`.
+  The HIR distinguishes read vs. write subscripts via `SubscriptDef.is_setter`,
+  which is derived from the `self` parameter's convention, not from heuristic
+  inference.
+- The compiler enforces a **duplicate-detection guard**: an impl may not declare
+  two read subscripts (or two write subscripts) with the same index-parameter
+  count. Never silently pick one and ignore the other.
 - `base[i] = v` and `base[i] op= v` lower to `MethodCall Type::subscript_set(inout base, i, v)`,
   reusing the same name-keyed dispatch the VM already uses for reads —
   no new IR instruction, no projection machinery.

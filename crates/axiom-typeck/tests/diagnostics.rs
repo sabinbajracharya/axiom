@@ -276,7 +276,7 @@ fn test_diag_no_writable_subscript() {
     let diags = typeck_diagnostics(
         "struct Cell { v: Int }
 impl Cell {
-    subscript(i: Int) -> Int { self.v }
+    subscript(self, i: Int) -> Int { self.v }
 }
 fn main() {
     var c = Cell { v: 1 }
@@ -286,5 +286,24 @@ fn main() {
     assert!(
         diags.iter().any(|d| d.contains("no writable subscript")),
         "expected a no-writable-subscript diagnostic, got: {diags:?}"
+    );
+}
+
+#[test]
+fn test_diag_duplicate_subscript() {
+    let diags = typeck_diagnostics(
+        "struct Cell { v: Int }
+impl Cell {
+    subscript(self, i: Int) -> Int { self.v }
+    subscript(self, i: Int) -> Int { self.v }
+}
+fn main() {
+    var c = Cell { v: 1 }
+    print(format(\"{}\", c[0]))
+}",
+    );
+    assert!(
+        diags.iter().any(|d| d.contains("duplicate subscript")),
+        "expected a duplicate-subscript diagnostic, got: {diags:?}"
     );
 }

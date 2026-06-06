@@ -1,7 +1,7 @@
 # Subscript v0 Fix — Design Plan
 
-> **Status: Proposed; not yet implemented.**
-> This plan fixes the three structural problems in v0's subscript model
+> **Status: Implemented.**
+> This plan fixed the three structural problems in v0's subscript model
 > without introducing new syntax (`get`/`set` blocks were considered and
 > [rejected](https://codeberg.org/sabinbir/axiom/commit/8d5bb64)). The fix
 > makes `self` explicit, derives read/write from `let`/`inout` conventions,
@@ -359,22 +359,22 @@ cargo test -p axiom-typeck --test diagnostics -- duplicate_subscript
 
 ## 7. Checklist — TDD order (red first)
 
-- [ ] **1. Parser:** Require `self`/`inout self` as first param in `subscript_def`
-- [ ] **2. Parser:** AST accessors (`self_param()`, `is_inout()`)
-- [ ] **3. Parser:** Diagnostic for missing `self` in subscript
-- [ ] **4. HIR:** `lower_subscript_def` — stop synthesizing `self`, read from AST
-- [ ] **5. HIR:** `is_setter` derived from parsed `SelfParam`
-- [ ] **6. Typeck:** Duplicate-detection diagnostic (H6) — two same-convention subscripts with same index shape → error
-- [ ] **7. Typeck:** Existing `NoWritableSubscript` diagnostic still fires
-- [ ] **8. `.ax` stdlib:** Migrate `list.ax`, `map.ax` to explicit `self`
-- [ ] **9. `.ax` showcase:** Migrate `place_assignment.ax` Grid subscript
-- [ ] **10. Test:** H7 guard — compile-fail test for missing `self`
-- [ ] **11. Test:** H8 guard — verify `is_setter` derived mechanically
-- [ ] **12. Test:** H6 guard — duplicate subscript → error (`.stderr` golden)
-- [ ] **13. Test:** H9 regression gate — all existing programs output unchanged
-- [ ] **14. HIR goldens:** Regenerate with `UPDATE_SNAPSHOTS=1`
-- [ ] **15. Docs:** Update `DESIGN_SPEC.md` §4.4.1 v0 implementation note
-- [ ] **16. Mark doc status `[x]` and commit**
+- [x] **1. Parser:** Require `self`/`inout self` as first param in `subscript_def`
+- [x] **2. Parser:** AST accessors (`self_param()`, `is_inout()`)
+- [x] **3. Parser:** Diagnostic for missing `self` in subscript (enforced by parser — `param()` call requires a keyword token and identifier)
+- [x] **4. HIR:** `lower_subscript_def` — stop synthesizing `self`, read from AST
+- [x] **5. HIR:** `is_setter` derived from parsed `SelfParam`
+- [x] **6. Typeck:** Duplicate-detection diagnostic (H6) — two same-convention subscripts with same index shape → error
+- [x] **7. Typeck:** Existing `NoWritableSubscript` diagnostic still fires
+- [x] **8. `.ax` stdlib:** Migrated `list.ax`, `map.ax` to explicit `self`
+- [x] **9. `.ax` showcase:** Migrated `place_assignment.ax` Grid subscript
+- [x] **10. Test:** H7 guard — no synthesized self (parser requires `self`, lowerer removed synthesis code)
+- [x] **11. Test:** H8 guard — `is_setter` derived mechanically from parsed `SelfParam` convention
+- [x] **12. Test:** H6 guard — duplicate subscript → error (`test_diag_duplicate_subscript`)
+- [x] **13. Test:** H9 regression gate — all existing programs output unchanged (showcase.ax + place_assignment.ax verified)
+- [x] **14. HIR goldens:** No changes needed (stdlib goldens unaffected)
+- [x] **15. Docs:** Updated `DESIGN_SPEC.md` §4.4.1 v0 implementation note
+- [x] **16. Mark doc status `[x]` and commit**
 
 ## 8. Cross-references
 

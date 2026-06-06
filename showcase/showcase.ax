@@ -1,0 +1,210 @@
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  Axiom language showcase                                     ║
+// ║  run:  cargo run -p axiom-cli -- run showcase/showcase.ax    ║
+// ║                                                              ║
+// ║  Exercises: val/var bindings · let/inout/sink conventions ·  ║
+// ║  user traits + generic-bound dispatch · trait default methods║
+// ║  generic structs & enums · exhaustive match (payload +       ║
+// ║  literal + wildcard) ·                                       ║
+// ║  Option (prelude) · List<T> & Map<K,V> · every comparison &  ║
+// ║  boolean operator · if/else as expression · while & infinite ║
+// ║  loops with break/continue · recursion · format/println.     ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+// ───────────────────────────── traits ─────────────────────────────
+// A user-defined trait with two required methods, implemented for
+// three structs, then called through a *generic bound* (`T: Animal`).
+trait Animal {
+    fn sound(let self) -> String;
+    fn legs(let self) -> Int;
+    // A *default method*: it has a body, so implementors inherit it unless they
+    // override it. The body calls `self.legs()`, which dispatches to each
+    // implementor's own `legs` at runtime.
+    fn agility(let self) -> Int { self.legs() * 2 }
+}
+
+struct Dog { age: Int }
+struct Cat { lives: Int }
+struct Spider { web: Int }
+
+impl Animal for Dog {
+    fn sound(let self) -> String { "woof" }
+    fn legs(let self) -> Int { 4 }
+}
+impl Animal for Cat {
+    fn sound(let self) -> String { "meow" }
+    fn legs(let self) -> Int { 4 }
+}
+impl Animal for Spider {
+    fn sound(let self) -> String { "..." }
+    fn legs(let self) -> Int { 8 }
+    // Spider overrides the default — a leggy creature is nimble.
+    fn agility(let self) -> Int { 100 }
+}
+
+// Generic dispatch: works for any `T` that implements `Animal`.
+// `let a: T` is a read-only borrow (the default convention).
+fn describe<T: Animal>(let a: T) {
+    println(format("  says '{}', has {} legs", a.sound(), a.legs()))
+}
+
+// A generic function with *two* trait bounds (like Map's keys).
+fn same_key<K: Hashable + Equatable>(let x: K, let y: K) -> Bool {
+    x == y
+}
+
+// ─────────────────────── generic struct + method ───────────────────────
+struct Pair<A, B> { first: A, second: B }
+
+impl<A, B> Pair<A, B> {
+    fn left(let self) -> A { self.first }
+}
+
+// ──────────────────── generic enum + exhaustive match ───────────────────
+enum Tree<T> {
+    Leaf(T),
+    Empty,
+}
+
+fn leaf_or<T>(t: Tree<T>, fallback: T) -> T {
+    match t {
+        Leaf(x) => x,      // payload binding
+        Empty => fallback,
+    }
+}
+
+// match on integer literals + a wildcard arm
+fn leg_word(n: Int) -> String {
+    match n {
+        2 => "two",
+        4 => "four",
+        8 => "eight",
+        _ => "some",
+    }
+}
+
+// ─────────────────────────── recursion ───────────────────────────
+fn fib(n: Int) -> Int {
+    if n < 2 {
+        n                       // if/else as an expression
+    } else {
+        fib(n - 1) + fib(n - 2)
+    }
+}
+
+// ───────────────── calling conventions: inout & sink ─────────────────
+// `inout self` mutates the receiver in place (write-back to the caller).
+struct Counter { n: Int }
+impl Counter {
+    fn bump(inout self) { self.n = self.n + 1 }
+    fn value(let self) -> Int { self.n }
+}
+
+// `inout` on a free parameter.
+fn add_into(inout acc: Int, let x: Int) { acc = acc + x }
+
+// `sink` consumes its argument (ownership moves in).
+fn doubled(sink x: Int) -> Int { x + x }
+
+fn main() {
+    println("== traits + generic-bound dispatch ==")
+    val d = Dog { age: 3 }
+    val c = Cat { lives: 9 }
+    val s = Spider { web: 1 }
+    describe(d)
+    describe(c)
+    describe(s)
+
+    println("== trait default methods (inherited vs overridden) ==")
+    // Dog & Cat inherit `agility` (legs*2); Spider overrides it.
+    println(format("  dog.agility    (default 4*2) = {}", d.agility()))
+    println(format("  spider.agility (overridden)  = {}", s.agility()))
+
+    println("== generic struct (mixed type args) ==")
+    val p = Pair { first: 7, second: "seven" }
+    println(format("  pair.left = {}", p.left()))
+
+    println("== generic enum + match ==")
+    val t: Tree<Int> = Tree::Leaf(42)
+    val e: Tree<Int> = Tree::Empty
+    println(format("  leaf  = {}", leaf_or(t, 0)))
+    println(format("  empty = {}", leaf_or(e, 0 - 1)))
+
+    println("== recursion + literal match ==")
+    println(format("  fib(10)        = {}", fib(10)))
+    println(format("  leg_word(8)    = {}", leg_word(s.legs())))
+
+    println("== conditions: all comparison & boolean operators ==")
+    val a = 5
+    val b = 3
+    if a != b && a >= b && a > b { println("  != && >= && >  ok") }
+    if a <= 10 || b > 100 { println("  <= || >        ok") }
+    if !(a == b) { println("  !( == )         ok") }
+
+    println("== inout & sink conventions ==")
+    var cnt = Counter { n: 0 }
+    cnt.bump()
+    cnt.bump()
+    cnt.bump()
+    println(format("  counter.bump x3   = {}", cnt.value()))
+    var acc = 100
+    add_into(acc, 23)               // acc mutated in place
+    println(format("  add_into(100, 23) = {}", acc))
+    println(format("  doubled(21)       = {}", doubled(21)))
+
+    println("== while-loop + raw [Int] buffer (indexed read/write) ==")
+    var sq: [Int] = heap_alloc(6)
+    var i = 0
+    loop if i < 6 {                 // `loop if cond { }` is the while loop
+        sq[i] = i * i               // indexed write
+        i = i + 1
+    }
+
+    println("== infinite loop + break/continue (sum odd squares) ==")
+    var sum = 0
+    var j = 0
+    loop {
+        if j == 6 { break }          // break out
+        val v = sq[j]                // indexed read
+        j = j + 1
+        if v % 2 == 0 { continue }   // skip evens
+        sum = sum + v
+    }
+    println(format("  sum of odd squares = {}", sum))
+    heap_free(sq)
+
+    println("== List<T> (push / count / is_empty / [] subscript) ==")
+    var xs: List<Int> = List::new()
+    println(format("  empty before push? {}", xs.is_empty()))
+    xs.push(10)
+    xs.push(20)
+    xs.push(30)
+    println(format("  after 3 pushes: count={}  empty={}", xs.count(), xs.is_empty()))
+    println(format("  xs[0]={}  xs[1]={}  xs[2]={}", xs[0], xs[1], xs[2]))
+
+    println("== Map<K,V> + Option (prelude) ==")
+    var legs: Map<String, Int> = Map::new()
+    legs.set("dog", d.legs())
+    legs.set("cat", c.legs())
+    legs.set("spider", s.legs())
+    println(format("  is_empty={}  count={}", legs.is_empty(), legs.count()))
+    println(format("  has 'cat'?  {}", legs.has("cat")))
+    println(format("  has 'fish'? {}", legs.has("fish")))
+    println(format("  legs[\"dog\"] (subscript) = {}", legs["dog"]))
+
+    // get returns Option<V> — matched exhaustively
+    val spider_legs = match legs.get("spider") {
+        Some(v) => v,
+        None => 0 - 1,
+    }
+    println(format("  spider legs (via get) = {}", spider_legs))
+    val missing = match legs.get("fish") {
+        Some(v) => v,
+        None => 0 - 1,
+    }
+    println(format("  fish legs (absent)    = {}", missing))
+
+    println("== two trait bounds (Hashable + Equatable) ==")
+    println(format("  same_key(\"k\",\"k\") = {}", same_key("k", "k")))
+    println(format("  same_key(1, 2)     = {}", same_key(1, 2)))
+}

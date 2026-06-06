@@ -173,7 +173,7 @@ impl<K: Hashable + Equatable, V: Deinit> Map<K, V> {
     }
 
     // Indexing requires the key to be present; use `get`/`has` otherwise.
-    subscript(key: K) -> V {
+    subscript(self, key: K) -> V {
         self.vals[self.find_slot(key)]
     }
 }

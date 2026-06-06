@@ -160,6 +160,18 @@ pub enum TypeDiagnostic {
     TypeNotFoundForImpl { name: String, span: Span },
 
     #[error(
+        "duplicate subscript with the same index-parameter count \
+         in impl for `{type_name}`; only one read and one write \
+         subscript is allowed per index shape"
+    )]
+    DuplicateSubscript {
+        type_name: String,
+        index_param_count: usize,
+        kind: String,
+        span: Span,
+    },
+
+    #[error(
         "type `{type_name}` does not satisfy bound `{bound}` \
          required by type parameter `{param}`"
     )]
@@ -202,6 +214,7 @@ impl TypeDiagnostic {
             | TypeDiagnostic::TraitNotFound { span, .. }
             | TypeDiagnostic::TypeNotFoundForImpl { span, .. }
             | TypeDiagnostic::NoWritableSubscript { span, .. }
+            | TypeDiagnostic::DuplicateSubscript { span, .. }
             | TypeDiagnostic::UnsatisfiedBound { span, .. } => *span,
         }
     }
@@ -246,6 +259,7 @@ impl TypeDiagnostic {
             TypeDiagnostic::TraitNotFound { .. } => "trait_not_found",
             TypeDiagnostic::TypeNotFoundForImpl { .. } => "type_not_found_for_impl",
             TypeDiagnostic::NoWritableSubscript { .. } => "no_writable_subscript",
+            TypeDiagnostic::DuplicateSubscript { .. } => "duplicate_subscript",
             TypeDiagnostic::UnsatisfiedBound { .. } => "unsatisfied_bound",
         }
     }
