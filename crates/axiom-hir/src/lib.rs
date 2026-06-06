@@ -23,6 +23,7 @@
 
 mod error;
 mod hir;
+pub mod lang;
 mod lower;
 mod resolve;
 mod serialize;

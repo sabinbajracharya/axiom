@@ -233,8 +233,8 @@ fn lower_index(e: &axiom_hir::IndexExpr, ctx: &mut FnLowerCtx) -> Reg {
     }
 
     let method = match base_ty.as_ref().and_then(type_name_from_ty) {
-        Some(type_name) => format!("{type_name}::subscript"),
-        None => "subscript".to_string(),
+        Some(type_name) => axiom_hir::lang::subscript_fn(type_name.as_str()),
+        None => axiom_hir::lang::SUBSCRIPT.to_string(),
     };
     ctx.emit(IrInstr::MethodCall {
         dst,
@@ -276,7 +276,7 @@ fn lower_list_lit(e: &axiom_hir::ListLitExpr, ctx: &mut FnLowerCtx) -> Reg {
     if elements.is_empty() {
         ctx.emit(IrInstr::Call {
             dst: list,
-            function: "List::new".to_string(),
+            function: axiom_hir::lang::LIST_NEW.to_string(),
             args: vec![],
         });
         return list;
@@ -288,7 +288,7 @@ fn lower_list_lit(e: &axiom_hir::ListLitExpr, ctx: &mut FnLowerCtx) -> Reg {
     });
     ctx.emit(IrInstr::Call {
         dst: list,
-        function: "List::with_capacity".to_string(),
+        function: axiom_hir::lang::LIST_WITH_CAPACITY.to_string(),
         args: vec![cap],
     });
     for element in elements {
@@ -296,7 +296,7 @@ fn lower_list_lit(e: &axiom_hir::ListLitExpr, ctx: &mut FnLowerCtx) -> Reg {
         ctx.emit(IrInstr::MethodCall {
             dst,
             receiver: list,
-            method: "List::push".to_string(),
+            method: axiom_hir::lang::LIST_PUSH.to_string(),
             args: vec![element],
         });
     }

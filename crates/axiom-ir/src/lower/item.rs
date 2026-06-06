@@ -242,7 +242,7 @@ fn lower_subscript(sub: &axiom_hir::SubscriptDef, ctx: &mut LowerCtx, type_prefi
     fn_ctx.ensure_return(Some(tail_reg));
 
     ctx.functions.push(IrFunction {
-        name: format!("{type_prefix}::subscript"),
+        name: axiom_hir::lang::subscript_fn(type_prefix),
         type_params: Vec::new(),
         generic_origin: None,
         params,

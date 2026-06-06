@@ -53,10 +53,10 @@ and giving desugaring a principled home.
 
 ## 3. The name-coupling cleanup — three steps, cheapest → cleanest
 
-### 3.1 Step 1 — Centralize the well-known names (single source of truth) — [Deferred]
+### 3.1 Step 1 — Centralize the well-known names (single source of truth) — [Done]
 
-Put every magic name in **one** module (e.g. `axiom-hir/src/lang.rs` or a shared
-`well_known.rs`), as named constants:
+Every magic name now lives in **one** module — `axiom-hir/src/lang.rs` — as named
+constants:
 
 ```rust
 pub const LIST: &str = "List";
@@ -69,8 +69,11 @@ pub const SUBSCRIPT: &str = "subscript";
 typeck and IR lowering reference these instead of inline string literals. The coupling
 still exists, but it is **one greppable place** rather than scattered spellings. This is
 the `symbols.rs` single-source-of-truth discipline the lexer already follows
-(`lexer-testing.md` §5.2), applied to stdlib names. **Cheap; do first; unblocks the
-consistency test in §6.2.**
+(`lexer-testing.md` §5.2), applied to stdlib names. **Done:** the constants live in
+`axiom-hir/src/lang.rs`; `infer_list_lit` (typeck) and `lower_list_lit`/`lower_index`/
+`lower_subscript` (IR) reference them; a source-scan drift test (`lang::tests`, the
+§6.2 "no raw stdlib-name strings" guard) fails the build if a qualified `List::…` string
+reappears outside the module.
 
 ### 3.2 Step 2 — Resolve a *real* `def_id` (kill the `HirId(0)` lie) — [Deferred]
 
@@ -217,7 +220,8 @@ that shows the call chain.
 ## 7. Build order (TDD) — when the trigger fires
 
 1. **§3.1 names module** + the source-scan + consistency scaffolding (registry can start
-   string-keyed). Green before behaviour changes.
+   string-keyed). Green before behaviour changes. ✅ **Done** — `axiom-hir/src/lang.rs` +
+   `lang::tests` source-scan drift guard.
 2. **§3.2/§3.3 lang-item registry** — resolve real `def_id`s; consistency test (§6.2) goes
    green; `infer_list_lit` switches off `HirId(0)`. *No desugaring moved yet.*
 3. **§6.3 coverage invariant** + goldens for the *existing* IR desugaring — lock current

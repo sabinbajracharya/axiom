@@ -484,7 +484,7 @@ impl TypeChecker {
             }
         }
         let ty = Ty::Instance(InstanceTy {
-            name: "List".to_string(),
+            name: axiom_hir::lang::LIST.to_string(),
             def_id: HirId(0),
             args: vec![first_ty],
         });
