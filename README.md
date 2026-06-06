@@ -34,9 +34,11 @@ register-IR interpreter backend targets WASM (dual-backend).
 
 > ⚠️ Illustrative — the syntax below follows [`DESIGN_SPEC.md`](DESIGN_SPEC.md).
 > The front-end, type checker, IR lowerer, and register-IR interpreter (VM) are
-> built; structs, enums, match, and basic control flow run end-to-end. What's
-> missing is Cranelift codegen, the memory model (ownership + Perceus), and most
-> of the language surface (generics, error handling, concurrency).
+> built; structs, enums, `match`, control flow, generics + monomorphization,
+> traits (including default methods), generic enums, and an `.ax` standard
+> library (`List<T>`, `Map<K,V>`, `Option<T>`) run end-to-end on the VM. What's
+> missing is Cranelift codegen, the memory model (ownership + Perceus), and the
+> rest of the language surface (error handling, concurrency).
 
 **Structs, traits, and methods** — receivers declare a borrowing convention
 (`let`/`inout`/`sink`), the same machinery as parameters; no `&self`/`&mut self`:
@@ -127,11 +129,14 @@ fn fetch_all(let urls: List<String>) -> List<Response>!NetError {
 
 ## Status
 
-**Phase: front-end complete, IR + register-IR interpreter running.** The design
-is settled and six pipeline stages are built test-first, lossless, and total
-(never panic, never drop source). The VM executes basic programs end-to-end
-(structs, enums, match, control flow, function calls). The memory model — the
-language's load-bearing bet — has passed its de-risking spike.
+**Phase: front-end complete; generics, traits, and a small stdlib run on the
+register-IR interpreter.** The design is settled and the pipeline stages are
+built test-first, lossless, and total (never panic, never drop source). The VM
+executes programs end-to-end — structs, enums, `match`, control flow, function
+calls, generics + monomorphization, trait-method dispatch (including default
+methods), generic enums, and a library `List<T>`/`Map<K,V>`/`Option<T>` written
+in `.ax`. `axiom run file.ax` compiles and interprets a program today. The
+memory model — the language's load-bearing bet — has passed its de-risking spike.
 
 | Stage | Component | Status |
 |---|---|---|
@@ -141,9 +146,10 @@ language's load-bearing bet — has passed its de-risking spike.
 | Parse | [`crates/axiom-parser`](crates/axiom-parser) — tokens → lossless CST (rust-analyzer-shaped green/red tree) | ✅ Done; total recovery, recovery-set-aware |
 | Name resolution (HIR) | [`crates/axiom-hir`](crates/axiom-hir) — CST → desugared, ID-keyed HIR with name resolution | ✅ Done (M1); golden + diagnostic snapshot tested |
 | Type checking (THIR) | [`crates/axiom-typeck`](crates/axiom-typeck) — HIR → THIR via bidirectional type checker | ✅ Done (M2); golden + diagnostic + invariant tested |
-| Generics + traits | [`crates/axiom-typeck`](crates/axiom-typeck) — unification, inference, trait checking, monomorphization | ✅ Done (M2); ~50 tests; not yet wired through IR/VM |
+| Generics + traits | [`crates/axiom-typeck`](crates/axiom-typeck) — unification, inference, trait checking, monomorphization, default-method dispatch | ✅ Done; wired through IR → VM |
 | IR generation | [`crates/axiom-ir`](crates/axiom-ir) — THIR → register IR (basic blocks, SSA-lite registers) | ✅ Done (M3); golden traces + invariants |
-| Register-IR interpreter | [`crates/axiom-vm`](crates/axiom-vm) — executes IR: structs, enums, match, control flow, calls | ✅ Done (M3); 56 tests + 9 golden traces |
+| Register-IR interpreter | [`crates/axiom-vm`](crates/axiom-vm) — executes IR: structs, enums, match, control flow, calls, generics, traits, collections | ✅ Done; 104 tests + golden traces |
+| Standard library | [`stdlib/`](stdlib) embedded via [`crates/axiom-stdlib`](crates/axiom-stdlib); multi-file loading in [`crates/axiom-modules`](crates/axiom-modules) — core traits, `Option<T>`, `List<T>`, `Map<K,V>`, `print`/`format`, all in `.ax` | ✅ Running on the VM |
 | Cranelift codegen | — | ⬜ Not started |
 | Ownership pass + Perceus | — | ⬜ Not started (the v1 identity) |
 | `forge`, LSP | — | ⬜ Not started |
@@ -157,10 +163,10 @@ exclusivity rule proves too costly in practice.
 Per [`DESIGN_SPEC.md` §14](DESIGN_SPEC.md), the **v0** milestone is an
 end-to-end pipeline `lex → parse → resolve → typecheck → IR → Cranelift` with
 *naive* memory (no exclusivity) — to prove the pipeline runs end to end. The
-front-end and IR are complete, and the register-IR interpreter runs basic
-programs. The next frontier is a minimal **Cranelift backend** to produce native
-executables. Generics and traits are implemented in the type checker (including
-monomorphization) but not yet wired through IR → VM execution. The real memory
+front-end, IR, and register-IR interpreter are complete, and generics, traits
+(including default methods), generic enums, and a small `.ax` standard library
+(`List`/`Map`/`Option`) now run end-to-end on the VM. The next frontier is a
+minimal **Cranelift backend** to produce native executables. The real memory
 model (ownership pass + Perceus) and full error handling land in **v1**, where
 the language identity arrives.
 
@@ -180,10 +186,12 @@ the language identity arrives.
 │   ├── axiom-lexer/      # Stage 1: lossless, total tokenizer
 │   ├── axiom-parser/     # Stage 2: lossless CST + error recovery
 │   ├── axiom-hir/        # Stage 3: CST → desugared HIR + name resolution
-│   ├── axiom-typeck/     # Stage 4: HIR → THIR (bidirectional type checker)
+│   ├── axiom-typeck/     # Stage 4: HIR → THIR (bidirectional type checker, generics, traits)
 │   ├── axiom-ir/         # Stage 5: THIR → register IR (basic blocks, SSA-lite regs)
-│   ├── axiom-vm/         # Stage 6: register-IR interpreter (structs, enums, match)
-│   └── axiom-cli/        # Compiler driver (`axiom check` today; `run`/`build` later)
+│   ├── axiom-vm/         # Stage 6: register-IR interpreter (structs, enums, match, generics, traits)
+│   ├── axiom-modules/    # Multi-file module loading + cross-file name resolution
+│   ├── axiom-stdlib/     # Embeds stdlib/*.ax into the compiler (build.rs)
+│   └── axiom-cli/        # Compiler driver (`axiom check` / `run`; `build` later)
 ├── docs/
 │   ├── lexer-testing.md    # Test/debug tooling spec for the lexer
 │   ├── parser-testing.md   # Test/debug tooling spec for the parser
@@ -191,9 +199,16 @@ the language identity arrives.
 │   ├── typeck-testing.md   # Test/debug tooling spec for the type checker
 │   ├── ir-design.md        # IR design: register model, basic blocks, lowerer
 │   ├── vm-design.md        # VM design: execution model, value representation
+│   ├── generics-design.md  # Generics: type params, inference, monomorphization
+│   ├── traits-design.md    # Traits: dispatch, bounds, default methods
+│   ├── collection-type-design.md  # List/Map design on the heap-buffer primitive
+│   ├── modules-design.md   # Multi-file modules + the embedded stdlib
 │   ├── spike-0-findings.md # Memory-model spike result + Path A/B decision
-│   └── v0-roadmap.md       # v0 milestone plan (M1–M5)
-└── scripts/              # check.sh and friends (the PostToolUse enforcement hook)
+│   └── v0-roadmap.md       # v0 milestone plan (M1–M5) — plus more design notes
+├── stdlib/              # The standard library, in Axiom (.ax): core traits,
+│                        #   Option, List, Map, io (print/format)
+├── corpus/              # End-to-end .ax programs run as integration tests
+└── scripts/             # check.sh and friends (the PostToolUse enforcement hook)
 ```
 
 Each crate carries its own `README.md` with a per-file responsibility table —
@@ -201,7 +216,7 @@ start there when diving into a stage.
 
 ### Test harness
 
-**455 tests** across 7 crates. Each pipeline stage has its own testing spec
+**538 tests** across 9 crates. Each pipeline stage has its own testing spec
 (`docs/*-testing.md`) with a 6-layer test stack:
 
 1. **Unit tests** — Rust-side logic in `#[cfg(test)]` modules
@@ -234,6 +249,8 @@ Try it:
 
 ```bash
 cargo run -p axiom-cli -- check path/to/file.ax     # lex → parse → resolve → typecheck
+cargo run -p axiom-cli -- run   path/to/file.ax     # …then IR → VM, and execute it
+cargo run -p axiom-cli -- run   showcase.ax         # the feature-tour demo program
 cargo run -p axiom-lexer --example lex -- path/to/file.ax     # dump tokens (lexer only)
 ```
 
