@@ -1,0 +1,118 @@
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  Axiom indexed-place assignment showcase                      ║
+// ║  run:  cargo run -p axiom-cli -- run showcase/place_assignment.ax ║
+// ║                                                               ║
+// ║  Exercises every form of `base[i] = v` and `base[i] op= v`    ║
+// ║  across all three indexable base kinds:                       ║
+// ║    · raw [T] heap buffer (primitive IndexSet/Index)           ║
+// ║    · List<T> (subscript_set desugar)                          ║
+// ║    · user struct with write subscript (subscript_set desugar) ║
+// ║                                                               ║
+// ║  Six operators per base kind: =  +=  -=  *=  /=  %=           ║
+// ║  Plus: cross-element assign, untouched-element invariant,     ║
+// ║  read-after-write, push-after-index-write.                    ║
+// ║                                                               ║
+// ║  This program exercises the fix from the bug where `xs[i]=v`  ║
+// ║  silently dropped writes on library collections — see        ║
+// ║  docs/mutable-subscript-design.md.                            ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+// ─────────────── struct with read+write subscript ───────────────
+struct Cell { v: Int }
+
+impl Cell {
+    subscript(i: Int) -> Int { self.v }
+    subscript(i: Int, value: Int) { self.v = value }
+}
+
+// ──────────────────── top-level entry ───────────────────
+fn main() {
+    // ═══════════════════════════════════════════════════════════
+    // 1. Raw [T] heap buffer — primitive IndexSet/Index path
+    // ═══════════════════════════════════════════════════════════
+    println("== raw [T] heap buffer: plain assign ==")
+    var buf: [Int] = heap_alloc(6)
+    buf[0] = 10         // seed
+    buf[1] = 20
+    buf[2] = 30
+    buf[3] = 60
+    buf[4] = 60
+    buf[5] = 60
+
+    buf[0] = 40 + 5     // plain =  —  45
+    println(format("  buf[0] = 45  -> {}", buf[0]))
+
+    println("== raw [T]: compound +=  -=  *=  /=  %= ==")
+    buf[1] += 7         // 20 +  7 = 27
+    buf[2] -= 5         // 30 -  5 = 25
+    buf[3] *= 3         // 60 *  3 = 180
+    buf[4] /= 4         // 60 /  4 = 15
+    buf[5] %= 7         // 60 %  7 = 4
+    println(format("  += {}  -= {}  *= {}  /= {}  %= {}",
+        buf[1], buf[2], buf[3], buf[4], buf[5]))
+
+    println("== raw [T]: cross-element assign ==")
+    buf[0] = buf[1] + buf[2]     // 27 + 25 = 52
+    println(format("  buf[0] = buf[1]+buf[2] -> {}", buf[0]))
+
+    heap_free(buf)
+
+    // ═══════════════════════════════════════════════════════════
+    // 2. List<T> — subscript_set desugar path
+    // ═══════════════════════════════════════════════════════════
+    println("== List<T>: plain assign ==")
+    var xs = [1, 2, 3, 4, 5, 6]
+    xs[0] = 40 + 5      // plain =  —  45
+    println(format("  xs[0] = 45  -> {}", xs[0]))
+
+    println("== List<T>: compound +=  -=  *=  /=  %= ==")
+    xs[1] += 30   //  2 + 30 = 32
+    xs[2] -= 1    //  3 -  1 = 2
+    xs[3] *= 7    //  4 *  7 = 28
+    xs[4] /= 2    //  5 /  2 = 2
+    xs[5] %= 3    //  6 %  3 = 0
+    println(format("  += {}  -= {}  *= {}  /= {}  %= {}",
+        xs[1], xs[2], xs[3], xs[4], xs[5]))
+
+    println("== List<T>: cross-element assign ==")
+    xs[0] = xs[1] + xs[2]    // 32 + 2 = 34
+    println(format("  xs[0] = xs[1]+xs[2] -> {}", xs[0]))
+
+    println("== List<T>: read-after-write (untouched element) ==")
+    // xs[2]=2 was set above; xs[0] was overwritten. Every element
+    // must reflect its latest write — not the initial literal.
+    println(format("  xs[0]={}  xs[1]={}  xs[2]={}  xs[3]={}  xs[4]={}  xs[5]={}",
+        xs[0], xs[1], xs[2], xs[3], xs[4], xs[5]))
+
+    println("== List<T>: push still works after index writes ==")
+    xs.push(99)
+    println(format("  count after push = {}", xs.count()))
+    println(format("  last element     = {}", xs[6]))
+
+    // ═══════════════════════════════════════════════════════════
+    // 3. User struct — writes through write subscript setter
+    // ═══════════════════════════════════════════════════════════
+    println("== user struct: plain assign + compound ==")
+    var c = Cell { v: 10 }
+    println(format("  initial        = {}", c[0]))
+
+    c[0] = 40 + 7      // plain =  —  47
+    println(format("  after c[0]=47  = {}", c[0]))
+
+    c[0] += 3          // 47 +  3 = 50
+    println(format("  after c[0]+=3  = {}", c[0]))
+
+    c[0] -= 10         // 50 - 10 = 40
+    println(format("  after c[0]-=10 = {}", c[0]))
+
+    c[0] *= 2          // 40 *  2 = 80
+    println(format("  after c[0]*=2  = {}", c[0]))
+
+    c[0] /= 5          // 80 /  5 = 16
+    println(format("  after c[0]/=5  = {}", c[0]))
+
+    c[0] %= 3          // 16 %  3 = 1
+    println(format("  after c[0]%=3  = {}", c[0]))
+
+    println("== all indexed-place assignment paths: ok ==")
+}
