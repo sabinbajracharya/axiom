@@ -219,7 +219,29 @@ fn lower_index(e: &axiom_hir::IndexExpr, ctx: &mut FnLowerCtx) -> Reg {
     let base = lower_expr(&e.base, ctx);
     let index = lower_expr(&e.index, ctx);
     let dst = ctx.fresh_reg();
-    ctx.emit(IrInstr::Index { dst, base, index });
+
+    // A raw `[T]` heap buffer indexes with the primitive `Index` instruction.
+    // Any other indexable base is a struct with a `subscript` operator (the type
+    // checker proved one exists), so dispatch `base[index]` to its lowered
+    // `Type::subscript(self, index)` function — the receiver's runtime type
+    // resolves the qualified name in the VM.
+    let base_ty = ctx.receiver_type(e.base.id());
+    let is_heap_buffer = matches!(base_ty, Some(axiom_typeck::Ty::HeapBuffer(_)));
+    if is_heap_buffer {
+        ctx.emit(IrInstr::Index { dst, base, index });
+        return dst;
+    }
+
+    let method = match base_ty.as_ref().and_then(type_name_from_ty) {
+        Some(type_name) => format!("{type_name}::subscript"),
+        None => "subscript".to_string(),
+    };
+    ctx.emit(IrInstr::MethodCall {
+        dst,
+        receiver: base,
+        method,
+        args: vec![index],
+    });
     dst
 }
 

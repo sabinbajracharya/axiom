@@ -111,6 +111,17 @@ fn resolve_impl_def(
             diagnostics,
         );
     }
+    // Subscripts resolve like methods (their synthesized `self` + index params
+    // are in `params`), so the body's `self`/index references bind.
+    for sub in &mut impl_def.subscripts {
+        resolve_method_sig(
+            &mut sub.params,
+            &mut sub.return_type,
+            &scope,
+            Some(&mut sub.body),
+            diagnostics,
+        );
+    }
 }
 
 /// Resolve param types, register param names, resolve return type,

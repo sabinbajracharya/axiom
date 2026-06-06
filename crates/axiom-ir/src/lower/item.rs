@@ -39,6 +39,13 @@ pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
                     lower_fn_def(m, ctx, None, Some(&type_name));
                 }
             }
+            // A subscript lowers to the function `Type::subscript(self, index)`;
+            // `base[index]` dispatches to it (see `lower_index`). Like a method
+            // on a generic type it is lowered once and works for any element
+            // type (the VM is dynamically typed).
+            for sub in &impl_def.subscripts {
+                lower_subscript(sub, ctx, &type_name);
+            }
         }
         Item::StructDef(_) | Item::TraitDef(_) | Item::SubscriptDef(_) | Item::UseItem(_) => {}
     }
@@ -198,4 +205,44 @@ fn lower_fn_def(
     };
 
     ctx.functions.push(func);
+}
+
+/// Lower a subscript operator to the IR function `Type::subscript(self, index…)`.
+/// Mirrors the non-generic method path of [`lower_fn_def`]: `base[index]`
+/// lowers to a `MethodCall` on this function (see `lower_index`).
+fn lower_subscript(sub: &axiom_hir::SubscriptDef, ctx: &mut LowerCtx, type_prefix: &str) {
+    let mut fn_ctx = FnLowerCtx::new(&ctx.thir.types, &ctx.mono_lookup, None, &ctx.thir.hir.items);
+
+    let params: Vec<IrParam> = sub
+        .params
+        .iter()
+        .map(|p| {
+            let reg = fn_ctx.fresh_reg();
+            let ty = ctx.thir.types.get(&p.id).cloned().unwrap_or(Ty::Error);
+            fn_ctx.bind(p.id, reg);
+            IrParam {
+                reg,
+                name: p.name.clone(),
+                ty,
+                convention: p.convention,
+            }
+        })
+        .collect();
+
+    let return_type = ctx.thir.types.get(&sub.id).cloned().unwrap_or(Ty::Unit);
+
+    fn_ctx.start_block("entry".to_string());
+    let tail_reg = super::stmt::lower_block_expr(&sub.body, &mut fn_ctx);
+    fn_ctx.ensure_return(Some(tail_reg));
+
+    ctx.functions.push(IrFunction {
+        name: format!("{type_prefix}::subscript"),
+        type_params: Vec::new(),
+        generic_origin: None,
+        params,
+        return_type,
+        blocks: fn_ctx.func.blocks,
+        next_reg: fn_ctx.func.next_reg,
+        is_extern: false,
+    });
 }

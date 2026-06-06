@@ -141,8 +141,8 @@ ImplDef(5) List→0<T: Deinit→<unresolved>> methods=[
     ExprStmt(113) Path(115) self→65.buf = Path(116) new_buf→82
     tail: Path(119) self→65.cap = Path(120) new_cap→67
   }
-  SubscriptDef(121) (index) -> T→<unresolved> body
-    tail: Path(127) self→<unresolved>.Field(126) buf[Path(128) index→<unresolved>]
+  SubscriptDef(121) (self, index) -> T→6 body
+    tail: Path(128) self→122.Field(127) buf[Path(129) index→123]
 ]
 StructDef(0) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private keys: [K→1], private vals: [V→2], private used: [Bool→<unresolved>], private count: Int→<unresolved>, private cap: Int→<unresolved>]
 ImplDef(8) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[
@@ -280,8 +280,8 @@ ImplDef(8) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Dei
     ExprStmt(439) Call(440) heap_free→1000010(Path(441) old_vals→375)
     tail: Call(443) heap_free→1000010(Path(444) old_used→379)
   }
-  SubscriptDef(445) (key) -> V→<unresolved> body
-    tail: Path(451) self→<unresolved>.Field(450) vals[Path(453) self→<unresolved>.Method(452) find_slot(Path(454) key→<unresolved>)]
+  SubscriptDef(445) (self, key) -> V→10 body
+    tail: Path(452) self→446.Field(451) vals[Path(454) self→446.Method(453) find_slot(Path(455) key→447)]
 ]
 UseItem(0) core::platform::write
 FnDef(1) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
@@ -291,8 +291,8 @@ FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(12) Call(13) write→0(Lit(14) Int(1), Path(16) s→10.Method(15) as_bytes())
   ExprStmt(17) Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
 }
-UseItem(447) models::Point
-FnDef(448) name=main vis=private params=[] return=_ {
-  ValStmt(454) Ident(450) p→450: _ = StructLit(451) Point→455 { x: Lit(452) Int(1), y: Lit(453) Int(2) }
+UseItem(448) models::Point
+FnDef(449) name=main vis=private params=[] return=_ {
+  ValStmt(455) Ident(451) p→451: _ = StructLit(452) Point→456 { x: Lit(453) Int(1), y: Lit(454) Int(2) }
 }
-StructDef(455) name=Point vis=pub fields=[pub x: Int→<unresolved>, pub y: Int→<unresolved>]
+StructDef(456) name=Point vis=pub fields=[pub x: Int→<unresolved>, pub y: Int→<unresolved>]

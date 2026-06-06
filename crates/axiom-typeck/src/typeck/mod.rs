@@ -427,23 +427,27 @@ impl TypeChecker {
             .map(|t| self.resolve_hir_ty(t))
             .unwrap_or(crate::types::Ty::Unit);
 
-        // Type-check the body. For subscripts, yield statements set the
-        // effective body type. Walk stmts to find yield types.
+        // Type-check the body and record its result type. A subscript body is
+        // an ordinary block: a tail expression (`{ self.buf[index] }`) is the
+        // result; otherwise a trailing `yield` sets it. Inferring the tail also
+        // records types for every body subexpression, which IR lowering needs
+        // (e.g. to tell a `[T]` index from a nested subscript call).
         for stmt in &sub.body.stmts {
             self.type_stmt(stmt);
         }
-        // The body type is the yield type (recorded by type_yield_stmt).
-        // Find the last yield statement's type as the body result.
-        let body_type = sub
-            .body
-            .stmts
-            .iter()
-            .rev()
-            .find_map(|stmt| match stmt {
-                Stmt::YieldStmt(s) => self.types.get(&s.id).cloned(),
-                _ => None,
-            })
-            .unwrap_or(crate::types::Ty::Unit);
+        let body_type = if let Some(tail) = &sub.body.tail {
+            self.infer_expr(tail)
+        } else {
+            sub.body
+                .stmts
+                .iter()
+                .rev()
+                .find_map(|stmt| match stmt {
+                    Stmt::YieldStmt(s) => self.types.get(&s.id).cloned(),
+                    _ => None,
+                })
+                .unwrap_or(crate::types::Ty::Unit)
+        };
 
         if !helpers::is_error(&body_type)
             && !helpers::is_error(&return_type)
