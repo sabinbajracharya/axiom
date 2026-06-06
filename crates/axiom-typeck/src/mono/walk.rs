@@ -61,7 +61,9 @@ impl<'a> Monomorphizer<'a> {
             Expr::Field(f) => self.collect_from_expr(&f.receiver),
             Expr::Index(i) => {
                 self.collect_from_expr(&i.base);
-                self.collect_from_expr(&i.index);
+                for index in &i.indices {
+                    self.collect_from_expr(index);
+                }
             }
             Expr::Block(b) => self.collect_from_block(b),
             Expr::If(i) => {
@@ -140,33 +142,29 @@ impl<'a> Monomorphizer<'a> {
         match expr {
             Expr::Call(call) => {
                 self.visit_call_with_subst(call, subst);
-                for arg in &call.args {
-                    self.collect_from_expr_with_subst(arg, subst);
-                }
+                call.args
+                    .iter()
+                    .for_each(|arg| self.collect_from_expr_with_subst(arg, subst));
             }
             Expr::MethodCall(mc) => {
                 self.collect_from_expr_with_subst(&mc.receiver, subst);
-                for arg in &mc.args {
-                    self.collect_from_expr_with_subst(arg, subst);
-                }
+                mc.args
+                    .iter()
+                    .for_each(|arg| self.collect_from_expr_with_subst(arg, subst));
             }
             Expr::Bin(b) => {
                 self.collect_from_expr_with_subst(&b.left, subst);
                 self.collect_from_expr_with_subst(&b.right, subst);
             }
-            Expr::Unary(u) => {
-                self.collect_from_expr_with_subst(&u.operand, subst);
-            }
-            Expr::Field(f) => {
-                self.collect_from_expr_with_subst(&f.receiver, subst);
-            }
+            Expr::Unary(u) => self.collect_from_expr_with_subst(&u.operand, subst),
+            Expr::Field(f) => self.collect_from_expr_with_subst(&f.receiver, subst),
             Expr::Index(i) => {
                 self.collect_from_expr_with_subst(&i.base, subst);
-                self.collect_from_expr_with_subst(&i.index, subst);
+                i.indices
+                    .iter()
+                    .for_each(|idx| self.collect_from_expr_with_subst(idx, subst));
             }
-            Expr::Block(b) => {
-                self.collect_from_block_with_subst(b, subst);
-            }
+            Expr::Block(b) => self.collect_from_block_with_subst(b, subst),
             Expr::If(i) => {
                 self.collect_from_expr_with_subst(&i.condition, subst);
                 self.collect_from_block_with_subst(&i.then_branch, subst);
@@ -176,23 +174,21 @@ impl<'a> Monomorphizer<'a> {
             }
             Expr::Match(m) => {
                 self.collect_from_expr_with_subst(&m.scrutinee, subst);
-                for arm in &m.arms {
-                    self.collect_from_expr_with_subst(&arm.body, subst);
-                }
+                m.arms
+                    .iter()
+                    .for_each(|arm| self.collect_from_expr_with_subst(&arm.body, subst));
             }
             Expr::Loop(l) => self.collect_from_loop_with_subst(&l.kind, subst),
             Expr::StructLit(s) => {
-                for f in &s.fields {
-                    self.collect_from_expr_with_subst(&f.value, subst);
-                }
+                s.fields
+                    .iter()
+                    .for_each(|f| self.collect_from_expr_with_subst(&f.value, subst));
             }
-            Expr::Assign(a) => {
-                self.collect_from_expr_with_subst(&a.value, subst);
-            }
+            Expr::Assign(a) => self.collect_from_expr_with_subst(&a.value, subst),
             Expr::ListLit(l) => {
-                for elem in &l.elements {
-                    self.collect_from_expr_with_subst(elem, subst);
-                }
+                l.elements
+                    .iter()
+                    .for_each(|elem| self.collect_from_expr_with_subst(elem, subst));
             }
             Expr::Lit(_) | Expr::Path(_) => {}
         }

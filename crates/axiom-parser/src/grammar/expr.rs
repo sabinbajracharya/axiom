@@ -455,7 +455,10 @@ fn field_or_method(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 fn index(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     p.bump(); // [
-    expr(p);
+    expr(p); // at least one index expression
+    while p.eat(K::Comma) {
+        expr(p);
+    }
     p.expect(K::RBracket);
     m.complete(p, K::IndexExpr)
 }

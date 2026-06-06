@@ -206,11 +206,12 @@ fn lower_index_expr(e: &ast::IndexExpr, ctx: &mut LowerCtx) -> Expr {
         .base()
         .map(|n| Box::new(lower_expr(&n, ctx)))
         .unwrap_or_else(|| Box::new(unit_expr(ctx)));
-    let index = e
-        .index()
-        .map(|n| Box::new(lower_expr(&n, ctx)))
-        .unwrap_or_else(|| Box::new(unit_expr(ctx)));
-    Expr::Index(IndexExpr { id, base, index })
+    let indices: Vec<Expr> = e
+        .indices()
+        .into_iter()
+        .map(|n| lower_expr(&n, ctx))
+        .collect();
+    Expr::Index(IndexExpr { id, base, indices })
 }
 
 fn lower_paren_expr(e: &ast::ParenExpr, ctx: &mut LowerCtx) -> Expr {
@@ -435,11 +436,12 @@ fn lower_assign_target(node: &axiom_parser::SyntaxNode, ctx: &mut LowerCtx) -> A
             .base()
             .map(|n| Box::new(lower_expr(&n, ctx)))
             .unwrap_or_else(|| Box::new(unit_expr(ctx)));
-        let idx = index
-            .index()
-            .map(|n| Box::new(lower_expr(&n, ctx)))
-            .unwrap_or_else(|| Box::new(unit_expr(ctx)));
-        return AssignTarget::Index { base, index: idx };
+        let indices: Vec<Expr> = index
+            .indices()
+            .into_iter()
+            .map(|n| lower_expr(&n, ctx))
+            .collect();
+        return AssignTarget::Index { base, indices };
     }
     AssignTarget::Name(NameRef::unresolved(""))
 }

@@ -283,7 +283,7 @@ fn check_expr_ids(expr: &axiom_hir::Expr, seen: &mut HashSet<axiom_hir::HirId>) 
         }
         axiom_hir::Expr::Field(f) => check_expr_ids(&f.receiver, seen),
         axiom_hir::Expr::Index(i) => {
-            check_expr_ids(&i.base, seen) && check_expr_ids(&i.index, seen)
+            check_expr_ids(&i.base, seen) && i.indices.iter().all(|idx| check_expr_ids(idx, seen))
         }
         axiom_hir::Expr::Block(b) => check_block_ids(b, seen),
         axiom_hir::Expr::If(i) => check_if_ids(i, seen),

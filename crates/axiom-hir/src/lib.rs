@@ -126,7 +126,9 @@ fn check_expr(expr: &Expr, diagnosed: &[String], errors: &mut Vec<CoverageError>
         Expr::Field(f) => check_expr(&f.receiver, diagnosed, errors),
         Expr::Index(i) => {
             check_expr(&i.base, diagnosed, errors);
-            check_expr(&i.index, diagnosed, errors);
+            for index in &i.indices {
+                check_expr(index, diagnosed, errors);
+            }
         }
         Expr::Block(b) => check_block(b, diagnosed, errors),
         Expr::If(i) => {

@@ -382,7 +382,12 @@ fn serialize_field_expr(e: &FieldExpr, depth: usize, out: &mut String) {
 fn serialize_index_expr(e: &IndexExpr, depth: usize, out: &mut String) {
     serialize_expr(&e.base, depth, out);
     out.push('[');
-    serialize_expr(&e.index, depth, out);
+    for (i, idx) in e.indices.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        serialize_expr(idx, depth, out);
+    }
     out.push(']');
 }
 
@@ -511,10 +516,15 @@ fn serialize_assign_target(target: &AssignTarget, depth: usize, out: &mut String
             out.push('.');
             out.push_str(field);
         }
-        AssignTarget::Index { base, index } => {
+        AssignTarget::Index { base, indices } => {
             serialize_expr(base, depth, out);
             out.push('[');
-            serialize_expr(index, depth, out);
+            for (i, idx) in indices.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                serialize_expr(idx, depth, out);
+            }
             out.push(']');
         }
     }

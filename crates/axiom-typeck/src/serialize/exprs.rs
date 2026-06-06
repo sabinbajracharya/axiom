@@ -108,8 +108,10 @@ fn serialize_index_expr(
     out.push_str(&format!("Index({}){}", e.id, type_ann));
     out.push('\n');
     serialize_expr(&e.base, depth + 1, thir, out);
-    out.push('\n');
-    serialize_expr(&e.index, depth + 1, thir, out);
+    for idx in &e.indices {
+        out.push('\n');
+        serialize_expr(idx, depth + 1, thir, out);
+    }
 }
 
 fn serialize_block_expr(b: &Block, depth: usize, type_ann: &str, thir: &Thir, out: &mut String) {
@@ -272,10 +274,15 @@ fn serialize_assign_target(target: &AssignTarget, depth: usize, thir: &Thir, out
             out.push('.');
             out.push_str(field);
         }
-        AssignTarget::Index { base, index } => {
+        AssignTarget::Index { base, indices } => {
             serialize_expr(base, depth, thir, out);
             out.push('[');
-            serialize_expr(index, depth, thir, out);
+            for (i, idx) in indices.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(", ");
+                }
+                serialize_expr(idx, depth, thir, out);
+            }
             out.push(']');
         }
     }

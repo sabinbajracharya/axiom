@@ -62,3 +62,61 @@ fn test_list_index_assignment_runs() {
     );
     assert_eq!(out, "9", "got: {out:?}");
 }
+
+#[test]
+fn test_multi_index_subscript() {
+    // A struct with a 2-index subscript; g[1,2] = 99 then read back.
+    let out = run_output(
+        r#"struct Grid { buf: [Int], cols: Int }
+impl Grid {
+    subscript(self, row: Int, col: Int) -> Int {
+        self.buf[row * self.cols + col]
+    }
+    subscript(inout self, row: Int, col: Int, value: Int) {
+        self.buf[row * self.cols + col] = value
+    }
+}
+fn main() {
+    var buf: [Int] = heap_alloc(6)
+    buf[0] = 1
+    buf[1] = 2
+    buf[2] = 3
+    buf[3] = 4
+    buf[4] = 5
+    buf[5] = 6
+    var g = Grid { buf: buf, cols: 3 }
+    g[1, 2] = 99
+    print(format("{}", g[1, 2]))
+}"#,
+    );
+    assert_eq!(out, "99", "got: {out:?}");
+}
+
+#[test]
+fn test_multi_index_compound() {
+    // Compound op on a multi-index subscript: g[0,1] += 10 → 2 + 10 = 12.
+    let out = run_output(
+        r#"struct Grid { buf: [Int], cols: Int }
+impl Grid {
+    subscript(self, row: Int, col: Int) -> Int {
+        self.buf[row * self.cols + col]
+    }
+    subscript(inout self, row: Int, col: Int, value: Int) {
+        self.buf[row * self.cols + col] = value
+    }
+}
+fn main() {
+    var buf: [Int] = heap_alloc(6)
+    buf[0] = 1
+    buf[1] = 2
+    buf[2] = 3
+    buf[3] = 4
+    buf[4] = 5
+    buf[5] = 6
+    var g = Grid { buf: buf, cols: 3 }
+    g[0, 1] += 10
+    print(format("{}", g[0, 1]))
+}"#,
+    );
+    assert_eq!(out, "12", "got: {out:?}");
+}

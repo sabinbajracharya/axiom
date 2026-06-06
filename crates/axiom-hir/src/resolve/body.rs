@@ -106,7 +106,9 @@ fn resolve_expr_names(expr: &mut Expr, scope: &mut Scope, diagnostics: &mut Vec<
         }
         Expr::Index(i) => {
             resolve_expr_names(&mut i.base, scope, diagnostics);
-            resolve_expr_names(&mut i.index, scope, diagnostics);
+            for index in &mut i.indices {
+                resolve_expr_names(index, scope, diagnostics);
+            }
         }
         Expr::Block(b) => {
             resolve_block_names(b, scope, diagnostics);
@@ -221,9 +223,11 @@ fn resolve_assign_target_names(
         AssignTarget::Field { receiver, field: _ } => {
             resolve_expr_names(receiver, scope, diagnostics);
         }
-        AssignTarget::Index { base, index } => {
+        AssignTarget::Index { base, indices } => {
             resolve_expr_names(base, scope, diagnostics);
-            resolve_expr_names(index, scope, diagnostics);
+            for index in indices {
+                resolve_expr_names(index, scope, diagnostics);
+            }
         }
     }
 }

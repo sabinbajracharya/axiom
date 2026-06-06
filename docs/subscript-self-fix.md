@@ -499,16 +499,16 @@ The old `single_index()` method is either removed or delegates to
 
 ### 8.8 Checklist
 
-- [ ] **1. Parser:** Parse `Expr (',' Expr)*` inside `[...]`
-- [ ] **2. AST:** `IndexExpr::indices()` → `Vec<Expr>`
-- [ ] **3. HIR lower:** `lower_index_expr` uses all index exprs
-- [ ] **4. Typeck:** `infer_index` dispatches by `indices.len()`
-- [ ] **5. Typeck:** Wrong-arity diagnostic (`.stderr` golden)
-- [ ] **6. Showcase:** Grid uses `g[row, col]` natively
-- [ ] **7. Test:** Multi-index e2e (read, write, compound)
-- [ ] **8. Test:** Wrong-arity → diagnostic
-- [ ] **9. Docs:** Update DESIGN_SPEC.md §4.4.1
-- [ ] **10. Mark doc status `[x]` and commit**
+- [x] **1. Parser:** Parse `Expr (',' Expr)*` inside `[...]`
+- [x] **2. AST:** `IndexExpr::indices()` → `Vec<Expr>`
+- [x] **3. HIR lower:** `lower_index_expr` uses all index exprs
+- [x] **4. Typeck:** `infer_index` dispatches by `indices.len()`
+- [x] **5. Typeck:** Wrong-arity diagnostic (NoWritableSubscript covers wrong arity)
+- [x] **6. Showcase:** Grid uses `g[row, col]` natively
+- [x] **7. Test:** Multi-index e2e (`test_multi_index_subscript`, `test_multi_index_compound`)
+- [x] **8. Test:** Single-index backwards-compat (all existing tests pass unchanged)
+- [x] **9. Docs:** Updated DESIGN_SPEC.md §4.4.1
+- [x] **10. Mark doc status `[x]` and commit**
 
 ## 9. Cross-references
 

@@ -352,7 +352,7 @@ pub struct FieldExpr {
 pub struct IndexExpr {
     pub id: HirId,
     pub base: Box<Expr>,
-    pub index: Box<Expr>,
+    pub indices: Vec<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -436,7 +436,7 @@ pub struct AssignExpr {
 pub enum AssignTarget {
     Name(NameRef),
     Field { receiver: Box<Expr>, field: String },
-    Index { base: Box<Expr>, index: Box<Expr> },
+    Index { base: Box<Expr>, indices: Vec<Expr> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

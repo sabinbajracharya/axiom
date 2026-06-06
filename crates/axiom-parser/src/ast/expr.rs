@@ -287,6 +287,14 @@ impl IndexExpr {
     pub fn index(&self) -> Option<SyntaxNode> {
         child_expr_nodes(&self.0).into_iter().nth(1)
     }
+    pub fn indices(&self) -> Vec<SyntaxNode> {
+        let mut children = child_expr_nodes(&self.0);
+        if children.is_empty() {
+            return Vec::new();
+        }
+        children.remove(0); // remove base
+        children
+    }
 }
 
 pub struct ParenExpr(SyntaxNode);

@@ -231,16 +231,20 @@ impl TypeChecker {
         None
     }
 
-    /// Find the **read** subscript for the given type (the one with a return
-    /// type), returning it and a type-parameter substitution for generic impls.
+    /// Find the **read** subscript for the given type and index-param count.
     fn find_impl_subscript(
         &self,
         type_name: &str,
         receiver_ty: &Ty,
+        index_count: usize,
     ) -> Option<(&SubscriptDef, Substitution)> {
         for info in &self.impl_table {
             if info.type_name == type_name {
-                if let Some(sub) = info.subscripts.iter().find(|s| !s.is_setter) {
+                if let Some(sub) = info
+                    .subscripts
+                    .iter()
+                    .find(|s| !s.is_setter && index_param_count(s) == index_count)
+                {
                     let subst = self.build_impl_subst(info, receiver_ty);
                     return Some((sub, subst));
                 }
@@ -249,17 +253,20 @@ impl TypeChecker {
         None
     }
 
-    /// Find the **write** subscript (setter) for the given type, returning it
-    /// and a type-parameter substitution. Used to resolve `base[i] = v`
-    /// (`docs/mutable-subscript-design.md` §4.2).
+    /// Find the **write** subscript for the given type and index-param count.
     fn find_impl_write_subscript(
         &self,
         type_name: &str,
         receiver_ty: &Ty,
+        index_count: usize,
     ) -> Option<(&SubscriptDef, Substitution)> {
         for info in &self.impl_table {
             if info.type_name == type_name {
-                if let Some(sub) = info.subscripts.iter().find(|s| s.is_setter) {
+                if let Some(sub) = info
+                    .subscripts
+                    .iter()
+                    .find(|s| s.is_setter && index_param_count(s) == index_count)
+                {
                     let subst = self.build_impl_subst(info, receiver_ty);
                     return Some((sub, subst));
                 }
@@ -455,7 +462,9 @@ impl TypeChecker {
 
     pub(super) fn infer_index(&mut self, index: &IndexExpr) -> Ty {
         let base_ty = self.infer_expr(&index.base);
-        let _index_ty = self.infer_expr(&index.index);
+        for idx in &index.indices {
+            self.infer_expr(idx);
+        }
 
         // A heap buffer `[T]` (the P4 storage primitive) indexes by `Int`,
         // yielding `T` directly — no library subscript needed.
@@ -470,7 +479,9 @@ impl TypeChecker {
 
         // Try subscript lookup first (library-defined indexing).
         if let Some(ref name) = type_name {
-            if let Some((sub, subst)) = self.find_impl_subscript(name, &base_ty) {
+            if let Some((sub, subst)) =
+                self.find_impl_subscript(name, &base_ty, index.indices.len())
+            {
                 let ty = sub
                     .return_type
                     .as_ref()
@@ -504,12 +515,14 @@ impl TypeChecker {
     pub(super) fn check_index_assign(
         &mut self,
         base: &Expr,
-        index: &Expr,
+        indices: &[Expr],
         value_ty: &Ty,
         assign_id: HirId,
     ) {
         let base_ty = self.infer_expr(base);
-        self.infer_expr(index);
+        for idx in indices {
+            self.infer_expr(idx);
+        }
 
         if let Ty::HeapBuffer(elem) = &base_ty {
             if !helpers::is_error(value_ty) && !helpers::is_error(elem) && value_ty != elem.as_ref()
@@ -535,7 +548,8 @@ impl TypeChecker {
             return;
         };
 
-        let Some((sub, subst)) = self.find_impl_write_subscript(&name, &base_ty) else {
+        let Some((sub, subst)) = self.find_impl_write_subscript(&name, &base_ty, indices.len())
+        else {
             self.emit(TypeDiagnostic::NoWritableSubscript {
                 ty: name,
                 span: self.span_for(assign_id),
@@ -607,5 +621,16 @@ fn unify_instances(actual: &Ty, expected: &Ty, subst: &mut Substitution) {
             subst.entry(tp.clone()).or_insert_with(|| actual.clone());
         }
         _ => {}
+    }
+}
+
+/// Number of index params for a subscript (total params minus self, minus value
+/// param for setters).
+fn index_param_count(s: &SubscriptDef) -> usize {
+    let total = s.params.len();
+    if s.is_setter {
+        total.saturating_sub(2) // self + value
+    } else {
+        total.saturating_sub(1) // self
     }
 }

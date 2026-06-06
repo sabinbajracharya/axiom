@@ -13,7 +13,7 @@ pub(super) fn lower_assign(e: &axiom_hir::AssignExpr, ctx: &mut FnLowerCtx) -> R
     match &e.target {
         AssignTarget::Name(nr) => lower_assign_name(nr, e, ctx),
         AssignTarget::Field { receiver, field } => lower_assign_field(receiver, field, e, ctx),
-        AssignTarget::Index { base, index } => lower_assign_index(base, index, e, ctx),
+        AssignTarget::Index { base, indices } => lower_assign_index(base, indices, e, ctx),
     }
     unit_reg(ctx)
 }
@@ -101,15 +101,20 @@ fn lower_assign_field(
 /// The index is lowered **once** and reused for the read-back and the write, so
 /// an effectful index expression is not evaluated twice
 /// (`docs/mutable-subscript-design.md` §4.2, O-MS2).
-fn lower_assign_index(base: &Expr, index: &Expr, e: &axiom_hir::AssignExpr, ctx: &mut FnLowerCtx) {
+fn lower_assign_index(
+    base: &Expr,
+    indices: &[Expr],
+    e: &axiom_hir::AssignExpr,
+    ctx: &mut FnLowerCtx,
+) {
     let base_r = lower_expr(base, ctx);
-    let idx_r = lower_expr(index, ctx);
+    let idx_r: Vec<Reg> = indices.iter().map(|idx| lower_expr(idx, ctx)).collect();
     let base_ty = ctx.receiver_type(base.id());
     let value = lower_expr(&e.value, ctx);
     let final_val = match e.op {
         axiom_hir::AssignOp::Plain => value,
         compound => {
-            let cur = lower_index_read(base_r, base_ty.as_ref(), idx_r, ctx);
+            let cur = lower_index_read(base_r, base_ty.as_ref(), &idx_r, ctx);
             let tmp = ctx.fresh_reg();
             ctx.emit(IrInstr::BinOp {
                 dst: tmp,
@@ -120,5 +125,5 @@ fn lower_assign_index(base: &Expr, index: &Expr, e: &axiom_hir::AssignExpr, ctx:
             tmp
         }
     };
-    lower_index_write(base_r, base_ty.as_ref(), idx_r, final_val, ctx);
+    lower_index_write(base_r, base_ty.as_ref(), &idx_r, final_val, ctx);
 }

@@ -191,30 +191,18 @@ fn collect_expr_children(expr: &axiom_hir::Expr, ids: &mut Vec<(HirId, String)>)
             collect_expr_ids(&b.left, ids);
             collect_expr_ids(&b.right, ids);
         }
-        axiom_hir::Expr::Unary(u) => {
-            collect_expr_ids(&u.operand, ids);
-        }
-        axiom_hir::Expr::Call(c) => {
-            for arg in &c.args {
-                collect_expr_ids(arg, ids);
-            }
-        }
+        axiom_hir::Expr::Unary(u) => collect_expr_ids(&u.operand, ids),
+        axiom_hir::Expr::Call(c) => c.args.iter().for_each(|arg| collect_expr_ids(arg, ids)),
         axiom_hir::Expr::MethodCall(m) => {
             collect_expr_ids(&m.receiver, ids);
-            for arg in &m.args {
-                collect_expr_ids(arg, ids);
-            }
+            m.args.iter().for_each(|arg| collect_expr_ids(arg, ids));
         }
-        axiom_hir::Expr::Field(f) => {
-            collect_expr_ids(&f.receiver, ids);
-        }
+        axiom_hir::Expr::Field(f) => collect_expr_ids(&f.receiver, ids),
         axiom_hir::Expr::Index(i) => {
             collect_expr_ids(&i.base, ids);
-            collect_expr_ids(&i.index, ids);
+            i.indices.iter().for_each(|idx| collect_expr_ids(idx, ids));
         }
-        axiom_hir::Expr::Block(b) => {
-            collect_block_ids(b, ids);
-        }
+        axiom_hir::Expr::Block(b) => collect_block_ids(b, ids),
         axiom_hir::Expr::If(i) => {
             collect_expr_ids(&i.condition, ids);
             collect_block_ids(&i.then_branch, ids);
@@ -231,18 +219,18 @@ fn collect_expr_children(expr: &axiom_hir::Expr, ids: &mut Vec<(HirId, String)>)
         }
         axiom_hir::Expr::Loop(l) => collect_loop_ids(l, ids),
         axiom_hir::Expr::StructLit(s) => {
-            for f in &s.fields {
-                collect_expr_ids(&f.value, ids);
-            }
+            s.fields
+                .iter()
+                .for_each(|f| collect_expr_ids(&f.value, ids));
         }
         axiom_hir::Expr::Assign(a) => {
             collect_assign_target_ids(&a.target, ids);
             collect_expr_ids(&a.value, ids);
         }
         axiom_hir::Expr::ListLit(l) => {
-            for elem in &l.elements {
-                collect_expr_ids(elem, ids);
-            }
+            l.elements
+                .iter()
+                .for_each(|elem| collect_expr_ids(elem, ids));
         }
     }
 }
@@ -273,9 +261,11 @@ fn collect_assign_target_ids(target: &axiom_hir::AssignTarget, ids: &mut Vec<(Hi
         axiom_hir::AssignTarget::Field { receiver, field: _ } => {
             collect_expr_ids(receiver, ids);
         }
-        axiom_hir::AssignTarget::Index { base, index } => {
+        axiom_hir::AssignTarget::Index { base, indices } => {
             collect_expr_ids(base, ids);
-            collect_expr_ids(index, ids);
+            for index in indices {
+                collect_expr_ids(index, ids);
+            }
         }
     }
 }
