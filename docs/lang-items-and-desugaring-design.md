@@ -153,6 +153,15 @@ lowering** as a sound pragmatic choice, and the shipped behaviour is correct.
 literal/sugar form appears (map/set literals, `for`→iterator). Until then, IR placement is
 interim debt — tracked here, not forgotten.
 
+> **Status (Step 4):** the trigger has **not** fired — list literals are still the only
+> sugar — so the HIR-pass *relocation* deliberately stays put: moving one sugar into a new
+> HIR phase is a pure, behaviour-preserving refactor that buys nothing until a second sugar
+> shares the phase, and an independent review agreed forcing it now is premature complexity.
+> The **user-visible** half of Step 4 *did* land: **empty `[]`** is now supported
+> (annotation-driven — `val xs: List<Int> = []` lowers to `List::new()`; unannotated `[]`
+> stays ambiguous). When map/set/`for` arrive, the relocation lands with them (lang-item
+> `def_id`s, already resolved in §3.2/§3.3, are ready to point the HIR-emitted calls at).
+
 > Cross-check: this is the **same trigger** as the lang-items build (§3.3) and they should
 > land together — a HIR desugar pass that emits real calls *needs* resolved lang-item
 > `def_id`s to point those calls at. Sequence: §3.1 → §3.2/§3.3 → §4 pass.
@@ -162,7 +171,7 @@ interim debt — tracked here, not forgotten.
 | Sugar / coupling | Couples to | Current state | Target |
 |---|---|---|---|
 | `[a, b, c]` list literal | `List` | **done** — IR desugar to `with_capacity`+`push` | HIR desugar + lang item |
-| `[]` empty literal | `List` | **`NotYetSupported`** in `infer_list_lit` | lower to `List::new()` once typed by annotation |
+| `[]` empty literal | `List` | **done** — annotation-driven, lowers to `List::new()` | HIR desugar + lang item |
 | `["k": v]` map literal | `Map` | not implemented (`collection-type-design.md` §6.2) | HIR desugar + lang item |
 | `{1, 2, 3}` set literal | `Set` | not implemented; grammar ambiguity w/ blocks (open) | HIR desugar + lang item |
 | `for x in xs { }` | `Iterator` | loops kept structural in HIR | desugar to `next()` loop + `Iterator` lang item |
@@ -242,9 +251,15 @@ that shows the call chain.
 4. **§4 HIR desugar pass** — introduce the pass; move list-literal desugaring HIR-ward
    emitting real (now lang-item-resolved) calls; delete the IR `lower_list_lit` synthesis
    and the `infer_list_lit` special-case; goldens must show the *same* end behaviour.
+   ⏳ **Trigger-gated (intentionally not yet)** — list literals are still the only sugar, so
+   the relocation (a behaviour-preserving refactor) waits for the §4 trigger (2nd/3rd sugar),
+   per the design and an independent review. The user-visible part **is done**: empty `[]`
+   (annotation-driven) — `axiom-typeck` `try_annotated_empty_list`; `list_e2e` +
+   `collections` tests.
 5. **Extend** to the next sugar (map/set/`for`) — each adds one desugar rule + one fixture
    + one lang item; the invariants in §6 need **zero** changes if the architecture is
-   data-driven (the real test of the design — `lexer-testing.md` §5.3).
+   data-driven (the real test of the design — `lexer-testing.md` §5.3). This is the step that
+   fires the §4 trigger and lands the HIR desugar pass alongside the new sugar.
 
 ## 8. Decisions now vs remaining open questions (mirroring `DESIGN_SPEC` §15)
 

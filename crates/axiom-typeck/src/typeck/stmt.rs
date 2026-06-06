@@ -21,6 +21,10 @@ impl TypeChecker {
     }
 
     fn type_val_stmt(&mut self, s: &ValStmt) {
+        if self.try_annotated_empty_list(&s.value, &s.ty, &s.pattern, Mutability::Immutable) {
+            self.types.insert(s.id, Ty::Unit);
+            return;
+        }
         let value_ty = self.infer_expr(&s.value);
         let binding_ty = self.binding_ty(&s.ty, value_ty, s.id);
         self.define_pattern(&s.pattern, &binding_ty, Mutability::Immutable);
@@ -28,10 +32,59 @@ impl TypeChecker {
     }
 
     fn type_var_stmt(&mut self, s: &VarStmt) {
+        if self.try_annotated_empty_list(&s.value, &s.ty, &s.pattern, Mutability::Mutable) {
+            self.types.insert(s.id, Ty::Unit);
+            return;
+        }
         let value_ty = self.infer_expr(&s.value);
         let binding_ty = self.binding_ty(&s.ty, value_ty, s.id);
         self.define_pattern(&s.pattern, &binding_ty, Mutability::Mutable);
         self.types.insert(s.id, Ty::Unit);
+    }
+
+    /// Type an *empty* list literal from its binding annotation:
+    /// `val xs: List<Int> = []`. An empty `[]` carries no element to infer from,
+    /// so its type comes entirely from the annotation — the element type is read
+    /// back from a `List<E>` annotation and the literal lowers to `List::new()`
+    /// (`docs/lang-items-and-desugaring-design.md` §5, D8). Unannotated `[]`
+    /// stays ambiguous (handled by `infer_list_lit`, which reports it).
+    ///
+    /// Returns `true` when it handled the binding (empty literal *with* a
+    /// `List<…>` annotation); `false` to fall through to ordinary inference.
+    fn try_annotated_empty_list(
+        &mut self,
+        value: &Expr,
+        ann: &Option<axiom_hir::HirTy>,
+        pattern: &Pattern,
+        mutab: Mutability,
+    ) -> bool {
+        let Expr::ListLit(list) = value else {
+            return false;
+        };
+        if !list.elements.is_empty() {
+            return false;
+        }
+        let Some(ty_ann) = ann else {
+            return false;
+        };
+        let resolved = self.resolve_hir_ty(ty_ann);
+        let is_list = matches!(
+            &resolved,
+            Ty::Instance(inst) if inst.name == axiom_hir::lang::LIST
+        );
+        if !is_list {
+            self.emit(crate::error::TypeDiagnostic::TypeMismatch {
+                expected: resolved.to_string(),
+                found: "an empty list literal".to_string(),
+                span: self.span_for(list.id),
+            });
+            self.types.insert(list.id, Ty::Error);
+            self.define_pattern(pattern, &Ty::Error, mutab);
+            return true;
+        }
+        self.types.insert(list.id, resolved.clone());
+        self.define_pattern(pattern, &resolved, mutab);
+        true
     }
 
     /// Resolve a `val`/`var` binding's type. With no annotation, the inferred

@@ -108,3 +108,20 @@ fn test_list_is_empty() {
         "expected false (non-empty), got: {out:?}"
     );
 }
+
+#[test]
+fn test_empty_list_literal_from_annotation() {
+    // `val xs: List<Int> = []` is the annotation-driven empty literal (D8): the
+    // element type comes from the annotation and it lowers to `List::new()`, so
+    // it behaves as an empty `List<Int>` you can push to.
+    let out = run_output(
+        r#"fn main() {
+    var xs: List<Int> = []
+    print(format("count={}", xs.count()))
+    xs.push(42)
+    print(format("after={}", xs.count()))
+}"#,
+    );
+    assert!(out.contains("count=0"), "expected count 0, got: {out:?}");
+    assert!(out.contains("after=1"), "expected count 1, got: {out:?}");
+}
