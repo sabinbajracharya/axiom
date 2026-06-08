@@ -225,7 +225,7 @@ of `driver`. But `axiom-ir`'s Cargo.toml dev-deps section grows by one entry.
 **Gate:** `cargo tree -p axiom-typeck` shows no `axiom-stdlib` in the regular
 dependency graph. `axiom-parser` remains (needed for prelude IO). All tests pass.
 
-### Phase 3: Split `axiom-hir` into `lower` + `resolver`
+### Phase 3: Split `axiom-hir` into `lower` + `resolver` ✅ DONE
 
 **Scope:** Two new crates. `axiom-hir` becomes a re-export shim (temporary).
 

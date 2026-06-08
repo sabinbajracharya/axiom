@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "crates/axiom-lexer",
     "crates/axiom-parser",
+    "crates/lower",
+    "crates/resolver",
     "crates/axiom-hir",
     "crates/axiom-typeck",
     "crates/axiom-stdlib",
