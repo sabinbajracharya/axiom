@@ -142,14 +142,17 @@ memory model — the language's load-bearing bet — has passed its de-risking s
 |---|---|---|
 | Design | [`DESIGN_SPEC.md`](DESIGN_SPEC.md) — full language design, every decision tagged `[Decided]`/`[Deferred]` | ✅ Settled (living doc) |
 | Memory-model spike | [`docs/spike-0-findings.md`](docs/spike-0-findings.md) — Path A de-risk | ✅ **Preliminary GREEN** (23/23 scenarios matched intent; named follow-ups remain) |
-| Lex | [`crates/axiom-lexer`](crates/axiom-lexer) — source → lossless, tiling token stream | ✅ Done (snapshot + invariant + fuzz tested) |
-| Parse | [`crates/axiom-parser`](crates/axiom-parser) — tokens → lossless CST (rust-analyzer-shaped green/red tree) | ✅ Done; total recovery, recovery-set-aware |
-| Name resolution (HIR) | [`crates/axiom-hir`](crates/axiom-hir) — CST → desugared, ID-keyed HIR with name resolution | ✅ Done (M1); golden + diagnostic snapshot tested |
-| Type checking (THIR) | [`crates/axiom-typeck`](crates/axiom-typeck) — HIR → THIR via bidirectional type checker | ✅ Done (M2); golden + diagnostic + invariant tested |
-| Generics + traits | [`crates/axiom-typeck`](crates/axiom-typeck) — unification, inference, trait checking, monomorphization, default-method dispatch | ✅ Done; wired through IR → VM |
-| IR generation | [`crates/axiom-ir`](crates/axiom-ir) — THIR → register IR (basic blocks, SSA-lite registers) | ✅ Done (M3); golden traces + invariants |
-| Register-IR interpreter | [`crates/axiom-vm`](crates/axiom-vm) — executes IR: structs, enums, match, control flow, calls, generics, traits, collections | ✅ Done; 104 tests + golden traces |
-| Standard library | [`stdlib/`](stdlib) embedded via [`crates/axiom-stdlib`](crates/axiom-stdlib); multi-file loading in [`crates/axiom-modules`](crates/axiom-modules) — core traits, `Option<T>`, `List<T>`, `Map<K,V>`, `print`/`format`, all in `.ax` | ✅ Running on the VM |
+| Lex | [`crates/lexer`](crates/lexer) — source → lossless, tiling token stream | ✅ Done (snapshot + invariant + fuzz tested) |
+| Parse | [`crates/parser`](crates/parser) — tokens → lossless CST (rust-analyzer-shaped green/red tree) | ✅ Done; total recovery, recovery-set-aware |
+| Structural HIR lowering | [`crates/lower`](crates/lower) — CST → ID-keyed HIR (names unresolved) | ✅ Done (M1); golden + diagnostic snapshot tested |
+| Name resolution | [`crates/resolver`](crates/resolver) — resolve names, `@lang` items, desugar pass | ✅ Done (M1); scope-chain resolution + diagnostics |
+| Type checking (THIR) | [`crates/typecheck`](crates/typecheck) — HIR → THIR via bidirectional type checker | ✅ Done (M2); golden + diagnostic + invariant tested |
+| Generics + traits | [`crates/typecheck`](crates/typecheck) — unification, inference, trait checking, default-method dispatch | ✅ Done; wired through IR → VM |
+| Monomorphization | [`crates/specialize`](crates/specialize) — discover generic instantiations, produce `MonoInstance` records | ✅ Done |
+| Pipeline orchestration | [`crates/driver`](crates/driver) — single multi-module pipeline (parse→lower→resolve→validate→typecheck) | ✅ Done |
+| IR generation | [`crates/ir`](crates/ir) — THIR → register IR (basic blocks, SSA-lite registers) | ✅ Done (M3); golden traces + invariants |
+| Register-IR interpreter | [`crates/vm`](crates/vm) — executes IR: structs, enums, match, control flow, calls, generics, traits, collections | ✅ Done; snapshot + e2e + invariant tested |
+| Standard library | [`stdlib/`](stdlib) embedded via [`crates/stdlib`](crates/stdlib); multi-file loading in [`crates/modules`](crates/modules) — core traits, `Option<T>`, `List<T>`, `Map<K,V>`, `print`/`format`, all in `.ax` | ✅ Running on the VM |
 | Cranelift codegen | — | ⬜ Not started |
 | Ownership pass + Perceus | — | ⬜ Not started (the v1 identity) |
 | `forge`, LSP | — | ⬜ Not started |
@@ -183,15 +186,18 @@ the language identity arrives.
 ├── clippy.toml           # Complexity caps + ban-lists (Layer 2 enforcement)
 ├── Cargo.toml            # Workspace + centralized [workspace.lints] policy
 ├── crates/
-│   ├── axiom-lexer/      # Stage 1: lossless, total tokenizer
-│   ├── axiom-parser/     # Stage 2: lossless CST + error recovery
-│   ├── axiom-hir/        # Stage 3: CST → desugared HIR + name resolution
-│   ├── axiom-typeck/     # Stage 4: HIR → THIR (bidirectional type checker, generics, traits)
-│   ├── axiom-ir/         # Stage 5: THIR → register IR (basic blocks, SSA-lite regs)
-│   ├── axiom-vm/         # Stage 6: register-IR interpreter (structs, enums, match, generics, traits)
-│   ├── axiom-modules/    # Multi-file module loading + cross-file name resolution
-│   ├── axiom-stdlib/     # Embeds stdlib/*.ax into the compiler (build.rs)
-│   └── axiom-cli/        # Compiler driver (`axiom check` / `run`; `build` later)
+│   ├── lexer/            # Stage 1: lossless, total tokenizer
+│   ├── parser/           # Stage 2: lossless CST + error recovery
+│   ├── lower/            # Stage 3: CST → ID-keyed HIR (structural, names unresolved)
+│   ├── resolver/         # Stage 3b: name resolution + @lang/@intrinsic + desugar pass
+│   ├── typecheck/        # Stage 4: HIR → THIR (bidirectional type checker, generics, traits)
+│   ├── specialize/       # Monomorphization: generic instantiation discovery
+│   ├── ir/               # Stage 5: THIR → register IR (basic blocks, SSA-lite regs)
+│   ├── vm/               # Stage 6: register-IR interpreter
+│   ├── modules/          # Multi-file module discovery + graph construction
+│   ├── stdlib/           # Embeds stdlib/*.ax into the compiler (build.rs)
+│   ├── driver/           # Pipeline orchestrator (parse→lower→resolve→validate→typecheck)
+│   └── cli/              # Compiler driver (`axiom check` / `run` / `build`)
 ├── docs/
 │   ├── lexer-testing.md    # Test/debug tooling spec for the lexer
 │   ├── parser-testing.md   # Test/debug tooling spec for the parser
@@ -207,6 +213,7 @@ the language identity arrives.
 │   └── v0-roadmap.md       # v0 milestone plan (M1–M5) — plus more design notes
 ├── stdlib/              # The standard library, in Axiom (.ax): core traits,
 │                        #   Option, List, Map, io (print/format)
+├── showcase/            # Feature-tour demo programs
 ├── corpus/              # End-to-end .ax programs run as integration tests
 └── scripts/             # check.sh and friends (the PostToolUse enforcement hook)
 ```
@@ -216,7 +223,7 @@ start there when diving into a stage.
 
 ### Test harness
 
-**538 tests** across 9 crates. Each pipeline stage has its own testing spec
+Snapshot, invariant, fuzz, and golden tests across all 12 crates. Each pipeline stage has its own testing spec
 (`docs/*-testing.md`) with a 6-layer test stack:
 
 1. **Unit tests** — Rust-side logic in `#[cfg(test)]` modules
@@ -248,10 +255,12 @@ cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test
 Try it:
 
 ```bash
-cargo run -p axiom-cli -- check path/to/file.ax     # lex → parse → resolve → typecheck
-cargo run -p axiom-cli -- run   path/to/file.ax     # …then IR → VM, and execute it
-cargo run -p axiom-cli -- run   showcase.ax         # the feature-tour demo program
-cargo run -p axiom-lexer --example lex -- path/to/file.ax     # dump tokens (lexer only)
+cargo run -p cli -- check path/to/file.ax     # lex → parse → lower → resolve → typecheck
+cargo run -p cli -- run   path/to/file.ax     # …then IR → VM, and execute it
+cargo run -p cli -- run   showcase/showcase.ax  # the feature-tour demo program
+cargo run -p lexer --example lex -- path/to/file.ax  # dump tokens (lexer only)
+cargo run -p parser --example parse -- path/to/file.ax  # dump CST (parser only)
+cargo run -p typecheck --example typeck -- path/to/file.ax  # dump THIR (type checker)
 ```
 
 ---

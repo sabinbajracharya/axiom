@@ -104,9 +104,9 @@ flowchart TD
 ## Commands
 
 ```bash
-cargo test -p axiom-lexer                          # full suite
-UPDATE_SNAPSHOTS=1 cargo test -p axiom-lexer       # regenerate goldens (eyeball the diff!)
-cargo run -p axiom-lexer --example lex -- file.ax  # the debug token dump
+cargo test -p lexer                                 # full suite
+UPDATE_SNAPSHOTS=1 cargo test -p lexer              # regenerate goldens (eyeball the diff!)
+cargo run -p lexer --example lex -- file.ax         # the debug token dump
 ```
 
 ## When you change this crate

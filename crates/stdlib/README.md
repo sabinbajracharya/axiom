@@ -4,7 +4,7 @@ The **embedded standard library** — the single source of truth for stdlib sour
 
 `build.rs` walks `stdlib/` at compile time and bakes every `.ax` module into the crate as
 `(module_path, source)` pairs (module path derived from the relative file path exactly as
-`axiom_modules::discover` does: `core/platform.ax` → `core::platform`). The compiler carries
+`modules::discover` does: `core/platform.ax` → `core::platform`). The compiler carries
 its own stdlib *inside* the binary — no hardcoded file list to drift, no runtime disk
 dependency.
 
@@ -13,10 +13,10 @@ dependency.
   sorted by module path.
 - `with_main(source) -> Vec<(&str, &str)>` — the embedded modules followed by one unnamed
   (`""`) user module: the standard single-file/test module set to hand to
-  `axiom_typeck::check_modules`.
+  `driver::check_modules`.
 
 This crate is a **pure leaf** — it composes the module list; the caller drives the
-compile pipeline. It does not depend on `axiom-typeck`, so the type checker stays
+compile pipeline. It does not depend on `typecheck`, so the type checker stays
 stdlib-agnostic and there is no dependency cycle.
 
 ## Files

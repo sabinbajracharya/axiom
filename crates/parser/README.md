@@ -28,7 +28,7 @@ present.
 
 ```mermaid
 flowchart TD
-    A["<b>parse(source)</b> &middot; lib.rs entry"] --> L["axiom_lexer::lex(source)<br/>→ LexResult { tokens }"]
+    A["<b>parse(source)</b> &middot; lib.rs entry"] --> L["lexer::lex(source)<br/>→ LexResult { tokens }"]
     L --> N["<b>Parser::new(&amp;tokens)</b> &middot; filters trivia<br/>struct Parser { tokens, pos, events, errors, depth, open_* }"]
     N --> G["<b>grammar::source_file(&amp;mut p)</b><br/>walks tokens, <i>emits an Event stream</i><br/>(see the two insets below)"]
     G --> F["p.finish() → (events, errors)"]
@@ -191,9 +191,9 @@ per-token cascade.)
 ## Commands
 
 ```bash
-cargo test -p axiom-parser                            # full suite
-UPDATE_SNAPSHOTS=1 cargo test -p axiom-parser         # regenerate *.ast / *.stderr (eyeball the diff!)
-cargo run -p axiom-parser --example parse -- file.ax  # the debug tree dump
+cargo test -p parser                                   # full suite
+UPDATE_SNAPSHOTS=1 cargo test -p parser               # regenerate *.ast / *.stderr (eyeball the diff!)
+cargo run -p parser --example parse -- file.ax        # the debug tree dump
 ```
 
 ## When you change this crate

@@ -17,11 +17,9 @@ Three properties define it:
 ## How it works (end-to-end flow)
 
 ```
-modules [(name, source)] → axiom_typeck::check_modules → lower_structural (linear DefIds)
-    → build_global_exports → resolve_with_globals → combine → check → Thir
-HIR (from axiom-hir) → axiom_typeck::check → Thir { hir, types, diagnostics }
-Thir → axiom_typeck::serialize → canonical THIR dump (String)
-Thir → axiom_typeck::check_all → coverage invariant check
+HIR (from resolver) → typecheck::check → Thir { hir, types, diagnostics }
+Thir → typecheck::serialize → canonical THIR dump (String)
+Thir → typecheck::check_all → coverage invariant check
 ```
 
 `check` is a two-pass pipeline (mirroring the HIR's own collect→resolve pattern):
@@ -30,17 +28,22 @@ Thir → axiom_typeck::check_all → coverage invariant check
 2. **Check pass:** Walk fn bodies, type-checking each expression against the
    environment. Type errors emit `TypeDiagnostic`s and assign `Ty::Error`.
 
-**Standard library:** `check_modules` compiles a set of `(name, source)` modules together
-(the **one** multi-module pipeline). The stdlib is embedded by the `axiom-stdlib` crate;
-callers build the module list with `axiom_stdlib::with_main(src)` (embedded stdlib + the
-unnamed user module) and pass it here. Bare `check_source(src)` is the deliberate no-stdlib
-mode for compiler-isolation tests. See `docs/stdlib-loading-unification.md`.
+Multi-module orchestration (parse → lower → resolve → validate → type-check) lives in the
+`driver` crate. This crate is a pure type-checking pass: it consumes a resolved `Hir`,
+walks every expression and statement, and assigns a `Ty` to every node via the `TypeMap`
+side table. Type errors emit `TypeDiagnostic`s and assign `Ty::Error` — the tree is always
+complete, never silently skipped.
+
+**Standard library:** The stdlib is embedded by the `stdlib` crate; callers build the
+module list with `stdlib::with_main(src)` and pass it to `driver::check_modules`.
+Bare `typecheck::check_source(src)` is the deliberate no-stdlib mode for compiler-isolation
+tests. See `docs/stdlib-loading-unification.md`.
 
 ## Files
 
 | File | Responsibility | Key items |
 |---|---|---|
-| `src/lib.rs` | Crate root; public API (`check`, `check_modules`, `check_source`, `serialize`, `check_all`) | `check`, `check_modules`, `check_source` |
+| `src/lib.rs` | Crate root; public API (`check`, `check_with_lang_items`, `check_source`, `serialize`, `check_all`, `hir_max_id`) | `check`, `check_source`, `hir_max_id` |
 | `src/types.rs` | The type universe: `Ty`, `StructTy`, `EnumTy`, `FnTy`, Display impls | `Ty`, `label()` |
 | `src/error.rs` | Type-check diagnostics (`thiserror` enum) + render | `TypeDiagnostic` |
 | `src/thir.rs` | THIR wrapper (HIR + TypeMap + diagnostics) | `Thir`, `TypeMap` |
@@ -55,17 +58,17 @@ mode for compiler-isolation tests. See `docs/stdlib-loading-unification.md`.
 | `src/exhaustiveness.rs` | Match exhaustiveness checking for enums | `check_match_exhaustiveness` |
 | `src/serialize.rs` | Canonical THIR dump (pure function) | `serialize` |
 | `src/coverage.rs` | Coverage invariant checks | `check_all`, `TypeckCoverageError` |
-| `examples/typeck.rs` | Debug CLI (`cargo run -p axiom-typeck --example typeck -- file.ax`) | — |
+| `examples/typeck.rs` | Debug CLI (`cargo run -p typecheck --example typeck -- file.ax`) | — |
 
 ## Commands
 
 ```bash
-cargo test -p axiom-typeck                            # full suite
-cargo test -p axiom-typeck --test fuzz                # fuzz/property tests only
-UPDATE_SNAPSHOTS=1 cargo test -p axiom-typeck          # regenerate .thir / .stderr
-cargo run -p axiom-typeck --example typeck -- file.ax  # debug THIR dump
-cargo run -p axiom-cli -- check file.ax                # CST + HIR + THIR dumps + diagnostics
-cargo clippy -p axiom-typeck -- -D warnings           # lint
+cargo test -p typecheck                               # full suite
+cargo test -p typecheck --test fuzz                   # fuzz/property tests only
+UPDATE_SNAPSHOTS=1 cargo test -p typecheck             # regenerate .thir / .stderr
+cargo run -p typecheck --example typeck -- file.ax     # debug THIR dump
+cargo run -p cli -- check file.ax                      # CST + HIR + THIR dumps + diagnostics
+cargo clippy -p typecheck -- -D warnings              # lint
 ```
 
 ## When you change this crate
