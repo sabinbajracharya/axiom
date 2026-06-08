@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use super::helpers::FnLowerCtx;
 use crate::ir::{GenericOrigin, IrFunction, IrParam};
-use hir::{FnDef, Item};
+use resolver::{FnDef, Item};
 use typecheck::mono::helpers::Substitution;
 use typecheck::{Ty, TypeParamId};
 
@@ -83,7 +83,7 @@ pub(super) fn lower_mono_instances(ctx: &mut LowerCtx) {
 }
 
 /// Find the original FnDef by HirId, searching top-level items and ImplDef methods.
-fn find_fn_def(id: hir::HirId, items: &[Item]) -> Option<&FnDef> {
+fn find_fn_def(id: resolver::HirId, items: &[Item]) -> Option<&FnDef> {
     for item in items {
         match item {
             Item::FnDef(f) if f.id == id => return Some(f),
@@ -120,10 +120,10 @@ fn build_subst(fndef: &FnDef, type_args: &[Ty]) -> Substitution {
 }
 
 /// Extract the text from a NameRef (resolved or unresolved).
-fn name_ref_text(nr: &hir::NameRef) -> String {
+fn name_ref_text(nr: &resolver::NameRef) -> String {
     match nr {
-        hir::NameRef::Resolved(r) => r.text.clone(),
-        hir::NameRef::Unresolved(u) => u.text.clone(),
+        resolver::NameRef::Resolved(r) => r.text.clone(),
+        resolver::NameRef::Unresolved(u) => u.text.clone(),
     }
 }
 
@@ -224,7 +224,7 @@ fn lower_fn_def(
 /// Lower a subscript operator to the IR function `Type::subscript(self, index…)`.
 /// Mirrors the non-generic method path of [`lower_fn_def`]: `base[index]`
 /// lowers to a `MethodCall` on this function (see `lower_index`).
-fn lower_subscript(sub: &hir::SubscriptDef, ctx: &mut LowerCtx, type_prefix: &str) {
+fn lower_subscript(sub: &resolver::SubscriptDef, ctx: &mut LowerCtx, type_prefix: &str) {
     let mut fn_ctx = FnLowerCtx::new(&ctx.thir.types, &ctx.mono_lookup, None, &ctx.thir.hir.items);
 
     let params: Vec<IrParam> = sub
@@ -253,9 +253,9 @@ fn lower_subscript(sub: &hir::SubscriptDef, ctx: &mut LowerCtx, type_prefix: &st
     // to `Type::subscript_set`, so `base[i]` and `base[i] = v` dispatch to
     // distinct functions (`docs/mutable-subscript-design.md` §4.2).
     let name = if sub.is_setter {
-        hir::lang::subscript_set_fn(type_prefix)
+        resolver::lang::subscript_set_fn(type_prefix)
     } else {
-        hir::lang::subscript_fn(type_prefix)
+        resolver::lang::subscript_fn(type_prefix)
     };
 
     ctx.functions.push(IrFunction {
@@ -272,7 +272,7 @@ fn lower_subscript(sub: &hir::SubscriptDef, ctx: &mut LowerCtx, type_prefix: &st
 
 /// Lower each trait default method that `impl_def` inherits (does not override)
 /// as a `Type::method` IR function. Called from `lower_item` for trait impls.
-fn lower_inherited_defaults(impl_def: &hir::ImplDef, ctx: &mut LowerCtx, type_prefix: &str) {
+fn lower_inherited_defaults(impl_def: &resolver::ImplDef, ctx: &mut LowerCtx, type_prefix: &str) {
     let Some(trait_nr) = &impl_def.trait_name else {
         return;
     };
@@ -280,7 +280,7 @@ fn lower_inherited_defaults(impl_def: &hir::ImplDef, ctx: &mut LowerCtx, type_pr
     let overridden: Vec<String> = impl_def.methods.iter().map(|m| m.name.clone()).collect();
     // Clone the inherited defaults out first so the `ctx.thir` borrow ends
     // before lowering, which needs `&mut ctx`.
-    let defaults: Vec<hir::TraitMethod> = ctx
+    let defaults: Vec<resolver::TraitMethod> = ctx
         .thir
         .hir
         .items
@@ -305,7 +305,7 @@ fn lower_inherited_defaults(impl_def: &hir::ImplDef, ctx: &mut LowerCtx, type_pr
 /// Lower a trait default method body as the IR function `Type::method`. The
 /// body is `Self`-generic: calls on `self` stay unqualified and resolve to the
 /// receiver's concrete impl at runtime (see `resolve_method_target` in the VM).
-fn lower_trait_default(m: &hir::TraitMethod, ctx: &mut LowerCtx, type_prefix: &str) {
+fn lower_trait_default(m: &resolver::TraitMethod, ctx: &mut LowerCtx, type_prefix: &str) {
     let Some(body) = &m.body else {
         return;
     };

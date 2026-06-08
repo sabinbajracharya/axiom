@@ -14,7 +14,8 @@ path = "src/main.rs"
 
 [dependencies]
 driver = { path = "../driver" }
-hir = { path = "../hir" }
+lower = { path = "../lower" }
+resolver = { path = "../resolver" }
 ir = { path = "../ir" }
 modules = { path = "../modules" }
 parser = { path = "../parser" }

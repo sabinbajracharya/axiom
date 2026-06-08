@@ -19,7 +19,7 @@ mod tests;
 
 use std::collections::{HashMap, VecDeque};
 
-use hir::{FnDef, HirId, Item};
+use resolver::{FnDef, HirId, Item};
 
 use crate::thir::Thir;
 use crate::types::{Ty, TypeParamId};
@@ -235,18 +235,18 @@ impl<'a> Monomorphizer<'a> {
 
     // ── Call site analysis ─────────────────────────────────────────────────
 
-    fn visit_call(&mut self, call: &hir::CallExpr) {
+    fn visit_call(&mut self, call: &resolver::CallExpr) {
         self.visit_call_inner(call);
     }
 
-    fn visit_call_with_subst(&mut self, call: &hir::CallExpr, _subst: &Substitution) {
+    fn visit_call_with_subst(&mut self, call: &resolver::CallExpr, _subst: &Substitution) {
         self.visit_call_inner(call);
     }
 
-    fn visit_call_inner(&mut self, call: &hir::CallExpr) {
+    fn visit_call_inner(&mut self, call: &resolver::CallExpr) {
         let callee_id = match &call.callee {
-            hir::NameRef::Resolved(r) => r.def_id,
-            hir::NameRef::Unresolved(_) => return,
+            resolver::NameRef::Resolved(r) => r.def_id,
+            resolver::NameRef::Unresolved(_) => return,
         };
 
         let param_tys = match self.fn_param_tys.get(&callee_id) {

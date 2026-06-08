@@ -11,7 +11,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use hir::{lower, HirDiagnostic};
+use resolver::lower;
+use lower::HirDiagnostic;
 use parser::ast::{AstNode, SourceFile};
 use parser::parse;
 

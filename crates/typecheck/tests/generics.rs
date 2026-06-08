@@ -3,8 +3,8 @@
 //! Tests that generic functions with type parameters are correctly inferred
 //! at call sites, with proper error reporting for type mismatches.
 
-use hir::lower;
 use parser::ast::AstNode;
+use resolver::lower;
 use typecheck::Ty;
 
 #[allow(clippy::unwrap_used)]

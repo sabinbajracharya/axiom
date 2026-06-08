@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use hir::{BinOp, CallingConvention, UnaryOp};
+use resolver::{BinOp, CallingConvention, UnaryOp};
 use typecheck::Ty;
 
 // ── The program ──────────────────────────────────────────────────────────────

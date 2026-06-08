@@ -1,6 +1,6 @@
 //! Unit tests for monomorphization helpers.
 
-use hir::HirId;
+use resolver::HirId;
 
 use super::helpers::*;
 use crate::types::{FnTy, StructTy, Ty, TypeParamId};

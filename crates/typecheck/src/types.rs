@@ -8,7 +8,7 @@
 //! Phase 2 adds `Ty::TypeParam` (for generic function signatures) and
 //! `Ty::Instance` (for parameterized types like `Pair<Int, String>`).
 
-use hir::DefId;
+use resolver::DefId;
 use std::fmt;
 
 // ── The type universe ─────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ mod tests {
     fn test_display_struct_ty() {
         let s = StructTy {
             name: "Point".to_string(),
-            def_id: hir::HirId(5),
+            def_id: resolver::HirId(5),
         };
         assert_eq!(Ty::Struct(s).to_string(), "Point");
     }
@@ -193,7 +193,7 @@ mod tests {
     fn test_display_enum_ty() {
         let e = EnumTy {
             name: "Shape".to_string(),
-            def_id: hir::HirId(8),
+            def_id: resolver::HirId(8),
         };
         assert_eq!(Ty::Enum(e).to_string(), "Shape");
     }
@@ -249,12 +249,12 @@ mod tests {
         assert_eq!(label(&Ty::Error), "Error");
         let s = StructTy {
             name: "X".to_string(),
-            def_id: hir::HirId(0),
+            def_id: resolver::HirId(0),
         };
         assert_eq!(label(&Ty::Struct(s)), "Struct");
         let e = EnumTy {
             name: "Y".to_string(),
-            def_id: hir::HirId(0),
+            def_id: resolver::HirId(0),
         };
         assert_eq!(label(&Ty::Enum(e)), "Enum");
         let f = FnTy {

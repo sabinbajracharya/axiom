@@ -8,7 +8,7 @@ use super::TypeParamScope;
 use super::{helpers, TypeChecker};
 use crate::error::TypeDiagnostic;
 use crate::types::Ty;
-use hir::*;
+use resolver::*;
 
 impl TypeChecker {
     /// Walk the impl table to find a subscript matching `name` with the given

@@ -2,8 +2,8 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use hir::lower;
 use parser::ast::AstNode;
+use resolver::lower;
 use typecheck::{check, serialize};
 
 /// Property: the type checker never panics on any input that successfully parses.

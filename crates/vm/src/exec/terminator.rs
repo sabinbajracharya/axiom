@@ -1,7 +1,7 @@
 //! Terminator execution: exhaustive match on all Terminator variants.
 
-use hir::CallingConvention;
 use ir::{IrInstr, IrPattern, Reg, Terminator};
+use resolver::CallingConvention;
 
 use crate::error::VmError;
 use crate::value::Value;

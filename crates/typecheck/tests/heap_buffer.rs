@@ -102,7 +102,7 @@ fn main() {}"#,
         thir.diagnostics.iter().any(|d| {
             matches!(
                 d,
-                typecheck::Diagnostic::Hir(hir::HirDiagnostic::IntrinsicOutsideStdlib { .. })
+                typecheck::Diagnostic::Hir(resolver::HirDiagnostic::IntrinsicOutsideStdlib { .. })
             )
         }),
         "expected IntrinsicOutsideStdlib, got: {:?}",

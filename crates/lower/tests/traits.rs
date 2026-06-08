@@ -2,14 +2,14 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use hir::{serialize, HirTy, Item, NameRef};
+use lower::{serialize, HirTy, Item, NameRef};
 use parser::ast::{AstNode, SourceFile};
 use parser::parse;
 
-fn lower_source(source: &str) -> hir::Hir {
+fn lower_source(source: &str) -> lower::Hir {
     let result = parse(source);
     let root = SourceFile::cast(result.tree).unwrap();
-    hir::lower(&root, source, None)
+    resolver::lower(&root, source, None)
 }
 
 // ── Trait declarations ───────────────────────────────────────────────────────

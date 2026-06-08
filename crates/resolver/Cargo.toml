@@ -11,6 +11,7 @@ workspace = true
 [dependencies]
 lower = { path = "../lower" }
 lexer = { path = "../lexer" }
+parser = { path = "../parser" }
 thiserror = { workspace = true }
 
 [dev-dependencies]

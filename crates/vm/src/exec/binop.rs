@@ -1,6 +1,6 @@
 //! Binary and unary operation execution.
 
-use hir::{BinOp, UnaryOp};
+use resolver::{BinOp, UnaryOp};
 
 use crate::error::VmError;
 use crate::value::Value;

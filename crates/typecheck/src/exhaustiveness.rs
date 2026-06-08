@@ -9,8 +9,8 @@
 //! testable in isolation without the full type checker.
 
 use crate::error::TypeDiagnostic;
-use hir::*;
 use lexer::Span;
+use resolver::*;
 
 /// Check whether a match expression covers all variants of an enum.
 /// Returns a `NonExhaustiveMatch` diagnostic if variants are uncovered,

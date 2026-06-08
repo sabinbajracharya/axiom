@@ -3,7 +3,7 @@
 //! Two modes: plain walk (for non-generic entry functions) and
 //! substitution-aware walk (for generic function bodies being specialized).
 
-use hir::{Block, Expr, LoopKind, Stmt};
+use resolver::{Block, Expr, LoopKind, Stmt};
 
 use super::{Monomorphizer, Substitution};
 

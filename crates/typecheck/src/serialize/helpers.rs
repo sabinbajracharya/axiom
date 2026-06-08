@@ -1,6 +1,6 @@
 //! Formatting helpers for THIR serialization: types, literals, indentation.
 
-use hir::*;
+use resolver::*;
 
 /// Format type parameters: `[T: Ord, U: Eq]` or `[T, U]`.
 pub(super) fn fmt_type_params(params: &[HirTypeParam]) -> String {

@@ -26,7 +26,7 @@ fn run_program(source: &str) -> String {
     vm.take_trace().map(|t| t.output()).unwrap_or_default()
 }
 
-/// Every `AssignTarget` variant (`hir::AssignTarget`). Adding one forces a
+/// Every `AssignTarget` variant (`resolver::AssignTarget`). Adding one forces a
 /// new matrix row. Keep in sync with the enum.
 const ASSIGN_TARGETS: &[&str] = &["Name", "Field", "Index"];
 

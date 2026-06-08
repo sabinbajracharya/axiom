@@ -323,7 +323,7 @@ mod tests {
                 },
                 IrInstr::BinOp {
                     dst: Reg(2),
-                    op: hir::BinOp::Add,
+                    op: resolver::BinOp::Add,
                     lhs: Reg(0),
                     rhs: Reg(1),
                 },
@@ -410,13 +410,13 @@ mod tests {
                     reg: Reg(0),
                     name: "a".to_string(),
                     ty: typecheck::Ty::Int,
-                    convention: hir::CallingConvention::Let,
+                    convention: resolver::CallingConvention::Let,
                 },
                 IrParam {
                     reg: Reg(1),
                     name: "b".to_string(),
                     ty: typecheck::Ty::Int,
-                    convention: hir::CallingConvention::Let,
+                    convention: resolver::CallingConvention::Let,
                 },
             ],
             return_type: typecheck::Ty::Int,
@@ -424,7 +424,7 @@ mod tests {
                 label: "entry".to_string(),
                 instrs: vec![IrInstr::BinOp {
                     dst: Reg(2),
-                    op: hir::BinOp::Add,
+                    op: resolver::BinOp::Add,
                     lhs: Reg(0),
                     rhs: Reg(1),
                 }],

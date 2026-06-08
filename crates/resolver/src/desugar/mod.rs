@@ -11,10 +11,6 @@
 use crate::hir::*;
 use crate::lang::LangItems;
 
-pub struct DesugarResult {
-    pub next_id: usize,
-}
-
 struct DesugarCtx<'a> {
     lang_items: &'a LangItems,
     next_id: usize,
@@ -37,7 +33,7 @@ impl DesugarCtx<'_> {
 
 /// Run the desugar pass on a fully name-resolved HIR. Sugar expressions are
 /// rewritten in-place; no new diagnostics are emitted.
-pub fn desugar(hir: &mut Hir, lang_items: &LangItems, next_id: usize) -> DesugarResult {
+pub fn desugar(hir: &mut Hir, lang_items: &LangItems, next_id: usize) {
     let mut ctx = DesugarCtx {
         lang_items,
         next_id,
@@ -45,9 +41,6 @@ pub fn desugar(hir: &mut Hir, lang_items: &LangItems, next_id: usize) -> Desugar
     };
     for item in &mut hir.items {
         desugar_item(item, &mut ctx);
-    }
-    DesugarResult {
-        next_id: ctx.next_id,
     }
 }
 

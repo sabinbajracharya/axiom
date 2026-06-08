@@ -16,3 +16,4 @@ thiserror = { workspace = true }
 [dev-dependencies]
 modules = { path = "../modules" }
 parser = { path = "../parser" }
+resolver = { path = "../resolver" }

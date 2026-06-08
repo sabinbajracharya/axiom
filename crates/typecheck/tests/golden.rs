@@ -5,12 +5,12 @@
 
 use std::path::Path;
 
-use hir::lower;
 use parser::ast::AstNode;
+use resolver::lower;
 use typecheck::{check, monomorphize, serialize};
 
 /// Build global exports from stdlib so `print`/`println` resolve.
-fn stdlib_exports() -> Option<hir::GlobalExports> {
+fn stdlib_exports() -> Option<resolver::GlobalExports> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = manifest.parent()?.parent()?;
     let stdlib = workspace.join("stdlib");
@@ -28,10 +28,10 @@ fn stdlib_exports() -> Option<hir::GlobalExports> {
         let Some(root) = parser::ast::SourceFile::cast(parse_result.tree) else {
             continue;
         };
-        let (_items, defs, _diags, _nid) = hir::lower_structural(&root, &module.source, 0);
+        let (_items, defs, _diags, _nid) = resolver::lower_structural(&root, &module.source, 0);
         module_data.push((module.name.clone(), defs));
     }
-    Some(hir::build_global_exports(&module_data))
+    Some(resolver::build_global_exports(&module_data))
 }
 
 fn typeck_source(source: &str) -> String {

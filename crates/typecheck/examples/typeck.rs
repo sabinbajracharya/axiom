@@ -3,8 +3,8 @@
 //!
 //! Usage: `cargo run -p axiom-typeck --example typeck -- file.ax`
 
-use hir::lower;
 use parser::ast::AstNode;
+use resolver::lower;
 use typecheck::{check, serialize};
 
 fn main() {

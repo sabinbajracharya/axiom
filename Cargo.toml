@@ -5,7 +5,6 @@ members = [
     "crates/parser",
     "crates/lower",
     "crates/resolver",
-    "crates/hir",
     "crates/typecheck",
     "crates/stdlib",
     "crates/ir",

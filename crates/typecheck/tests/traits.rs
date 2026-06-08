@@ -1,7 +1,7 @@
 //! Integration tests for traits phase 2: impl checking and method dispatch.
 
-use hir::lower;
 use parser::ast::AstNode;
+use resolver::lower;
 use typecheck::check;
 
 #[allow(clippy::unwrap_used)]

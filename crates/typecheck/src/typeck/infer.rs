@@ -5,7 +5,7 @@ use super::{helpers, TypeChecker};
 use crate::error::TypeDiagnostic;
 use crate::types::{FnTy, Ty};
 
-use hir::*;
+use resolver::*;
 
 impl TypeChecker {
     pub(super) fn infer_expr(&mut self, expr: &Expr) -> Ty {

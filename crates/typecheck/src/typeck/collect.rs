@@ -7,8 +7,8 @@ use super::{
 };
 use crate::error::TypeDiagnostic;
 use crate::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
-use hir::*;
 use parser::ast::AstNode;
+use resolver::*;
 use std::collections::HashMap;
 
 impl TypeChecker {
@@ -251,7 +251,7 @@ impl TypeChecker {
         let Some(root) = parser::ast::SourceFile::cast(result.tree) else {
             return;
         };
-        let (items, _defs, _diags, _next) = hir::lower_structural(&root, PRELUDE_IO, 0);
+        let (items, _defs, _diags, _next) = resolver::lower_structural(&root, PRELUDE_IO, 0);
         for item in &items {
             if let Item::FnDef(f) = item {
                 self.register_fn_sig(f);
@@ -539,7 +539,7 @@ impl TypeChecker {
         }
     }
 
-    fn resolve_instance(&self, inst: &hir::InstanceTy) -> Ty {
+    fn resolve_instance(&self, inst: &resolver::InstanceTy) -> Ty {
         let text = match &inst.name {
             NameRef::Resolved(r) => &r.text,
             NameRef::Unresolved(u) => &u.text,

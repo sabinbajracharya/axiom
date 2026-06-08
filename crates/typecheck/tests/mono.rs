@@ -1,7 +1,7 @@
 //! Integration tests for monomorphization.
 
-use hir::lower;
 use parser::ast::AstNode;
+use resolver::lower;
 use typecheck::Ty;
 
 #[allow(clippy::unwrap_used)]

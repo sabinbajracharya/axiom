@@ -27,7 +27,7 @@ mod unify;
 use crate::error::{Diagnostic, TypeDiagnostic};
 use crate::thir::{Thir, TypeMap};
 
-use hir::*;
+use resolver::*;
 use std::collections::HashMap;
 
 /// A type-parameter scope: each parameter's name, defining `HirId`, and trait
@@ -42,13 +42,13 @@ pub(super) type TypeParamScope = Vec<(String, HirId, Vec<String>)>;
 /// type errors exist; diagnostics are in `thir.diagnostics`.
 pub fn check(mut hir: Hir) -> Thir {
     let max_id = crate::hir_max_id(&hir);
-    hir::desugar::desugar(&mut hir, &hir::LangItems::default(), max_id + 1);
-    check_with_lang_items(hir, hir::LangItems::default())
+    resolver::desugar::desugar(&mut hir, &resolver::LangItems::default(), max_id + 1);
+    check_with_lang_items(hir, resolver::LangItems::default())
 }
 
 /// Type-check with a resolved lang-item registry. The caller (driver or bare
 /// `check`) is responsible for desugaring the HIR before calling this function.
-pub fn check_with_lang_items(mut hir: Hir, lang_items: hir::LangItems) -> Thir {
+pub fn check_with_lang_items(mut hir: Hir, lang_items: resolver::LangItems) -> Thir {
     let hir_diagnostics: Vec<Diagnostic> = hir.diagnostics.drain(..).map(Diagnostic::Hir).collect();
     let mut checker = TypeChecker::new(hir, lang_items);
     checker.collect_pass();
@@ -97,7 +97,7 @@ struct TypeChecker {
     /// Compiler-required lang items resolved to real stdlib DefIds. Empty in the
     /// no-stdlib test mode. Read when synthesizing list-literal types so they
     /// point at the true `List` def instead of a placeholder (§3.2).
-    lang_items: hir::LangItems,
+    lang_items: resolver::LangItems,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,7 +240,7 @@ impl TypeEnv {
 }
 
 impl TypeChecker {
-    fn new(hir: Hir, lang_items: hir::LangItems) -> Self {
+    fn new(hir: Hir, lang_items: resolver::LangItems) -> Self {
         TypeChecker {
             hir,
             types: TypeMap::new(),
@@ -470,7 +470,7 @@ impl TypeChecker {
     }
 
     /// Extend `current_type_params` with new type params, skipping duplicates.
-    fn extend_type_params(&mut self, type_params: &[hir::HirTypeParam]) {
+    fn extend_type_params(&mut self, type_params: &[resolver::HirTypeParam]) {
         for tp in type_params {
             let bounds = tp
                 .bounds
@@ -489,7 +489,7 @@ impl TypeChecker {
     }
 
     /// Register function/subscript parameters in the current scope.
-    fn register_params(&mut self, params: &[hir::Param]) {
+    fn register_params(&mut self, params: &[resolver::Param]) {
         self.env.push_scope();
         for param in params {
             let param_type = if param.name == "self" {

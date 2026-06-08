@@ -17,9 +17,9 @@ pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
 
     type Lowered = (
         String,
-        Vec<hir::Item>,
-        Vec<hir::Def>,
-        Vec<hir::HirDiagnostic>,
+        Vec<resolver::Item>,
+        Vec<resolver::Def>,
+        Vec<resolver::HirDiagnostic>,
     );
 
     let mut lowered: Vec<Lowered> = Vec::new();
@@ -29,25 +29,25 @@ pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
         let Some(root) = parser::ast::SourceFile::cast(result.tree) else {
             continue;
         };
-        let (items, defs, diags, nid) = hir::lower_structural(&root, source, next_id);
+        let (items, defs, diags, nid) = resolver::lower_structural(&root, source, next_id);
         next_id = nid;
         lowered.push(((*name).to_string(), items, defs, diags));
     }
 
-    let export_input: Vec<(String, Vec<hir::Def>)> = lowered
+    let export_input: Vec<(String, Vec<resolver::Def>)> = lowered
         .iter()
         .map(|(name, _, defs, _)| (name.clone(), defs.clone()))
         .collect();
-    let exports = hir::build_global_exports(&export_input);
+    let exports = resolver::build_global_exports(&export_input);
 
-    let mut all_items: Vec<hir::Item> = Vec::new();
-    let mut all_diags: Vec<hir::HirDiagnostic> = Vec::new();
-    let mut stdlib_bindings: Vec<hir::LangBinding> = Vec::new();
+    let mut all_items: Vec<resolver::Item> = Vec::new();
+    let mut all_diags: Vec<resolver::HirDiagnostic> = Vec::new();
+    let mut stdlib_bindings: Vec<resolver::LangBinding> = Vec::new();
     let mut stdlib_present = false;
     for (name, items, defs, diags) in &mut lowered {
         let mut items = std::mem::take(items);
         let mut diagnostics = std::mem::take(diags);
-        hir::resolve_with_globals(&mut items, defs, &mut diagnostics, &exports, name);
+        resolver::resolve_with_globals(&mut items, defs, &mut diagnostics, &exports, name);
         if is_stdlib_module(name) {
             stdlib_present = true;
         }
@@ -62,15 +62,16 @@ pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
         all_items.append(&mut items);
     }
 
-    let (lang_items, mut lang_diags) = hir::resolve_lang_items(&stdlib_bindings, stdlib_present);
+    let (lang_items, mut lang_diags) =
+        resolver::resolve_lang_items(&stdlib_bindings, stdlib_present);
     all_diags.append(&mut lang_diags);
 
-    let mut hir = hir::Hir {
+    let mut hir = resolver::Hir {
         items: all_items,
         diagnostics: all_diags,
     };
     let max_id = typecheck::hir_max_id(&hir);
-    hir::desugar::desugar(&mut hir, &lang_items, max_id + 1);
+    resolver::desugar::desugar(&mut hir, &lang_items, max_id + 1);
     typecheck::check_with_lang_items(hir, lang_items)
 }
 
@@ -94,19 +95,19 @@ fn is_stdlib_module(name: &str) -> bool {
 /// Stdlib modules may use both; non-stdlib modules may use neither.
 /// Accumulates lang-item bindings for later registry consistency checks.
 fn validate_module_annotations(
-    items: &[hir::Item],
+    items: &[resolver::Item],
     _module_name: &str,
     is_stdlib: bool,
-    stdlib_bindings: &mut Vec<hir::LangBinding>,
-    diagnostics: &mut Vec<hir::HirDiagnostic>,
+    stdlib_bindings: &mut Vec<resolver::LangBinding>,
+    diagnostics: &mut Vec<resolver::HirDiagnostic>,
 ) {
     // ── @lang ────────────────────────────────────────────────────────────
-    let lang_bindings = hir::collect_lang_bindings(items);
+    let lang_bindings = resolver::collect_lang_bindings(items);
     if is_stdlib {
         stdlib_bindings.extend(lang_bindings);
     } else {
         for b in lang_bindings {
-            diagnostics.push(hir::HirDiagnostic::LangItemOutsideStdlib {
+            diagnostics.push(resolver::HirDiagnostic::LangItemOutsideStdlib {
                 key: b.key,
                 span: lexer::Span { lo: 0, hi: 0 },
             });
@@ -114,12 +115,14 @@ fn validate_module_annotations(
     }
 
     // ── @intrinsic ───────────────────────────────────────────────────────
-    let intrinsic_bindings = hir::collect_intrinsic_bindings(items);
+    let intrinsic_bindings = resolver::collect_intrinsic_bindings(items);
     if is_stdlib {
-        diagnostics.append(&mut hir::validate_intrinsic_bindings(&intrinsic_bindings));
+        diagnostics.append(&mut resolver::validate_intrinsic_bindings(
+            &intrinsic_bindings,
+        ));
     } else {
         for b in intrinsic_bindings {
-            diagnostics.push(hir::HirDiagnostic::IntrinsicOutsideStdlib {
+            diagnostics.push(resolver::HirDiagnostic::IntrinsicOutsideStdlib {
                 key: b.key.clone(),
                 span: lexer::Span { lo: 0, hi: 0 },
             });

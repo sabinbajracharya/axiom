@@ -3,7 +3,7 @@
 use super::{helpers, Mutability, TypeChecker};
 use crate::types::Ty;
 
-use hir::*;
+use resolver::*;
 
 impl TypeChecker {
     // ── Statement type rules ─────────────────────────────────────────────
@@ -34,7 +34,7 @@ impl TypeChecker {
         self.types.insert(s.id, Ty::Unit);
     }
 
-    fn binding_ty(&mut self, ann: &Option<hir::HirTy>, value_ty: Ty, id: HirId) -> Ty {
+    fn binding_ty(&mut self, ann: &Option<resolver::HirTy>, value_ty: Ty, id: HirId) -> Ty {
         let Some(ty_ann) = ann else {
             return value_ty;
         };

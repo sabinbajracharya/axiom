@@ -9,7 +9,7 @@
 //!     Phase D once `HeapBuffer<T>` lands)
 
 use super::{ImplInfo, TypeChecker};
-use hir::{Block, CallingConvention, FnDef, HirId, HirTy, HirTypeParam, Param, Visibility};
+use resolver::{Block, CallingConvention, FnDef, HirId, HirTy, HirTypeParam, Param, Visibility};
 use std::collections::HashMap;
 
 /// All primitive type names that get auto-impls for Equatable/Hashable/Ord.
@@ -68,9 +68,9 @@ impl TypeChecker {
     /// `String::as_bytes`), dispatched in the VM. The `Hashable::hash` impls in
     /// `core/primitives.ax` + `core/string.ax` forward to it.
     fn register_hash_methods(&mut self) {
-        let int_ty = HirTy::Named(hir::NameRef::unresolved("Int"));
+        let int_ty = HirTy::Named(resolver::NameRef::unresolved("Int"));
         for type_name in PRIMITIVE_TYPES {
-            let self_ty = HirTy::Named(hir::NameRef::unresolved(*type_name));
+            let self_ty = HirTy::Named(resolver::NameRef::unresolved(*type_name));
             let methods = vec![make_fn(
                 "hash_raw",
                 vec![],
@@ -89,12 +89,12 @@ impl TypeChecker {
     }
 
     fn register_string_methods(&mut self) {
-        let string_ty = HirTy::Instance(hir::InstanceTy {
-            name: hir::NameRef::unresolved("String"),
+        let string_ty = HirTy::Instance(resolver::InstanceTy {
+            name: resolver::NameRef::unresolved("String"),
             args: vec![],
         });
-        let bytes_ty = HirTy::Instance(hir::InstanceTy {
-            name: hir::NameRef::unresolved("Bytes"),
+        let bytes_ty = HirTy::Instance(resolver::InstanceTy {
+            name: resolver::NameRef::unresolved("Bytes"),
             args: vec![],
         });
 
@@ -124,11 +124,11 @@ impl TypeChecker {
     /// `Bytes` is the platform byte-buffer; its length is the irreducible length
     /// floor that `String::len` (library code) builds on.
     fn register_bytes_methods(&mut self) {
-        let bytes_ty = HirTy::Instance(hir::InstanceTy {
-            name: hir::NameRef::unresolved("Bytes"),
+        let bytes_ty = HirTy::Instance(resolver::InstanceTy {
+            name: resolver::NameRef::unresolved("Bytes"),
             args: vec![],
         });
-        let int_ty = HirTy::Named(hir::NameRef::unresolved("Int"));
+        let int_ty = HirTy::Named(resolver::NameRef::unresolved("Int"));
         let methods = vec![make_fn(
             "len",
             vec![],
@@ -150,14 +150,14 @@ impl TypeChecker {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use hir::lower;
     use parser::ast::AstNode;
+    use resolver::lower;
 
     fn make_checker(source: &str) -> TypeChecker {
         let result = parser::parse(source);
         let root = parser::ast::SourceFile::cast(result.tree).unwrap();
         let hir = lower(&root, source, None);
-        TypeChecker::new(hir, hir::LangItems::default())
+        TypeChecker::new(hir, resolver::LangItems::default())
     }
 
     #[test]

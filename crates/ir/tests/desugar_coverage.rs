@@ -57,7 +57,7 @@ const SUGAR_EXPRS: &[SugarSpec] = &[
     },
 ];
 
-/// Every `Expr` variant in `hir::Expr`, mirrored here so adding a variant
+/// Every `Expr` variant in `resolver::Expr`, mirrored here so adding a variant
 /// forces updating this test (and classifying it as sugar or not). Keep in sync
 /// with the enum in `crates/axiom-hir/src/hir/mod.rs`.
 const ALL_EXPR_VARIANTS: &[&str] = &[
@@ -131,7 +131,7 @@ fn test_expr_variant_count_is_pinned() {
     assert_eq!(
         ALL_EXPR_VARIANTS.len(),
         15,
-        "hir::Expr variant count changed — reconcile ALL_EXPR_VARIANTS \
+        "resolver::Expr variant count changed — reconcile ALL_EXPR_VARIANTS \
          and decide whether the new variant is sugar (needs a SugarSpec + golden)"
     );
 }

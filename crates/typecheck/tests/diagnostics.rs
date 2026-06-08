@@ -3,8 +3,8 @@
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use hir::lower;
 use parser::ast::AstNode;
+use resolver::lower;
 use typecheck::check;
 
 fn typeck_diagnostics(source: &str) -> Vec<String> {

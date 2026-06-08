@@ -17,7 +17,7 @@ fn main() {
         eprintln!("Failed to parse source");
         return;
     };
-    let hir = hir::lower(&root, source, None);
+    let hir = resolver::lower(&root, source, None);
     let thir = typecheck::check(hir);
     let mono = typecheck::monomorphize(&thir);
     let ir = ir::lower(&thir, &mono);

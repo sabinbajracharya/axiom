@@ -2,7 +2,7 @@
 
 use super::helpers::FnLowerCtx;
 use crate::ir::{IrConst, IrInstr, Reg};
-use hir::{Expr, LitKind, LoopKind, Pattern};
+use resolver::{Expr, LitKind, LoopKind, Pattern};
 
 /// Lower an HIR expression to a register. Emits instructions into the current block.
 pub(super) fn lower_expr(expr: &Expr, ctx: &mut FnLowerCtx) -> Reg {
@@ -10,8 +10,8 @@ pub(super) fn lower_expr(expr: &Expr, ctx: &mut FnLowerCtx) -> Reg {
         Expr::Lit(e) => lower_lit(e, ctx),
         Expr::Path(e) => {
             let def_id = match &e.name_ref {
-                hir::NameRef::Resolved(r) => Some(r.def_id),
-                hir::NameRef::Unresolved(_) => None,
+                resolver::NameRef::Resolved(r) => Some(r.def_id),
+                resolver::NameRef::Unresolved(_) => None,
             };
             ctx.resolve_name(def_id)
         }
@@ -47,7 +47,7 @@ pub(super) fn lower_expr(expr: &Expr, ctx: &mut FnLowerCtx) -> Reg {
     }
 }
 
-fn lower_lit(e: &hir::LitExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_lit(e: &resolver::LitExpr, ctx: &mut FnLowerCtx) -> Reg {
     let dst = ctx.fresh_reg();
     let value = match &e.kind {
         LitKind::Int(v) => IrConst::Int(*v),
@@ -60,7 +60,7 @@ fn lower_lit(e: &hir::LitExpr, ctx: &mut FnLowerCtx) -> Reg {
     dst
 }
 
-fn lower_call(e: &hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_call(e: &resolver::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
     // Heap-buffer intrinsics lower to dedicated heap instructions rather than
     // function calls — matched by `@intrinsic` tag on the callee's HIR FnDef.
     if let Some(reg) = lower_heap_intrinsic(e, ctx) {
@@ -70,7 +70,7 @@ fn lower_call(e: &hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
     // Collect arg expr references for type lookup before lowering to registers.
     let arg_refs: Vec<&Expr> = e.args.iter().collect();
     let callee_id = match &e.callee {
-        hir::NameRef::Resolved(r) => Some(r.def_id),
+        resolver::NameRef::Resolved(r) => Some(r.def_id),
         _ => None,
     };
 
@@ -106,14 +106,14 @@ fn lower_call(e: &hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
 /// whose qualifier names a type with an inherent impl method of that name,
 /// return the type name. Returns `None` otherwise — enum constructors and
 /// module-qualified calls are left to ordinary resolution.
-fn assoc_method_type(e: &hir::CallExpr, items: &[hir::Item]) -> Option<String> {
+fn assoc_method_type(e: &resolver::CallExpr, items: &[resolver::Item]) -> Option<String> {
     let qualifier = e.qualifier.as_ref()?;
     let method = name_ref_text(&e.callee);
     for item in items {
-        if let hir::Item::ImplDef(impl_def) = item {
+        if let resolver::Item::ImplDef(impl_def) = item {
             let type_name = match &impl_def.type_name {
-                hir::NameRef::Resolved(r) => &r.text,
-                hir::NameRef::Unresolved(u) => &u.text,
+                resolver::NameRef::Resolved(r) => &r.text,
+                resolver::NameRef::Unresolved(u) => &u.text,
             };
             if type_name == qualifier && impl_def.methods.iter().any(|m| m.name == method) {
                 return Some(qualifier.clone());
@@ -126,26 +126,26 @@ fn assoc_method_type(e: &hir::CallExpr, items: &[hir::Item]) -> Option<String> {
 /// Lower a heap-buffer intrinsic call (matched by `@intrinsic` tag on the
 /// resolved HIR FnDef) to its dedicated IR instruction. Returns `None` for
 /// normal function calls.
-fn lower_heap_intrinsic(e: &hir::CallExpr, ctx: &mut FnLowerCtx) -> Option<Reg> {
+fn lower_heap_intrinsic(e: &resolver::CallExpr, ctx: &mut FnLowerCtx) -> Option<Reg> {
     let key = intrinsic_key_for_call(e, ctx);
     let args: Vec<Reg> = e.args.iter().map(|a| lower_expr(a, ctx)).collect();
     let dst = ctx.fresh_reg();
     let instr = match key.as_deref() {
-        Some(hir::HEAP_ALLOC) => IrInstr::HeapAlloc {
+        Some(resolver::HEAP_ALLOC) => IrInstr::HeapAlloc {
             dst,
             count: args[0],
         },
-        Some(hir::HEAP_GET) => IrInstr::HeapGet {
+        Some(resolver::HEAP_GET) => IrInstr::HeapGet {
             dst,
             ptr: args[0],
             index: args[1],
         },
-        Some(hir::HEAP_SET) => IrInstr::HeapSet {
+        Some(resolver::HEAP_SET) => IrInstr::HeapSet {
             ptr: args[0],
             index: args[1],
             value: args[2],
         },
-        Some(hir::HEAP_FREE) => IrInstr::HeapFree { ptr: args[0] },
+        Some(resolver::HEAP_FREE) => IrInstr::HeapFree { ptr: args[0] },
         _ => return None,
     };
     ctx.emit(instr);
@@ -154,18 +154,18 @@ fn lower_heap_intrinsic(e: &hir::CallExpr, ctx: &mut FnLowerCtx) -> Option<Reg> 
 
 /// Determine the intrinsic key for a call expression from the resolved
 /// callee's `@intrinsic` tag on its HIR FnDef.
-fn intrinsic_key_for_call(e: &hir::CallExpr, ctx: &mut FnLowerCtx) -> Option<String> {
+fn intrinsic_key_for_call(e: &resolver::CallExpr, ctx: &mut FnLowerCtx) -> Option<String> {
     let callee_id = match &e.callee {
-        hir::NameRef::Resolved(r) => r.def_id,
+        resolver::NameRef::Resolved(r) => r.def_id,
         _ => return None,
     };
     find_intrinsic_tag(callee_id, ctx.hir_items)
 }
 
 /// Scan HIR items for the `@intrinsic` tag on the FnDef with the given DefId.
-fn find_intrinsic_tag(def_id: hir::HirId, items: &[hir::Item]) -> Option<String> {
+fn find_intrinsic_tag(def_id: resolver::HirId, items: &[resolver::Item]) -> Option<String> {
     for item in items {
-        if let hir::Item::FnDef(f) = item {
+        if let resolver::Item::FnDef(f) = item {
             if f.id == def_id {
                 return f.intrinsic_tag.clone();
             }
@@ -174,7 +174,7 @@ fn find_intrinsic_tag(def_id: hir::HirId, items: &[hir::Item]) -> Option<String>
     None
 }
 
-fn lower_method_call(e: &hir::MethodCallExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_method_call(e: &resolver::MethodCallExpr, ctx: &mut FnLowerCtx) -> Reg {
     let receiver = lower_expr(&e.receiver, ctx);
     let args: Vec<Reg> = e.args.iter().map(|a| lower_expr(a, ctx)).collect();
     let dst = ctx.fresh_reg();
@@ -220,7 +220,7 @@ fn type_name_from_ty(ty: &typecheck::Ty) -> Option<String> {
     }
 }
 
-fn lower_field(e: &hir::FieldExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_field(e: &resolver::FieldExpr, ctx: &mut FnLowerCtx) -> Reg {
     let base = lower_expr(&e.receiver, ctx);
     let dst = ctx.fresh_reg();
     ctx.emit(IrInstr::Field {
@@ -231,7 +231,7 @@ fn lower_field(e: &hir::FieldExpr, ctx: &mut FnLowerCtx) -> Reg {
     dst
 }
 
-fn lower_index(e: &hir::IndexExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_index(e: &resolver::IndexExpr, ctx: &mut FnLowerCtx) -> Reg {
     let base = lower_expr(&e.base, ctx);
     let indices: Vec<Reg> = e.indices.iter().map(|idx| lower_expr(idx, ctx)).collect();
     let base_ty = ctx.receiver_type(e.base.id());
@@ -258,8 +258,8 @@ pub(super) fn lower_index_read(
         return dst;
     }
     let method = match base_ty.and_then(type_name_from_ty) {
-        Some(type_name) => hir::lang::subscript_fn(type_name.as_str()),
-        None => hir::lang::SUBSCRIPT.to_string(),
+        Some(type_name) => resolver::lang::subscript_fn(type_name.as_str()),
+        None => resolver::lang::SUBSCRIPT.to_string(),
     };
     ctx.emit(IrInstr::MethodCall {
         dst,
@@ -288,8 +288,8 @@ pub(super) fn lower_index_write(
         return;
     }
     let method = match base_ty.and_then(type_name_from_ty) {
-        Some(type_name) => hir::lang::subscript_set_fn(type_name.as_str()),
-        None => hir::lang::SUBSCRIPT_SET.to_string(),
+        Some(type_name) => resolver::lang::subscript_set_fn(type_name.as_str()),
+        None => resolver::lang::SUBSCRIPT_SET.to_string(),
     };
     let dst = ctx.fresh_reg();
     let mut args = indices.to_vec();
@@ -302,7 +302,7 @@ pub(super) fn lower_index_write(
     });
 }
 
-fn lower_struct_lit(e: &hir::StructLitExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_struct_lit(e: &resolver::StructLitExpr, ctx: &mut FnLowerCtx) -> Reg {
     let fields: Vec<(String, Reg)> = e
         .fields
         .iter()
@@ -327,13 +327,13 @@ fn lower_struct_lit(e: &hir::StructLitExpr, ctx: &mut FnLowerCtx) -> Reg {
 /// An empty literal has no size to pre-size to, so it lowers to `List::new()`
 /// (the first later `push` allocates). `push`'s `inout self` writes the growing
 /// list back into `list` after each call; elements evaluate left-to-right first.
-fn lower_list_lit(e: &hir::ListLitExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_list_lit(e: &resolver::ListLitExpr, ctx: &mut FnLowerCtx) -> Reg {
     let elements: Vec<Reg> = e.elements.iter().map(|el| lower_expr(el, ctx)).collect();
     let list = ctx.fresh_reg();
     if elements.is_empty() {
         ctx.emit(IrInstr::Call {
             dst: list,
-            function: hir::lang::LIST_NEW.to_string(),
+            function: resolver::lang::LIST_NEW.to_string(),
             args: vec![],
         });
         return list;
@@ -345,7 +345,7 @@ fn lower_list_lit(e: &hir::ListLitExpr, ctx: &mut FnLowerCtx) -> Reg {
     });
     ctx.emit(IrInstr::Call {
         dst: list,
-        function: hir::lang::LIST_WITH_CAPACITY.to_string(),
+        function: resolver::lang::LIST_WITH_CAPACITY.to_string(),
         args: vec![cap],
     });
     for element in elements {
@@ -353,14 +353,14 @@ fn lower_list_lit(e: &hir::ListLitExpr, ctx: &mut FnLowerCtx) -> Reg {
         ctx.emit(IrInstr::MethodCall {
             dst,
             receiver: list,
-            method: hir::lang::LIST_PUSH.to_string(),
+            method: resolver::lang::LIST_PUSH.to_string(),
             args: vec![element],
         });
     }
     list
 }
 
-fn lower_block(e: &hir::Block, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_block(e: &resolver::Block, ctx: &mut FnLowerCtx) -> Reg {
     for stmt in &e.stmts {
         super::stmt::lower_stmt(stmt, ctx);
     }
@@ -370,7 +370,7 @@ fn lower_block(e: &hir::Block, ctx: &mut FnLowerCtx) -> Reg {
     }
 }
 
-fn lower_if(e: &hir::IfExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_if(e: &resolver::IfExpr, ctx: &mut FnLowerCtx) -> Reg {
     let cond = lower_expr(&e.condition, ctx);
     // One shared result register, written by whichever branch runs (registers
     // persist across blocks within a frame). An `if` without `else` is
@@ -411,7 +411,7 @@ fn lower_if(e: &hir::IfExpr, ctx: &mut FnLowerCtx) -> Reg {
     dst
 }
 
-fn lower_match(e: &hir::MatchExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_match(e: &resolver::MatchExpr, ctx: &mut FnLowerCtx) -> Reg {
     let scrutinee = lower_expr(&e.scrutinee, ctx);
     let merge_label = ctx.fresh_label("match_merge");
     let mut arm_labels = Vec::new();
@@ -471,7 +471,7 @@ fn lower_match(e: &hir::MatchExpr, ctx: &mut FnLowerCtx) -> Reg {
     dst
 }
 
-fn lower_loop(e: &hir::LoopExpr, ctx: &mut FnLowerCtx) -> Reg {
+fn lower_loop(e: &resolver::LoopExpr, ctx: &mut FnLowerCtx) -> Reg {
     let head_label = ctx.fresh_label("loop_head");
     let body_label = ctx.fresh_label("loop_body");
     let exit_label = ctx.fresh_label("loop_exit");
@@ -541,10 +541,10 @@ pub(super) fn unit_reg(ctx: &mut FnLowerCtx) -> Reg {
 }
 
 /// Extract the text from a NameRef (resolved or unresolved).
-fn name_ref_text(nr: &hir::NameRef) -> String {
+fn name_ref_text(nr: &resolver::NameRef) -> String {
     match nr {
-        hir::NameRef::Resolved(r) => r.text.clone(),
-        hir::NameRef::Unresolved(u) => u.text.clone(),
+        resolver::NameRef::Resolved(r) => r.text.clone(),
+        resolver::NameRef::Unresolved(u) => u.text.clone(),
     }
 }
 
@@ -586,14 +586,14 @@ pub(super) fn lower_pattern(pat: &Pattern, ctx: &mut FnLowerCtx) -> crate::ir::I
 
 /// Look up a FnDef's `module_path` by HirId across all HIR items.
 /// Returns `None` if the FnDef is not found or has an empty module_path.
-fn find_fn_module_path(id: Option<hir::HirId>, items: &[hir::Item]) -> Option<String> {
+fn find_fn_module_path(id: Option<resolver::HirId>, items: &[resolver::Item]) -> Option<String> {
     let id = id?;
     for item in items {
         match item {
-            hir::Item::FnDef(f) if f.id == id => {
+            resolver::Item::FnDef(f) if f.id == id => {
                 return Some(f.module_path.clone());
             }
-            hir::Item::ImplDef(impl_def) => {
+            resolver::Item::ImplDef(impl_def) => {
                 for m in &impl_def.methods {
                     if m.id == id {
                         return Some(m.module_path.clone());

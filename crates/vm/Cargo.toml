@@ -5,7 +5,8 @@ edition.workspace = true
 description = "Register-IR interpreter for Axiom"
 
 [dependencies]
-hir = { path = "../hir" }
+lower = { path = "../lower" }
+resolver = { path = "../resolver" }
 ir = { path = "../ir" }
 typecheck = { path = "../typecheck" }
 thiserror.workspace = true

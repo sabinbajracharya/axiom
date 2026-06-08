@@ -8,7 +8,7 @@
 
 use crate::thir::Thir;
 use crate::types::Ty;
-use hir::*;
+use resolver::*;
 
 /// A coverage error — a type-check gap discovered by `check_all`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,34 +60,34 @@ pub fn check_all(thir: &Thir) -> Result<(), Vec<TypeckCoverageError>> {
 }
 
 /// Collect all HirIds from the HIR (items, expressions, statements, patterns).
-fn collect_all_hir_ids(hir: &hir::Hir, ids: &mut Vec<(HirId, String)>) {
+fn collect_all_hir_ids(hir: &resolver::Hir, ids: &mut Vec<(HirId, String)>) {
     for item in &hir.items {
         collect_item_ids(item, ids);
     }
 }
 
-fn collect_item_ids(item: &hir::Item, ids: &mut Vec<(HirId, String)>) {
+fn collect_item_ids(item: &resolver::Item, ids: &mut Vec<(HirId, String)>) {
     match item {
-        hir::Item::FnDef(f) => {
+        resolver::Item::FnDef(f) => {
             ids.push((f.id, "FnDef".to_string()));
             for param in &f.params {
                 ids.push((param.id, "Param".to_string()));
             }
             collect_block_ids(&f.body, ids);
         }
-        hir::Item::StructDef(s) => {
+        resolver::Item::StructDef(s) => {
             ids.push((s.id, "StructDef".to_string()));
             for field in &s.fields {
                 ids.push((field.id, "FieldDef".to_string()));
             }
         }
-        hir::Item::EnumDef(e) => {
+        resolver::Item::EnumDef(e) => {
             ids.push((e.id, "EnumDef".to_string()));
             for variant in &e.variants {
                 ids.push((variant.id, "VariantDef".to_string()));
             }
         }
-        hir::Item::TraitDef(t) => {
+        resolver::Item::TraitDef(t) => {
             ids.push((t.id, "TraitDef".to_string()));
             for method in &t.methods {
                 ids.push((method.id, "TraitMethod".to_string()));
@@ -96,22 +96,22 @@ fn collect_item_ids(item: &hir::Item, ids: &mut Vec<(HirId, String)>) {
                 }
             }
         }
-        hir::Item::ImplDef(impl_def) => {
+        resolver::Item::ImplDef(impl_def) => {
             ids.push((impl_def.id, "ImplDef".to_string()));
             for method in &impl_def.methods {
-                collect_item_ids(&hir::Item::FnDef(method.clone()), ids);
+                collect_item_ids(&resolver::Item::FnDef(method.clone()), ids);
             }
         }
-        hir::Item::SubscriptDef(s) => {
+        resolver::Item::SubscriptDef(s) => {
             ids.push((s.id, "SubscriptDef".to_string()));
         }
-        hir::Item::UseItem(u) => {
+        resolver::Item::UseItem(u) => {
             ids.push((u.id, "UseItem".to_string()));
         }
     }
 }
 
-fn collect_block_ids(block: &hir::Block, ids: &mut Vec<(HirId, String)>) {
+fn collect_block_ids(block: &resolver::Block, ids: &mut Vec<(HirId, String)>) {
     ids.push((block.id, "Block".to_string()));
     for stmt in &block.stmts {
         collect_stmt_ids(stmt, ids);
@@ -121,113 +121,113 @@ fn collect_block_ids(block: &hir::Block, ids: &mut Vec<(HirId, String)>) {
     }
 }
 
-fn collect_stmt_ids(stmt: &hir::Stmt, ids: &mut Vec<(HirId, String)>) {
+fn collect_stmt_ids(stmt: &resolver::Stmt, ids: &mut Vec<(HirId, String)>) {
     match stmt {
-        hir::Stmt::ValStmt(s) => {
+        resolver::Stmt::ValStmt(s) => {
             ids.push((s.id, "ValStmt".to_string()));
             collect_pattern_ids(&s.pattern, ids);
             collect_expr_ids(&s.value, ids);
         }
-        hir::Stmt::VarStmt(s) => {
+        resolver::Stmt::VarStmt(s) => {
             ids.push((s.id, "VarStmt".to_string()));
             collect_pattern_ids(&s.pattern, ids);
             collect_expr_ids(&s.value, ids);
         }
-        hir::Stmt::ExprStmt(s) => {
+        resolver::Stmt::ExprStmt(s) => {
             ids.push((s.id, "ExprStmt".to_string()));
             collect_expr_ids(&s.expr, ids);
         }
-        hir::Stmt::ReturnStmt(s) => {
+        resolver::Stmt::ReturnStmt(s) => {
             ids.push((s.id, "ReturnStmt".to_string()));
             if let Some(v) = &s.value {
                 collect_expr_ids(v, ids);
             }
         }
-        hir::Stmt::BreakStmt(s) => {
+        resolver::Stmt::BreakStmt(s) => {
             ids.push((s.id, "BreakStmt".to_string()));
             if let Some(v) = &s.value {
                 collect_expr_ids(v, ids);
             }
         }
-        hir::Stmt::ContinueStmt(s) => {
+        resolver::Stmt::ContinueStmt(s) => {
             ids.push((s.id, "ContinueStmt".to_string()));
         }
-        hir::Stmt::YieldStmt(s) => {
+        resolver::Stmt::YieldStmt(s) => {
             ids.push((s.id, "YieldStmt".to_string()));
             collect_expr_ids(&s.value, ids);
         }
     }
 }
 
-fn collect_expr_ids(expr: &hir::Expr, ids: &mut Vec<(HirId, String)>) {
+fn collect_expr_ids(expr: &resolver::Expr, ids: &mut Vec<(HirId, String)>) {
     ids.push((expr.id(), expr_kind_name(expr).to_string()));
     collect_expr_children(expr, ids);
 }
 
-fn expr_kind_name(expr: &hir::Expr) -> &'static str {
+fn expr_kind_name(expr: &resolver::Expr) -> &'static str {
     match expr {
-        hir::Expr::Lit(_) => "Lit",
-        hir::Expr::Path(_) => "Path",
-        hir::Expr::Bin(_) => "Bin",
-        hir::Expr::Unary(_) => "Unary",
-        hir::Expr::Call(_) => "Call",
-        hir::Expr::MethodCall(_) => "MethodCall",
-        hir::Expr::Field(_) => "Field",
-        hir::Expr::Index(_) => "Index",
-        hir::Expr::Block(_) => "Block",
-        hir::Expr::If(_) => "If",
-        hir::Expr::Match(_) => "Match",
-        hir::Expr::Loop(_) => "Loop",
-        hir::Expr::StructLit(_) => "StructLit",
-        hir::Expr::Assign(_) => "Assign",
-        hir::Expr::ListLit(_) => "ListLit",
+        resolver::Expr::Lit(_) => "Lit",
+        resolver::Expr::Path(_) => "Path",
+        resolver::Expr::Bin(_) => "Bin",
+        resolver::Expr::Unary(_) => "Unary",
+        resolver::Expr::Call(_) => "Call",
+        resolver::Expr::MethodCall(_) => "MethodCall",
+        resolver::Expr::Field(_) => "Field",
+        resolver::Expr::Index(_) => "Index",
+        resolver::Expr::Block(_) => "Block",
+        resolver::Expr::If(_) => "If",
+        resolver::Expr::Match(_) => "Match",
+        resolver::Expr::Loop(_) => "Loop",
+        resolver::Expr::StructLit(_) => "StructLit",
+        resolver::Expr::Assign(_) => "Assign",
+        resolver::Expr::ListLit(_) => "ListLit",
     }
 }
 
-fn collect_expr_children(expr: &hir::Expr, ids: &mut Vec<(HirId, String)>) {
+fn collect_expr_children(expr: &resolver::Expr, ids: &mut Vec<(HirId, String)>) {
     match expr {
-        hir::Expr::Lit(_) | hir::Expr::Path(_) => {}
-        hir::Expr::Bin(b) => {
+        resolver::Expr::Lit(_) | resolver::Expr::Path(_) => {}
+        resolver::Expr::Bin(b) => {
             collect_expr_ids(&b.left, ids);
             collect_expr_ids(&b.right, ids);
         }
-        hir::Expr::Unary(u) => collect_expr_ids(&u.operand, ids),
-        hir::Expr::Call(c) => c.args.iter().for_each(|arg| collect_expr_ids(arg, ids)),
-        hir::Expr::MethodCall(m) => {
+        resolver::Expr::Unary(u) => collect_expr_ids(&u.operand, ids),
+        resolver::Expr::Call(c) => c.args.iter().for_each(|arg| collect_expr_ids(arg, ids)),
+        resolver::Expr::MethodCall(m) => {
             collect_expr_ids(&m.receiver, ids);
             m.args.iter().for_each(|arg| collect_expr_ids(arg, ids));
         }
-        hir::Expr::Field(f) => collect_expr_ids(&f.receiver, ids),
-        hir::Expr::Index(i) => {
+        resolver::Expr::Field(f) => collect_expr_ids(&f.receiver, ids),
+        resolver::Expr::Index(i) => {
             collect_expr_ids(&i.base, ids);
             i.indices.iter().for_each(|idx| collect_expr_ids(idx, ids));
         }
-        hir::Expr::Block(b) => collect_block_ids(b, ids),
-        hir::Expr::If(i) => {
+        resolver::Expr::Block(b) => collect_block_ids(b, ids),
+        resolver::Expr::If(i) => {
             collect_expr_ids(&i.condition, ids);
             collect_block_ids(&i.then_branch, ids);
             if let Some(els) = &i.else_branch {
                 collect_expr_ids(els, ids);
             }
         }
-        hir::Expr::Match(m) => {
+        resolver::Expr::Match(m) => {
             collect_expr_ids(&m.scrutinee, ids);
             for arm in &m.arms {
                 collect_pattern_ids(&arm.pattern, ids);
                 collect_expr_ids(&arm.body, ids);
             }
         }
-        hir::Expr::Loop(l) => collect_loop_ids(l, ids),
-        hir::Expr::StructLit(s) => {
+        resolver::Expr::Loop(l) => collect_loop_ids(l, ids),
+        resolver::Expr::StructLit(s) => {
             s.fields
                 .iter()
                 .for_each(|f| collect_expr_ids(&f.value, ids));
         }
-        hir::Expr::Assign(a) => {
+        resolver::Expr::Assign(a) => {
             collect_assign_target_ids(&a.target, ids);
             collect_expr_ids(&a.value, ids);
         }
-        hir::Expr::ListLit(l) => {
+        resolver::Expr::ListLit(l) => {
             l.elements
                 .iter()
                 .for_each(|elem| collect_expr_ids(elem, ids));
@@ -235,14 +235,14 @@ fn collect_expr_children(expr: &hir::Expr, ids: &mut Vec<(HirId, String)>) {
     }
 }
 
-fn collect_loop_ids(l: &hir::LoopExpr, ids: &mut Vec<(HirId, String)>) {
+fn collect_loop_ids(l: &resolver::LoopExpr, ids: &mut Vec<(HirId, String)>) {
     match &l.kind {
-        hir::LoopKind::Infinite(body) => collect_block_ids(body, ids),
-        hir::LoopKind::Conditional { condition, body } => {
+        resolver::LoopKind::Infinite(body) => collect_block_ids(body, ids),
+        resolver::LoopKind::Conditional { condition, body } => {
             collect_expr_ids(condition, ids);
             collect_block_ids(body, ids);
         }
-        hir::LoopKind::Iterator {
+        resolver::LoopKind::Iterator {
             binding_id,
             iterable,
             body,
@@ -255,13 +255,13 @@ fn collect_loop_ids(l: &hir::LoopExpr, ids: &mut Vec<(HirId, String)>) {
     }
 }
 
-fn collect_assign_target_ids(target: &hir::AssignTarget, ids: &mut Vec<(HirId, String)>) {
+fn collect_assign_target_ids(target: &resolver::AssignTarget, ids: &mut Vec<(HirId, String)>) {
     match target {
-        hir::AssignTarget::Name(_) => {}
-        hir::AssignTarget::Field { receiver, field: _ } => {
+        resolver::AssignTarget::Name(_) => {}
+        resolver::AssignTarget::Field { receiver, field: _ } => {
             collect_expr_ids(receiver, ids);
         }
-        hir::AssignTarget::Index { base, indices } => {
+        resolver::AssignTarget::Index { base, indices } => {
             collect_expr_ids(base, ids);
             for index in indices {
                 collect_expr_ids(index, ids);
@@ -270,34 +270,34 @@ fn collect_assign_target_ids(target: &hir::AssignTarget, ids: &mut Vec<(HirId, S
     }
 }
 
-fn collect_pattern_ids(pat: &hir::Pattern, ids: &mut Vec<(HirId, String)>) {
+fn collect_pattern_ids(pat: &resolver::Pattern, ids: &mut Vec<(HirId, String)>) {
     let kind = match pat {
-        hir::Pattern::Wildcard(_) => "Wildcard",
-        hir::Pattern::Ident(_) => "IdentPat",
-        hir::Pattern::Literal(_) => "LitPat",
-        hir::Pattern::TupleStruct(_) => "TupleStructPat",
-        hir::Pattern::Struct(_) => "StructPat",
-        hir::Pattern::Or(_) => "OrPat",
-        hir::Pattern::Range(_) => "RangePat",
+        resolver::Pattern::Wildcard(_) => "Wildcard",
+        resolver::Pattern::Ident(_) => "IdentPat",
+        resolver::Pattern::Literal(_) => "LitPat",
+        resolver::Pattern::TupleStruct(_) => "TupleStructPat",
+        resolver::Pattern::Struct(_) => "StructPat",
+        resolver::Pattern::Or(_) => "OrPat",
+        resolver::Pattern::Range(_) => "RangePat",
     };
     ids.push((pat.id(), kind.to_string()));
 
     match pat {
-        hir::Pattern::Wildcard(_)
-        | hir::Pattern::Ident(_)
-        | hir::Pattern::Literal(_)
-        | hir::Pattern::Range(_) => {}
-        hir::Pattern::TupleStruct(ts) => {
+        resolver::Pattern::Wildcard(_)
+        | resolver::Pattern::Ident(_)
+        | resolver::Pattern::Literal(_)
+        | resolver::Pattern::Range(_) => {}
+        resolver::Pattern::TupleStruct(ts) => {
             for f in &ts.fields {
                 collect_pattern_ids(f, ids);
             }
         }
-        hir::Pattern::Struct(sp) => {
+        resolver::Pattern::Struct(sp) => {
             for f in &sp.fields {
                 collect_pattern_ids(&f.pattern, ids);
             }
         }
-        hir::Pattern::Or(op) => {
+        resolver::Pattern::Or(op) => {
             for alt in &op.alternatives {
                 collect_pattern_ids(alt, ids);
             }
@@ -313,11 +313,11 @@ mod tests {
     use crate::thir::Thir;
     use crate::thir::TypeMap;
     use crate::types::Ty;
-    use hir::HirId;
+    use resolver::HirId;
 
     #[test]
     fn test_check_all_empty_thir() {
-        let hir = hir::Hir {
+        let hir = resolver::Hir {
             items: vec![],
             diagnostics: vec![],
         };
@@ -331,11 +331,11 @@ mod tests {
 
     #[test]
     fn test_check_all_missing_type() {
-        use hir::{Block, FnDef, Item, Visibility};
+        use resolver::{Block, FnDef, Item, Visibility};
 
         let fn_id = HirId(0);
         let block_id = HirId(1);
-        let hir = hir::Hir {
+        let hir = resolver::Hir {
             items: vec![Item::FnDef(FnDef {
                 id: fn_id,
                 name: "main".to_string(),

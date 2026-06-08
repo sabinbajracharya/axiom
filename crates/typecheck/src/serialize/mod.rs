@@ -12,7 +12,7 @@ mod helpers;
 use crate::mono::MonoResult;
 use crate::thir::Thir;
 use helpers::{fmt_hir_ty, fmt_type_params, indent};
-use hir::*;
+use resolver::*;
 
 // Re-export for use by exprs module.
 use exprs::{serialize_expr, serialize_pattern_inline};

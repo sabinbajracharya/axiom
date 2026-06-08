@@ -8,14 +8,14 @@
 
 #![allow(clippy::unwrap_used)]
 
-use hir::HirDiagnostic;
+use resolver::HirDiagnostic;
 use typecheck::Thir;
 
 fn compile(source: &str) -> Thir {
     driver::check_modules(&stdlib::with_main(source))
 }
 
-fn lang_diagnostics(thir: &Thir) -> Vec<&hir::HirDiagnostic> {
+fn lang_diagnostics(thir: &Thir) -> Vec<&resolver::HirDiagnostic> {
     thir.diagnostics
         .iter()
         .filter_map(|d| {

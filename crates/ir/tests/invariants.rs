@@ -11,7 +11,7 @@ use std::path::Path;
 fn lower_fixture(source: &str) -> ir::Ir {
     let result = parser::parse(source);
     let root = parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = hir::lower(&root, source, None);
+    let hir = resolver::lower(&root, source, None);
     let thir = typecheck::check(hir);
     let mono = typecheck::monomorphize(&thir);
     ir::lower(&thir, &mono)

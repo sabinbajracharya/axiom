@@ -1,7 +1,7 @@
 //! Utility functions for the type checker.
 
 use crate::types::{FnTy, Ty};
-use hir::NameRef;
+use resolver::NameRef;
 
 pub(super) fn is_error(ty: &Ty) -> bool {
     matches!(ty, Ty::Error)
@@ -11,13 +11,13 @@ pub(super) fn is_numeric(ty: &Ty) -> bool {
     matches!(ty, Ty::Int | Ty::Float)
 }
 
-pub(super) fn infer_lit(kind: &hir::LitKind) -> Ty {
+pub(super) fn infer_lit(kind: &resolver::LitKind) -> Ty {
     match kind {
-        hir::LitKind::Int(_) => Ty::Int,
-        hir::LitKind::Float(_) => Ty::Float,
-        hir::LitKind::Bool(_) => Ty::Bool,
-        hir::LitKind::String(_) => Ty::String,
-        hir::LitKind::Unit => Ty::Unit,
+        resolver::LitKind::Int(_) => Ty::Int,
+        resolver::LitKind::Float(_) => Ty::Float,
+        resolver::LitKind::Bool(_) => Ty::Bool,
+        resolver::LitKind::String(_) => Ty::String,
+        resolver::LitKind::Unit => Ty::Unit,
     }
 }
 

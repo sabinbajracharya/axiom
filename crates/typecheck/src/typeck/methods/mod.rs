@@ -7,7 +7,7 @@ use super::{helpers, TypeChecker, TypeParamScope};
 use crate::error::TypeDiagnostic;
 use crate::types::{InstanceTy, Ty, TypeParamId};
 
-use hir::*;
+use resolver::*;
 
 /// Build a TypeParamScope from an ImplInfo's type parameters. Bounds are
 /// omitted — the scope is only used for name/def_id resolution in
@@ -319,7 +319,7 @@ impl TypeChecker {
     /// `Instance.def_id` is never read downstream, so the placeholder is inert.
     /// This kills the `HirId(0)` lie for the list type specifically (C2, §3.2).
     fn lang_def_id_for_type(&self, type_name: &str) -> HirId {
-        if type_name == hir::lang::LIST {
+        if type_name == resolver::lang::LIST {
             if let Some(id) = self.lang_items.list {
                 return id;
             }

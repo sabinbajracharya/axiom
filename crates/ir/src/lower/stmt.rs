@@ -3,7 +3,7 @@
 use super::expr::lower_expr;
 use super::helpers::FnLowerCtx;
 use crate::ir::{IrConst, IrInstr, Reg};
-use hir::{Block, Stmt};
+use resolver::{Block, Stmt};
 
 /// Lower an HIR statement. Emits instructions into the current block.
 pub(super) fn lower_stmt(stmt: &Stmt, ctx: &mut FnLowerCtx) {

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::ir::{IrBlock, IrFunction, IrInstr, Reg, Terminator};
-use hir::{Expr, HirId, Item, Pattern};
+use resolver::{Expr, HirId, Item, Pattern};
 use typecheck::mono::helpers::Substitution;
 use typecheck::{Ty, TypeMap};
 

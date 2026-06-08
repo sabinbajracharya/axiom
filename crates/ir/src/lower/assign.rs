@@ -6,10 +6,10 @@
 use super::expr::{lower_expr, lower_index_read, lower_index_write, unit_reg};
 use super::helpers::FnLowerCtx;
 use crate::ir::{IrInstr, Reg};
-use hir::{AssignTarget, Expr};
+use resolver::{AssignTarget, Expr};
 
 /// Lower an assignment expression. Assignments evaluate to `Unit`.
-pub(super) fn lower_assign(e: &hir::AssignExpr, ctx: &mut FnLowerCtx) -> Reg {
+pub(super) fn lower_assign(e: &resolver::AssignExpr, ctx: &mut FnLowerCtx) -> Reg {
     match &e.target {
         AssignTarget::Name(nr) => lower_assign_name(nr, e, ctx),
         AssignTarget::Field { receiver, field } => lower_assign_field(receiver, field, e, ctx),
@@ -20,28 +20,28 @@ pub(super) fn lower_assign(e: &hir::AssignExpr, ctx: &mut FnLowerCtx) -> Reg {
 
 /// Map a compound assignment operator (`+=`, …) to its binary operator.
 /// `Plain` (`=`) is never a compound op.
-fn assign_binop(op: hir::AssignOp) -> hir::BinOp {
+fn assign_binop(op: resolver::AssignOp) -> resolver::BinOp {
     match op {
-        hir::AssignOp::Add => hir::BinOp::Add,
-        hir::AssignOp::Sub => hir::BinOp::Sub,
-        hir::AssignOp::Mul => hir::BinOp::Mul,
-        hir::AssignOp::Div => hir::BinOp::Div,
-        hir::AssignOp::Mod => hir::BinOp::Mod,
-        hir::AssignOp::Plain => unreachable!("Plain is not a compound op"),
+        resolver::AssignOp::Add => resolver::BinOp::Add,
+        resolver::AssignOp::Sub => resolver::BinOp::Sub,
+        resolver::AssignOp::Mul => resolver::BinOp::Mul,
+        resolver::AssignOp::Div => resolver::BinOp::Div,
+        resolver::AssignOp::Mod => resolver::BinOp::Mod,
+        resolver::AssignOp::Plain => unreachable!("Plain is not a compound op"),
     }
 }
 
 /// `name op= value`: combine the current register value (for compound ops) and
 /// copy the result back into the binding's register.
-fn lower_assign_name(nr: &hir::NameRef, e: &hir::AssignExpr, ctx: &mut FnLowerCtx) {
+fn lower_assign_name(nr: &resolver::NameRef, e: &resolver::AssignExpr, ctx: &mut FnLowerCtx) {
     let value = lower_expr(&e.value, ctx);
     let def_id = match nr {
-        hir::NameRef::Resolved(r) => Some(r.def_id),
-        hir::NameRef::Unresolved(_) => None,
+        resolver::NameRef::Resolved(r) => Some(r.def_id),
+        resolver::NameRef::Unresolved(_) => None,
     };
     let dst = ctx.resolve_name(def_id);
     match e.op {
-        hir::AssignOp::Plain => ctx.emit(IrInstr::Copy { dst, src: value }),
+        resolver::AssignOp::Plain => ctx.emit(IrInstr::Copy { dst, src: value }),
         compound => {
             let tmp = ctx.fresh_reg();
             ctx.emit(IrInstr::BinOp {
@@ -57,11 +57,16 @@ fn lower_assign_name(nr: &hir::NameRef, e: &hir::AssignExpr, ctx: &mut FnLowerCt
 
 /// `receiver.field op= value`: emit a `FieldSet`, reading the current field
 /// first for compound ops.
-fn lower_assign_field(receiver: &Expr, field: &str, e: &hir::AssignExpr, ctx: &mut FnLowerCtx) {
+fn lower_assign_field(
+    receiver: &Expr,
+    field: &str,
+    e: &resolver::AssignExpr,
+    ctx: &mut FnLowerCtx,
+) {
     let base = lower_expr(receiver, ctx);
     let value = lower_expr(&e.value, ctx);
     let final_val = match e.op {
-        hir::AssignOp::Plain => value,
+        resolver::AssignOp::Plain => value,
         compound => {
             let cur = ctx.fresh_reg();
             ctx.emit(IrInstr::Field {
@@ -96,13 +101,18 @@ fn lower_assign_field(receiver: &Expr, field: &str, e: &hir::AssignExpr, ctx: &m
 /// The index is lowered **once** and reused for the read-back and the write, so
 /// an effectful index expression is not evaluated twice
 /// (`docs/mutable-subscript-design.md` §4.2, O-MS2).
-fn lower_assign_index(base: &Expr, indices: &[Expr], e: &hir::AssignExpr, ctx: &mut FnLowerCtx) {
+fn lower_assign_index(
+    base: &Expr,
+    indices: &[Expr],
+    e: &resolver::AssignExpr,
+    ctx: &mut FnLowerCtx,
+) {
     let base_r = lower_expr(base, ctx);
     let idx_r: Vec<Reg> = indices.iter().map(|idx| lower_expr(idx, ctx)).collect();
     let base_ty = ctx.receiver_type(base.id());
     let value = lower_expr(&e.value, ctx);
     let final_val = match e.op {
-        hir::AssignOp::Plain => value,
+        resolver::AssignOp::Plain => value,
         compound => {
             let cur = lower_index_read(base_r, base_ty.as_ref(), &idx_r, ctx);
             let tmp = ctx.fresh_reg();

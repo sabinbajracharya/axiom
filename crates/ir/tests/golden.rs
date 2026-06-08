@@ -19,7 +19,7 @@ fn normalize(s: &str) -> String {
 fn ir_source(source: &str) -> String {
     let result = parser::parse(source);
     let root = parser::ast::SourceFile::cast(result.tree).unwrap();
-    let hir = hir::lower(&root, source, None);
+    let hir = resolver::lower(&root, source, None);
     let thir = typecheck::check(hir);
     let mono = typecheck::monomorphize(&thir);
     let ir = ir::lower(&thir, &mono);

@@ -144,7 +144,7 @@ impl TypeChecker {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use hir::HirId;
+    use resolver::HirId;
 
     fn tp(name: &str, index: usize) -> Ty {
         Ty::TypeParam(TypeParamId {
@@ -157,11 +157,11 @@ mod tests {
     #[test]
     fn test_unify_type_param_with_concrete() {
         let checker = TypeChecker::new(
-            hir::Hir {
+            resolver::Hir {
                 items: vec![],
                 diagnostics: vec![],
             },
-            hir::LangItems::default(),
+            resolver::LangItems::default(),
         );
         let mut subst = Substitution::new();
         // unify Int with T → T = Int
@@ -179,11 +179,11 @@ mod tests {
     #[test]
     fn test_unify_type_param_conflict() {
         let checker = TypeChecker::new(
-            hir::Hir {
+            resolver::Hir {
                 items: vec![],
                 diagnostics: vec![],
             },
-            hir::LangItems::default(),
+            resolver::LangItems::default(),
         );
         let mut subst = Substitution::new();
         assert!(checker.unify(&Ty::Int, &tp("T", 0), &mut subst).is_ok());
@@ -194,11 +194,11 @@ mod tests {
     #[test]
     fn test_unify_same_concrete() {
         let checker = TypeChecker::new(
-            hir::Hir {
+            resolver::Hir {
                 items: vec![],
                 diagnostics: vec![],
             },
-            hir::LangItems::default(),
+            resolver::LangItems::default(),
         );
         let mut subst = Substitution::new();
         assert!(checker.unify(&Ty::Int, &Ty::Int, &mut subst).is_ok());

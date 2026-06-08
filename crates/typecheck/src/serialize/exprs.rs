@@ -3,7 +3,7 @@
 use super::helpers::{fmt_lit, indent};
 use super::{serialize_block, serialize_name_ref, serialize_stmt};
 use crate::thir::Thir;
-use hir::*;
+use resolver::*;
 
 pub(super) fn serialize_expr(expr: &Expr, depth: usize, thir: &Thir, out: &mut String) {
     let ty = thir.types.get(&expr.id());

@@ -7,7 +7,7 @@
 
 use super::{TypeChecker, VariantInfo};
 use crate::types::Ty;
-use hir::{HirTypeParam, Item};
+use resolver::{HirTypeParam, Item};
 
 /// A struct's declared type parameters paired with its field types (resolved in
 /// the struct's own scope). See [`TypeChecker::struct_generic_info`].

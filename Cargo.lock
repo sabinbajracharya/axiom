@@ -25,10 +25,11 @@ name = "cli"
 version = "0.0.0"
 dependencies = [
  "driver",
- "hir",
  "ir",
+ "lower",
  "modules",
  "parser",
+ "resolver",
  "stdlib",
  "thiserror",
  "typecheck",
@@ -39,9 +40,10 @@ dependencies = [
 name = "driver"
 version = "0.0.0"
 dependencies = [
- "hir",
  "lexer",
+ "lower",
  "parser",
+ "resolver",
  "stdlib",
  "thiserror",
  "typecheck",
@@ -110,17 +112,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
-name = "hir"
-version = "0.0.0"
-dependencies = [
- "lexer",
- "lower",
- "modules",
- "parser",
- "resolver",
-]
-
-[[package]]
 name = "id-arena"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -143,9 +134,10 @@ name = "ir"
 version = "0.0.0"
 dependencies = [
  "driver",
- "hir",
  "lexer",
+ "lower",
  "parser",
+ "resolver",
  "stdlib",
  "thiserror",
  "typecheck",
@@ -195,6 +187,7 @@ dependencies = [
  "lexer",
  "modules",
  "parser",
+ "resolver",
  "thiserror",
 ]
 
@@ -452,10 +445,11 @@ name = "typecheck"
 version = "0.0.0"
 dependencies = [
  "driver",
- "hir",
  "lexer",
+ "lower",
  "modules",
  "parser",
+ "resolver",
  "stdlib",
  "thiserror",
 ]
@@ -477,9 +471,10 @@ name = "vm"
 version = "0.1.0"
 dependencies = [
  "driver",
- "hir",
  "ir",
+ "lower",
  "parser",
+ "resolver",
  "stdlib",
  "thiserror",
  "typecheck",

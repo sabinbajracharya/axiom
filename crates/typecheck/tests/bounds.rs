@@ -4,8 +4,8 @@
 //! (e.g., `fn sort<T: Ord>(items: Vec<T>)`), calling it with a concrete
 //! type must verify that the type satisfies all bounds via its impl table.
 
-use hir::lower;
 use parser::ast::AstNode;
+use resolver::lower;
 use typecheck::check;
 
 #[allow(clippy::unwrap_used)]

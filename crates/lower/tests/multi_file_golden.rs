@@ -13,9 +13,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use hir::{
-    build_global_exports, lower_structural, resolve_with_globals, serialize, Hir, HirDiagnostic,
-    Item,
+use resolver::{
+    build_global_exports, resolve_with_globals,
+};
+use lower::{
+    lower_structural, serialize, Hir, HirDiagnostic, Item,
 };
 use parser::ast::AstNode;
 use parser::parse;
@@ -29,7 +31,7 @@ fn normalize(s: &str) -> String {
 }
 
 /// Load stdlib module defs for cross-module resolution.
-fn load_stdlib_defs() -> Option<Vec<(String, Vec<hir::Def>)>> {
+fn load_stdlib_defs() -> Option<Vec<(String, Vec<lower::Def>)>> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = manifest.parent()?.parent()?;
     let stdlib = workspace.join("stdlib");
@@ -94,7 +96,7 @@ fn ax_files_in(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
-type ModuleData = (String, Vec<Item>, Vec<hir::Def>, Vec<HirDiagnostic>);
+type ModuleData = (String, Vec<Item>, Vec<lower::Def>, Vec<HirDiagnostic>);
 
 /// Compile a multi-file program using the two-phase pipeline.
 /// Returns (combined_hir, diagnostics_by_module).
@@ -132,7 +134,7 @@ fn compile_multi_file(dir: &Path) -> (Hir, HashMap<String, Vec<HirDiagnostic>>) 
     }
 
     // Phase 2: build global exports from all modules + stdlib.
-    let mut module_defs: Vec<(String, Vec<hir::Def>)> = all_module_data
+    let mut module_defs: Vec<(String, Vec<lower::Def>)> = all_module_data
         .iter()
         .map(|(name, _, defs, _)| (name.clone(), defs.clone()))
         .collect();

@@ -18,7 +18,7 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub enum Diagnostic {
     /// HIR-level diagnostic (lowering, resolution, annotation validation).
-    Hir(hir::HirDiagnostic),
+    Hir(resolver::HirDiagnostic),
     /// Type-check diagnostic.
     Type(TypeDiagnostic),
 }

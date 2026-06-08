@@ -9,8 +9,8 @@
 //! At **M2** the `check` command runs the full pipeline through type checking.
 //! Type errors produce `TypeDiagnostic`s in the report alongside HIR diagnostics.
 
-use hir::serialize as hir_serialize;
 use parser::{parse, serialize as cst_serialize};
+use resolver::serialize as hir_serialize;
 use typecheck::{serialize as thir_serialize, Thir};
 
 /// The outcome of checking one source string.

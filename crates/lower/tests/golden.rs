@@ -8,7 +8,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use hir::{lower, serialize};
+use resolver::lower;
+use lower::serialize;
 use parser::ast::{AstNode, SourceFile};
 use parser::parse;
 
@@ -32,7 +33,7 @@ fn normalize(s: &str) -> String {
 }
 
 /// Build global exports from stdlib modules so `print`/`println` resolve.
-fn stdlib_exports() -> Option<hir::GlobalExports> {
+fn stdlib_exports() -> Option<resolver::GlobalExports> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = manifest.parent()?.parent()?;
     let stdlib = workspace.join("stdlib");
@@ -50,10 +51,10 @@ fn stdlib_exports() -> Option<hir::GlobalExports> {
         let Some(root) = parser::ast::SourceFile::cast(parse_result.tree) else {
             continue;
         };
-        let (_items, defs, _diags, _nid) = hir::lower_structural(&root, &module.source, 0);
+        let (_items, defs, _diags, _nid) = lower::lower_structural(&root, &module.source, 0);
         module_data.push((module.name.clone(), defs));
     }
-    Some(hir::build_global_exports(&module_data))
+    Some(resolver::build_global_exports(&module_data))
 }
 
 #[test]

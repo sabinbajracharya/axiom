@@ -7,14 +7,14 @@
 
 use crate::error::Diagnostic;
 use crate::types::Ty;
-use hir::*;
+use resolver::*;
 use std::collections::HashMap;
 
 /// The output of type checking: the original HIR + type map + diagnostics.
 /// The HIR is consumed (moved) — the THIR owns it.
 pub struct Thir {
     /// The HIR we type-checked (consumed, not cloned).
-    pub hir: hir::Hir,
+    pub hir: resolver::Hir,
     /// Maps every HirId (expressions, statements, patterns) to its type.
     pub types: TypeMap,
     /// Unified diagnostics (HIR-level + type-check errors).
@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     fn test_thir_holds_hir() {
-        let hir = hir::Hir {
+        let hir = resolver::Hir {
             items: vec![],
             diagnostics: vec![],
         };

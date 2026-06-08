@@ -7,7 +7,7 @@ use super::{helpers, Mutability, TypeChecker, VariantInfo};
 use crate::error::{Diagnostic, TypeDiagnostic};
 use crate::types::{FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 
-use hir::*;
+use resolver::*;
 
 impl TypeChecker {
     pub(super) fn infer_block(&mut self, block: &Block, expected: &Option<Ty>) -> Ty {
