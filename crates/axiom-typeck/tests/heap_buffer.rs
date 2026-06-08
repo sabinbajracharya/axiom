@@ -88,3 +88,22 @@ fn main() {
         thir.diagnostics
     );
 }
+
+#[test]
+fn test_intrinsic_outside_stdlib_is_rejected() {
+    let thir = check_source(
+        r#"@intrinsic("heap_alloc")
+fn bad_alloc() -> Int {
+    1
+}
+fn main() {}"#,
+    );
+    assert!(
+        thir.hir
+            .diagnostics
+            .iter()
+            .any(|d| matches!(d, axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib { .. })),
+        "expected IntrinsicOutsideStdlib in HIR diagnostics, got: {:?}",
+        thir.hir.diagnostics
+    );
+}
