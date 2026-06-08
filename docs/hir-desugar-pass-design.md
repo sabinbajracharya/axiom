@@ -19,9 +19,10 @@ cleanup*. But there are now concrete reasons to land the pass first:
 - Doing it now is a bounded, testable, behaviour-preserving change: list literals
   work the same, just via a different pipeline location.
 
-**The promise:** after this pass lands, adding new sugar (map literals, range,
-`loop x in`, compound assign) is one desugar rule + one lang item each — no new
-ad-hoc lowering, no new typeck special-cases.
+**The promise:** after this pass lands, adding new sugar is one desugar rule
+(plus a lang item only if the sugar calls a specific named stdlib
+constructor, like map literals → `Map::with_capacity`) — no new ad-hoc
+lowering, no new typeck special-cases.
 
 ## 1. What changes (before/after)
 
@@ -222,8 +223,11 @@ desugared temps from user variables in diagnostics and dumps.
 - `Expr::Assign` for indexed assignment — stays structural (its lowering is not
   string-keyed; it's a dispatch to `subscript_set` per
   `docs/mutable-subscript-design.md` §4.2).
-- `LoopKind::Iterator` — stays structural until the `Iterator` trait/lang-item
-  is designed and the body desugaring is specified.
+- `LoopKind::Iterator` — stays structural until its desugar rule is
+  implemented. Unlike list literals, it needs **zero `@lang` tags**: the
+  desugar emits `.next()` and a `match`, and typeck resolves both
+  generically against the iterable's type (no concrete stdlib type is
+  hardcoded). See `docs/hir-desugar-pass-design.md` §8 final note.
 - Everything else (`Bin`, `Unary`, `Field`, `Index`, `Block`, `If`, `Match`,
   `Loop`, `StructLit`) — not sugar, passes through unchanged.
 
@@ -546,3 +550,14 @@ the full suite.
 - `ir-design.md` (current `lower_list_lit`)
 - `mutable-subscript-design.md` §4.2 (indexed assign — stays, not desugared yet)
 - `hir-testing.md` (existing HIR snapshot template)
+
+## Appendix: When does a sugar need `@lang`?
+
+| Sugar needs `@lang` if... | Sugar does NOT need `@lang` if... |
+|---|---|
+| The desugar emits a call to a **specific named type or constructor** | The desugar emits **generic structural nodes** that typeck resolves |
+| `[a,b,c]` → `List::with_capacity` + `List::push` (must know `List`'s DefId) | `loop x in xs` → `.next()` + `match` (resolved against `xs`'s type, whatever it is) |
+| `["k": v]` → `Map::insert` (must know `Map`'s DefId) | `a += b` → `a = a + b` (just rewrites to existing bin-op + assign) |
+| `try expr` → `Result::unwrap_or_return` (must know `Result`'s DefId) | `a..b` → `Range::new(a, b)` — **borderline**: if `Range` is a known stdlib struct, needs `@lang("range")`; if it's a trait-based protocol, doesn't |
+
+**Rule of thumb:** if the desugared form hardcodes a type name, that type needs `@lang`. If it emits structural HIR (method calls, matches, assignments) and lets typeck resolve, it doesn't.
