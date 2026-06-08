@@ -21,6 +21,7 @@
 //! assert!(dump.contains("FnDef"));
 //! ```
 
+pub mod desugar;
 mod error;
 mod hir;
 pub mod lang;

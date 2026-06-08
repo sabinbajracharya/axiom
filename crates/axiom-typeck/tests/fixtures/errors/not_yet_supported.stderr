@@ -1,1 +1,1 @@
-1:1: `iterator loops` is not yet supported in type checking
+1:1: `list literals without stdlib` is not yet supported in type checking

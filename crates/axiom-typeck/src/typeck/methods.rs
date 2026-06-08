@@ -575,36 +575,6 @@ impl TypeChecker {
             }
         }
     }
-
-    pub(super) fn infer_list_lit(&mut self, list: &ListLitExpr) -> Ty {
-        if list.elements.is_empty() {
-            self.emit(TypeDiagnostic::NotYetSupported {
-                feature: "empty list literals (use type annotation)".to_string(),
-                span: self.span_for(list.id),
-            });
-            self.types.insert(list.id, Ty::Error);
-            return Ty::Error;
-        }
-        let first_ty = self.infer_expr(&list.elements[0]);
-        for elem in &list.elements[1..] {
-            let elem_ty = self.infer_expr(elem);
-            if !helpers::is_error(&elem_ty) && !helpers::is_error(&first_ty) && elem_ty != first_ty
-            {
-                self.emit(TypeDiagnostic::TypeMismatch {
-                    expected: first_ty.to_string(),
-                    found: elem_ty.to_string(),
-                    span: self.span_for(elem.id()),
-                });
-            }
-        }
-        let ty = Ty::Instance(InstanceTy {
-            name: axiom_hir::lang::LIST.to_string(),
-            def_id: self.lang_items.list.unwrap_or(HirId(0)),
-            args: vec![first_ty],
-        });
-        self.types.insert(list.id, ty.clone());
-        ty
-    }
 }
 
 /// Unify two `Instance` types by matching type arguments positionally.

@@ -27,8 +27,18 @@ impl TypeChecker {
             Expr::Match(match_expr) => self.infer_match(match_expr),
             Expr::Loop(loop_expr) => self.infer_loop(loop_expr),
             Expr::StructLit(sl) => self.infer_struct_lit(sl),
-            Expr::ListLit(list) => self.infer_list_lit(list),
             Expr::Assign(assign) => self.infer_assign(assign),
+            Expr::ListLit(_) => {
+                // ListLit should be desugared before typeck, but the bare
+                // `check()` path (no-stdlib) cannot desugar (missing lang
+                // items). Fall back to an error until the old infer_list_lit
+                // special-case is fully replaced.
+                self.emit(TypeDiagnostic::NotYetSupported {
+                    feature: "list literals without stdlib".to_string(),
+                    span: axiom_lexer::Span { lo: 0, hi: 0 },
+                });
+                Ty::Error
+            },
         }
     }
 

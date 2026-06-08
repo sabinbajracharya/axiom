@@ -44,7 +44,13 @@ pub fn check(hir: Hir) -> Thir {
 /// (`check_modules`) builds the registry from the stdlib and passes it here so
 /// list-literal types resolve to the real `List` def; the bare `check` keeps an
 /// empty registry for compiler-isolation tests.
-pub fn check_with_lang_items(hir: Hir, lang_items: axiom_hir::LangItems) -> Thir {
+///
+/// The desugar pass runs here so that both `check` (bare/no-stdlib) and
+/// `check_modules` (stdlib-backed) paths go through it — `ListLit` never
+/// reaches the type checker.
+pub fn check_with_lang_items(mut hir: Hir, lang_items: axiom_hir::LangItems) -> Thir {
+    let max_id = crate::hir_max_id(&hir);
+    axiom_hir::desugar::desugar(&mut hir, &lang_items, max_id + 1);
     let mut checker = TypeChecker::new(hir, lang_items);
     checker.collect_pass();
     checker.check_pass();
