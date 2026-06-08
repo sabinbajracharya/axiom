@@ -127,4 +127,95 @@ fn free<T>(buf: [T])
             HirDiagnostic::UnknownIntrinsic { key, .. } if key == "not_real"
         ));
     }
+
+    /// Drift guard: the raw intrinsic name strings ("heap_alloc", "heap_free",
+    /// "heap_get", "heap_set") must not reappear as string literals outside this
+    /// module (mirrors `lang.rs`'s `test_no_raw_qualified_list_strings_outside_lang_module`).
+    #[test]
+    fn test_no_raw_heap_strings_outside_intrinsic_module() {
+        let banned = [HEAP_ALLOC, HEAP_FREE, HEAP_GET, HEAP_SET];
+        let crate_roots = ["axiom-hir", "axiom-typeck", "axiom-ir", "axiom-vm"];
+        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|p| p.parent())
+            .expect("crates/axiom-hir → repo root")
+            .to_path_buf();
+        let this_file = std::path::Path::new(file!())
+            .file_name()
+            .map(|f| f.to_os_string());
+
+        let mut offenders: Vec<String> = Vec::new();
+        // Allowlist: files that legitimately reference heap intrinsic names.
+        let allow: &[&str] = &[
+            "builtin-to-stdlib-migration.md",
+            "intrinsic-and-stdlib-identity.md",
+            "mem.ax",
+            "lang-items-and-desugaring-design.md",
+        ];
+
+        for root in crate_roots {
+            let src = repo.join("crates").join(root).join("src");
+            scan_dir(
+                &src,
+                &banned,
+                &this_file,
+                &allow,
+                &mut offenders,
+            );
+        }
+
+        assert!(
+            offenders.is_empty(),
+            "raw heap intrinsic string(s) found outside intrinsic.rs — use the \
+             axiom_hir::intrinsic constants instead:\n{}",
+            offenders.join("\n")
+        );
+    }
+
+    fn scan_dir(
+        dir: &std::path::Path,
+        banned: &[&str],
+        this_file: &Option<std::ffi::OsString>,
+        allow: &[&str],
+        offenders: &mut Vec<String>,
+    ) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                scan_dir(&path, banned, this_file, allow, offenders);
+                continue;
+            }
+            if path.extension().and_then(|e| e.to_str()) != Some("rs") {
+                continue;
+            }
+            if path.file_name().map(|f| f.to_os_string()) == *this_file {
+                continue;
+            }
+            // Skip files in the allowlist by stem.
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                if allow.contains(&name) {
+                    continue;
+                }
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            for (lineno, line) in text.lines().enumerate() {
+                for needle in banned {
+                    let quoted = format!("\"{needle}\"");
+                    if line.contains(&quoted) {
+                        offenders.push(format!(
+                            "{}:{}: {}",
+                            path.display(),
+                            lineno + 1,
+                            line.trim()
+                        ));
+                    }
+                }
+            }
+        }
+    }
 }

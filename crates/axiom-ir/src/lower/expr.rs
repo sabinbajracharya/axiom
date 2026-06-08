@@ -123,12 +123,9 @@ fn assoc_method_type(e: &axiom_hir::CallExpr, items: &[axiom_hir::Item]) -> Opti
     None
 }
 
-/// Lower a heap-buffer intrinsic call to its dedicated IR instruction.
-/// Returns `None` for normal function calls.
-///
-/// Two paths (the second is transitional — removed in Phase 6 cleanup):
-/// 1. `@intrinsic` tag on a real HIR FnDef (the post-migration path).
-/// 2. String name match for the old `builtin_def_id()` path (transitional).
+/// Lower a heap-buffer intrinsic call (matched by `@intrinsic` tag on the
+/// resolved HIR FnDef) to its dedicated IR instruction. Returns `None` for
+/// normal function calls.
 fn lower_heap_intrinsic(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Option<Reg> {
     let key = intrinsic_key_for_call(e, ctx);
     let args: Vec<Reg> = e.args.iter().map(|a| lower_expr(a, ctx)).collect();
@@ -155,29 +152,17 @@ fn lower_heap_intrinsic(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Option
     Some(dst)
 }
 
-/// Determine the intrinsic key for a call expression.
-/// Checks `@intrinsic` tag first (post-migration), then falls back to
-/// string-name match (transitional, for the old `builtin_def_id()` global).
+/// Determine the intrinsic key for a call expression from the resolved
+/// callee's `@intrinsic` tag on its HIR FnDef.
 fn intrinsic_key_for_call(
     e: &axiom_hir::CallExpr,
     ctx: &mut FnLowerCtx,
 ) -> Option<String> {
-    // Path 1: @intrinsic tag on the resolved FnDef.
     let callee_id = match &e.callee {
         axiom_hir::NameRef::Resolved(r) => r.def_id,
         _ => return None,
     };
-    if let Some(tag) = find_intrinsic_tag(callee_id, ctx.hir_items) {
-        return Some(tag);
-    }
-
-    // Path 2: transitional — match by name string for old builtin_def_id()
-    // global names (removed in Phase 6 cleanup).
-    let name = name_ref_text(&e.callee);
-    match name.as_str() {
-        "heap_alloc" | "heap_get" | "heap_set" | "heap_free" => Some(name),
-        _ => None,
-    }
+    find_intrinsic_tag(callee_id, ctx.hir_items)
 }
 
 /// Scan HIR items for the `@intrinsic` tag on the FnDef with the given DefId.

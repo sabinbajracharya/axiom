@@ -88,7 +88,7 @@ fn program_for(target: &str, base: Option<&str>, op: &str) -> String {
              b.v {op} {rhs}\n    print(format(\"{{}}\", b.v))\n}}\n"
         ),
         ("Index", Some("HeapBuffer")) => format!(
-            "fn main() {{\n    var xs: [Int] = heap_alloc(1)\n    xs[0] = {SEED}\n    \
+            "use std::mem::alloc_buffer\nfn main() {{\n    var xs: [Int] = alloc_buffer(1)\n    xs[0] = {SEED}\n    \
              xs[0] {op} {rhs}\n    print(format(\"{{}}\", xs[0]))\n}}\n"
         ),
         ("Index", Some("List")) => format!(

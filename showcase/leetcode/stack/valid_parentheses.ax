@@ -1,3 +1,5 @@
+use std::mem::{alloc_buffer, free_buffer}
+
 // === Problem: Valid Parentheses (LeetCode #20) ===
 // Given a string `s` containing only '(', ')', '{', '}', '[' and ']',
 // determine if the input is valid.
@@ -48,7 +50,7 @@ fn matches(open: Int, close: Int) -> Bool {
 }
 
 fn valid_parens(s: List<Int>, len: Int) {
-    var stack: [Int] = heap_alloc(len)
+    var stack: [Int] = alloc_buffer(len)
     var stack_size = 0
     var i = 0
     loop if i < len {
@@ -59,13 +61,13 @@ fn valid_parens(s: List<Int>, len: Int) {
         } else {
             if stack_size == 0 {
                 println("false (nothing to match)")
-                heap_free(stack)
+                free_buffer(stack)
                 return
             }
             stack_size = stack_size - 1
             if !matches(stack[stack_size], ch) {
                 println("false (mismatch)")
-                heap_free(stack)
+                free_buffer(stack)
                 return
             }
         }
@@ -76,5 +78,5 @@ fn valid_parens(s: List<Int>, len: Int) {
     } else {
         println("false (unclosed)")
     }
-    heap_free(stack)
+    free_buffer(stack)
 }

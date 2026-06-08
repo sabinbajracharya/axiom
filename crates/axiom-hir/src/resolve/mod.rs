@@ -361,11 +361,9 @@ const BUILTIN_HIR_ID_START: usize = 1_000_000;
 /// segment) resolves to a definition and reaches the type checker, where it is
 /// special-cased as variadic → `String`, rather than erroring as unresolved.
 ///
-/// `heap_alloc`/`heap_get`/`heap_set`/`heap_free` are the `HeapBuffer<T>` floor
-/// ops (P4) the collection library is built on — compiler intrinsics with no
-/// module definition. They are named here so calls in `stdlib/std/collections`
-/// resolve; the type checker gives them generic signatures (`helpers::builtin_fn`)
-/// and IR lowering emits the dedicated heap instructions.
+/// Heap-buffer ops (`heap_alloc`/`heap_free`/`heap_get`/`heap_set`) have been
+/// migrated to `@intrinsic` functions in `stdlib/std/mem.ax` and removed from
+/// this global namespace. See `docs/intrinsic-and-stdlib-identity.md`.
 pub(crate) fn builtin_def_id(name: &str) -> Option<DefId> {
     let idx = match name {
         "Int" => 0,
@@ -375,10 +373,6 @@ pub(crate) fn builtin_def_id(name: &str) -> Option<DefId> {
         "Unit" => 4,
         "todo" => 5,
         "format" => 6,
-        "heap_alloc" => 7,
-        "heap_get" => 8,
-        "heap_set" => 9,
-        "heap_free" => 10,
         _ => return None,
     };
     Some(HirId(BUILTIN_HIR_ID_START + idx))

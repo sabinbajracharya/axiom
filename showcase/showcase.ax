@@ -1,3 +1,5 @@
+use std::mem::{alloc_buffer, free_buffer}
+
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  Axiom language showcase                                     ║
 // ║  run:  cargo run -p axiom-cli -- run showcase/showcase.ax    ║
@@ -153,7 +155,7 @@ fn main() {
     println(format("  doubled(21)       = {}", doubled(21)))
 
     println("== while-loop + raw [Int] buffer (indexed read/write) ==")
-    var sq: [Int] = heap_alloc(6)
+    var sq: [Int] = alloc_buffer(6)
     var i = 0
     loop if i < 6 {                 // `loop if cond { }` is the while loop
         sq[i] = i * i               // indexed write
@@ -171,7 +173,7 @@ fn main() {
         sum = sum + v
     }
     println(format("  sum of odd squares = {}", sum))
-    heap_free(sq)
+    free_buffer(sq)
 
     println("== List<T> (push / count / is_empty / [] subscript) ==")
     var xs: List<Int> = List::new()

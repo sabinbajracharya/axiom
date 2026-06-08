@@ -1,7 +1,7 @@
 //! Utility functions for the type checker.
 
-use crate::types::{FnTy, Ty, TypeParamId};
-use axiom_hir::{HirId, NameRef};
+use crate::types::{FnTy, Ty};
+use axiom_hir::NameRef;
 
 pub(super) fn is_error(ty: &Ty) -> bool {
     matches!(ty, Ty::Error)
@@ -45,41 +45,6 @@ pub(super) fn builtin_fn(name: &str) -> Option<Ty> {
             params: vec![],
             return_type: Box::new(Ty::Error),
         })),
-        // `HeapBuffer<T>` floor ops (P4) — the growable-storage primitive the
-        // `List`/`Map` library is built on. The element type `T` is the same
-        // synthetic type parameter across each signature (see `heap_t`).
-        //   heap_alloc<T>(count: Int) -> [T]          (T is return-only)
-        //   heap_get<T>(buf: [T], index: Int) -> T
-        //   heap_set<T>(buf: [T], index: Int, value: T)
-        //   heap_free<T>(buf: [T])
-        "heap_alloc" => Some(heap_fn(vec![Ty::Int], heap_buf())),
-        "heap_get" => Some(heap_fn(vec![heap_buf(), Ty::Int], heap_t())),
-        "heap_set" => Some(heap_fn(vec![heap_buf(), Ty::Int, heap_t()], Ty::Unit)),
-        "heap_free" => Some(heap_fn(vec![heap_buf()], Ty::Unit)),
         _ => None,
     }
-}
-
-/// The synthetic element type parameter `T` shared by all `HeapBuffer` floor
-/// ops. A fixed `TypeParamId` so the `[T]` arguments and the `T` results unify
-/// to the same parameter within a single call's substitution.
-fn heap_t() -> Ty {
-    Ty::TypeParam(TypeParamId {
-        name: "T".to_string(),
-        index: 0,
-        def_id: HirId(0),
-    })
-}
-
-/// `[T]` — a heap buffer of the synthetic element type.
-fn heap_buf() -> Ty {
-    Ty::HeapBuffer(Box::new(heap_t()))
-}
-
-/// Build a `HeapBuffer` floor-op function type from params + return type.
-fn heap_fn(params: Vec<Ty>, return_type: Ty) -> Ty {
-    Ty::Fn(FnTy {
-        params,
-        return_type: Box::new(return_type),
-    })
 }

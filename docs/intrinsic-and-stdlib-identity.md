@@ -1,6 +1,6 @@
 # Intrinsics & Stdlib Identity — Design Plan
 
-> **Status: Proposed.** Companion docs: `DESIGN_SPEC.md` §10, `docs/lang-items-and-desugaring-design.md`,
+> **Status: Implemented — 2025-06-08.** Companion docs: `DESIGN_SPEC.md` §10, `docs/lang-items-and-desugaring-design.md`,
 > `docs/builtin-to-stdlib-migration.md`, `docs/modules-design.md`.
 
 ## 0. The concern this answers

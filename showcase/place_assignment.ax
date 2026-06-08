@@ -1,3 +1,5 @@
+use std::mem::{alloc_buffer, free_buffer}
+
 // ╔══════════════════════════════════════════════════════════════╗
 // ║  Axiom indexed-place assignment showcase                      ║
 // ║  run:  cargo run -p axiom-cli -- run showcase/place_assignment.ax ║
@@ -35,7 +37,7 @@ impl Grid {
 }
 
 fn alloc_grid(rows: Int, cols: Int) -> Grid {
-    var buf: [Int] = heap_alloc(rows * cols)
+    var buf: [Int] = alloc_buffer(rows * cols)
     Grid { buf: buf, cols: cols }
 }
 
@@ -45,7 +47,7 @@ fn main() {
     // 1. Raw [T] heap buffer — primitive IndexSet/Index path
     // ═══════════════════════════════════════════════════════════
     println("== raw [T] heap buffer: plain assign ==")
-    var buf: [Int] = heap_alloc(6)
+    var buf: [Int] = alloc_buffer(6)
     buf[0] = 10         // seed
     buf[1] = 20
     buf[2] = 30
@@ -69,7 +71,7 @@ fn main() {
     buf[0] = buf[1] + buf[2]     // 27 + 25 = 52
     println(format("  buf[0] = buf[1]+buf[2] -> {}", buf[0]))
 
-    heap_free(buf)
+    free_buffer(buf)
 
     // ═══════════════════════════════════════════════════════════
     // 2. List<T> — subscript_set desugar path
@@ -129,5 +131,5 @@ fn main() {
         g[1, 2], g[0, 1], g[0, 2], g[1, 0], g[1, 1]))
 
     println("== all indexed-place assignment paths: ok ==")
-    heap_free(g.buf)
+    free_buffer(g.buf)
 }

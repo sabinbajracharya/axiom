@@ -1,9 +1,12 @@
 //! Type-checking tests for the `HeapBuffer<T>` floor ops (P4) — the growable
 //! storage primitive (`[T]`) underlying the `List`/`Map` library.
 //!
-//! Exercises the return-only type-parameter inference for `heap_alloc`: its
+//! Exercises the return-only type-parameter inference for `alloc_buffer`: its
 //! element type `T` is bound from the binding's declared type (no argument
-//! constrains it). `heap_get`/`heap_set` constrain `T` through the buffer.
+//! constrains it). `get_buffer`/`set_buffer` constrain `T` through the buffer.
+//!
+//! These intrinsics live in `std::mem` and must be imported explicitly —
+//! they are no longer global names.
 
 #![allow(clippy::unwrap_used)]
 
@@ -21,11 +24,11 @@ fn has_type_error(thir: &Thir) -> bool {
 
 #[test]
 fn test_heap_alloc_return_only_param_bound_from_annotation() {
-    // `heap_alloc(n)` has a return-only `T`; the `[Int]` annotation binds it.
     let thir = check_source(
-        r#"fn main() {
-    var buf: [Int] = heap_alloc(4)
-    heap_free(buf)
+        r#"use std::mem::{alloc_buffer, free_buffer}
+fn main() {
+    var buf: [Int] = alloc_buffer(4)
+    free_buffer(buf)
 }"#,
     );
     assert!(
@@ -38,12 +41,13 @@ fn test_heap_alloc_return_only_param_bound_from_annotation() {
 #[test]
 fn test_heap_get_set_constrain_element_type() {
     let thir = check_source(
-        r#"fn main() {
-    var buf: [Int] = heap_alloc(2)
-    heap_set(buf, 0, 7)
-    val x = heap_get(buf, 0)
+        r#"use std::mem::{alloc_buffer, free_buffer, get_buffer, set_buffer}
+fn main() {
+    var buf: [Int] = alloc_buffer(2)
+    set_buffer(buf, 0, 7)
+    val x = get_buffer(buf, 0)
     print(format("{}", x))
-    heap_free(buf)
+    free_buffer(buf)
 }"#,
     );
     assert!(
@@ -55,13 +59,12 @@ fn test_heap_get_set_constrain_element_type() {
 
 #[test]
 fn test_heap_set_wrong_element_type_is_rejected() {
-    // Buffer is `[Int]`; storing a `String` must be a type error (the negative
-    // case that proves unification is actually checking, not rubber-stamping).
     let thir = check_source(
-        r#"fn main() {
-    var buf: [Int] = heap_alloc(1)
-    heap_set(buf, 0, "nope")
-    heap_free(buf)
+        r#"use std::mem::{alloc_buffer, free_buffer, set_buffer}
+fn main() {
+    var buf: [Int] = alloc_buffer(1)
+    set_buffer(buf, 0, "nope")
+    free_buffer(buf)
 }"#,
     );
     assert!(
@@ -73,10 +76,10 @@ fn test_heap_set_wrong_element_type_is_rejected() {
 
 #[test]
 fn test_heap_alloc_annotation_mismatch_is_rejected() {
-    // Annotating a non-buffer type for a `heap_alloc` result is a mismatch.
     let thir = check_source(
-        r#"fn main() {
-    val buf: Int = heap_alloc(1)
+        r#"use std::mem::alloc_buffer
+fn main() {
+    val buf: Int = alloc_buffer(1)
 }"#,
     );
     assert!(
