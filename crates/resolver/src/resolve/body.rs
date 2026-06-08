@@ -2,7 +2,7 @@
 
 use super::{resolve_name_ref, Scope};
 use crate::hir::*;
-use crate::lower::DefKind;
+use crate::lowering::DefKind;
 use crate::HirDiagnostic;
 use std::collections::HashMap;
 

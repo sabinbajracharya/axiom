@@ -1,5 +1,5 @@
 [package]
-name = "axiom-driver"
+name = "driver"
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
@@ -9,9 +9,9 @@ publish = false
 workspace = true
 
 [dependencies]
-axiom-hir = { path = "../axiom-hir" }
-axiom-lexer = { path = "../axiom-lexer" }
-axiom-parser = { path = "../axiom-parser" }
-axiom-stdlib = { path = "../axiom-stdlib" }
-axiom-typeck = { path = "../axiom-typeck" }
+hir = { path = "../hir" }
+lexer = { path = "../lexer" }
+parser = { path = "../parser" }
+stdlib = { path = "../stdlib" }
+typecheck = { path = "../typecheck" }
 thiserror = { workspace = true }

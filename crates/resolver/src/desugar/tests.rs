@@ -10,9 +10,9 @@ fn test_lang_items() -> LangItems {
 }
 
 fn compile_and_desugar(source: &str) -> Hir {
-    use axiom_parser::ast::AstNode;
-    let result = axiom_parser::parse(source);
-    let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
+    use parser::ast::AstNode;
+    let result = parser::parse(source);
+    let root = parser::ast::SourceFile::cast(result.tree).unwrap();
     let (items, _, _, next_id) = crate::lower_structural(&root, source, 0);
     let lang_items = test_lang_items();
     let mut hir = Hir {
@@ -355,9 +355,9 @@ fn test_desugar_uses_lang_item_def_ids() {
 /// ListLit expressions intact — they fall through to typeck's fallback.
 #[test]
 fn test_desugar_fallback_when_lang_items_missing() {
-    use axiom_parser::ast::AstNode;
-    let result = axiom_parser::parse("fn main() { val xs = [1, 2, 3] }");
-    let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
+    use parser::ast::AstNode;
+    let result = parser::parse("fn main() { val xs = [1, 2, 3] }");
+    let root = parser::ast::SourceFile::cast(result.tree).unwrap();
     let (items, _, _, next_id) = crate::lower_structural(&root, "test", 0);
     let lang_items = LangItems {
         list: None,

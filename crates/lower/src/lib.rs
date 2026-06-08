@@ -4,24 +4,24 @@
 //! still `Unresolved`. Name resolution (`axiom-resolver`) fills them in.
 //!
 //! ```
-//! use axiom_parser::parse;
-//! use axiom_parser::ast::AstNode;
-//! use axiom_lower::lower_structural;
+//! use parser::parse;
+//! use parser::ast::AstNode;
+//! use lowering::lower_structural;
 //!
 //! let result = parse("fn main() { val x = 1 }");
-//! let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
+//! let root = parser::ast::SourceFile::cast(result.tree).unwrap();
 //! let (items, defs, diags, _) = lower_structural(&root, "fn main() { val x = 1 }", 0);
 //! assert!(!items.is_empty());
 //! ```
 
 pub mod error;
-pub mod hir;
-pub mod lower;
+pub mod hir_types;
+pub mod lowering;
 pub mod serialize;
 
 pub use error::HirDiagnostic;
-pub use hir::*;
-pub use lower::{lower_structural, Def, DefKind};
+pub use hir_types::*;
+pub use lowering::{lower_structural, Def, DefKind};
 pub use serialize::serialize;
 
 /// Coverage checks: verifies that every `NameRef::Unresolved` in the HIR

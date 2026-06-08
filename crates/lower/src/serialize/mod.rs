@@ -4,7 +4,7 @@
 //! Kind names come from the `Display` impls on the enum types — never hardcoded
 //! strings (enforced by `test_no_hardcoded_kind_labels`).
 
-use crate::hir::*;
+use crate::hir_types::*;
 
 mod escape;
 mod types;

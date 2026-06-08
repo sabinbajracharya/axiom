@@ -1,0 +1,24 @@
+[package]
+name = "cli"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "axiom"
+path = "src/main.rs"
+
+[dependencies]
+driver = { path = "../driver" }
+hir = { path = "../hir" }
+ir = { path = "../ir" }
+modules = { path = "../modules" }
+parser = { path = "../parser" }
+stdlib = { path = "../stdlib" }
+typecheck = { path = "../typecheck" }
+vm = { path = "../vm" }
+thiserror = { workspace = true }

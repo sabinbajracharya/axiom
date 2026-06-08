@@ -6,7 +6,7 @@
 
 use crate::error::HirDiagnostic;
 use crate::hir::{HirId, Item};
-use axiom_lexer::Span;
+use lexer::Span;
 
 // ── Intrinsic keys ────────────────────────────────────────────────────────────
 
@@ -55,7 +55,7 @@ pub fn collect_intrinsic_bindings(items: &[Item]) -> Vec<IntrinsicBinding> {
 
 /// Validate intrinsic bindings against the known key list and module identity.
 /// Returns diagnostics for bindings with unknown keys. The `@intrinsic` outside
-/// stdlib check is done in `axiom_driver::check_modules` using
+/// stdlib check is done in `driver::check_modules` using
 /// `axm_stdlib::is_stdlib_module`.
 pub fn validate_intrinsic_bindings(bindings: &[IntrinsicBinding]) -> Vec<HirDiagnostic> {
     let mut diags = Vec::new();
@@ -83,9 +83,8 @@ fn alloc<T>(count: Int) -> [T]
 @intrinsic(\"heap_free\")
 fn free<T>(buf: [T])
 ";
-        let result = axiom_parser::parse(source);
-        let root = <axiom_parser::ast::SourceFile as axiom_parser::ast::AstNode>::cast(result.tree)
-            .unwrap();
+        let result = parser::parse(source);
+        let root = <parser::ast::SourceFile as parser::ast::AstNode>::cast(result.tree).unwrap();
         let (items, _defs, _diags, _nid) = crate::lower_structural(&root, source, 0);
         let bindings = collect_intrinsic_bindings(&items);
         let keys: Vec<&str> = bindings.iter().map(|b| b.key.as_str()).collect();
@@ -97,9 +96,8 @@ fn free<T>(buf: [T])
     #[test]
     fn test_collect_intrinsic_bindings_ignores_untagged_fn() {
         let source = "fn add(a: Int, b: Int) -> Int { a + b }";
-        let result = axiom_parser::parse(source);
-        let root = <axiom_parser::ast::SourceFile as axiom_parser::ast::AstNode>::cast(result.tree)
-            .unwrap();
+        let result = parser::parse(source);
+        let root = <parser::ast::SourceFile as parser::ast::AstNode>::cast(result.tree).unwrap();
         let (items, _defs, _diags, _nid) = crate::lower_structural(&root, source, 0);
         let bindings = collect_intrinsic_bindings(&items);
         assert!(bindings.is_empty());
@@ -135,11 +133,11 @@ fn free<T>(buf: [T])
     #[test]
     fn test_no_raw_heap_strings_outside_intrinsic_module() {
         let banned = [HEAP_ALLOC, HEAP_FREE, HEAP_GET, HEAP_SET];
-        let crate_roots = ["axiom-hir", "axiom-typeck", "axiom-ir", "axiom-vm"];
+        let crate_roots = ["hir", "typecheck", "ir", "vm"];
         let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|p| p.parent())
-            .expect("crates/axiom-hir → repo root")
+            .expect("crates/resolver → repo root")
             .to_path_buf();
         let this_file = std::path::Path::new(file!())
             .file_name()
@@ -162,7 +160,7 @@ fn free<T>(buf: [T])
         assert!(
             offenders.is_empty(),
             "raw heap intrinsic string(s) found outside intrinsic.rs — use the \
-             axiom_hir::intrinsic constants instead:\n{}",
+             hir::intrinsic constants instead:\n{}",
             offenders.join("\n")
         );
     }

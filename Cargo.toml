@@ -1,21 +1,19 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/axiom-lexer",
-    "crates/axiom-parser",
+    "crates/lexer",
+    "crates/parser",
     "crates/lower",
     "crates/resolver",
-    "crates/axiom-hir",
-    "crates/axiom-typeck",
-    "crates/axiom-stdlib",
-    "crates/axiom-ir",
-    "crates/axiom-cli",
-    "crates/axiom-vm",
-    "crates/axiom-modules",
+    "crates/hir",
+    "crates/typecheck",
+    "crates/stdlib",
+    "crates/ir",
+    "crates/cli",
+    "crates/vm",
+    "crates/modules",
     "crates/driver",
 ]
-# Add crates here as they are created, e.g. members = ["crates/axiom-core"].
-#
 # EVERY crate MUST opt into the lint policy below by adding to its Cargo.toml:
 #
 #     [lints]
@@ -31,39 +29,19 @@ members = [
 edition = "2021"
 license = "MIT"
 
-# ───────────────────────────────────────────────────────────────────────────
-# Centralized lint policy — LAYERS 1 & 3 of enforcement (see ENFORCEMENT.md).
-# Crates opt in via `[lints] workspace = true`.
-# ───────────────────────────────────────────────────────────────────────────
 [workspace.lints.rust]
-# HARD ban on unsafe everywhere that inherits this. `forbid` cannot be locally
-# overridden with #[allow(unsafe_code)] — that is the whole point. Only the
-# dedicated codegen crate opts out (see note above).
 unsafe_code = "forbid"
 
 [workspace.lints.clippy]
-# Panic-prone calls — denied on all paths. Use Result + `?`.
-# A genuine internal-invariant `.expect("why")` is allowed only with an explicit,
-# justified per-line `#[allow(clippy::expect_used)]` — i.e. a LOUD, deliberate
-# bypass, never a silent one. (Test modules may `#![allow(clippy::unwrap_used)]`.)
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
 todo = "deny"
 unimplemented = "deny"
-# Allowed: for structurally-impossible enum arms, with an explanatory message.
 unreachable = "allow"
-
-# ── Complexity caps — mechanical proxies for "small, single-purpose methods"
-# (RUST_CONVENTIONS.md §8). Thresholds live in clippy.toml. These can't prove a
-# method does exactly one thing, but they catch fat methods, long arg lists, and
-# tangled control flow — the usual symptoms. Tune thresholds, don't silence.
-too_many_lines = "deny"        # fat method (threshold: too-many-lines-threshold)
-too_many_arguments = "deny"    # long param list (threshold: too-many-arguments-threshold)
-# Nursery lint — a proxy for "one task". Set generously to avoid false positives;
-# under `-D warnings` (the hook) a warn here still fails the build.
-cognitive_complexity = "warn"  # tangled control flow (threshold: cognitive-complexity-threshold)
+too_many_lines = "deny"
+too_many_arguments = "deny"
+cognitive_complexity = "warn"
 
 [workspace.dependencies]
-# Centralized dependency versions live here as crates are added.
 thiserror = "2"

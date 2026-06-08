@@ -62,7 +62,7 @@ pub fn subscript_set_fn(type_name: &str) -> String {
 
 use crate::error::HirDiagnostic;
 use crate::hir::{HirId, Item};
-use axiom_lexer::Span;
+use lexer::Span;
 
 /// The `@lang("…")` key for the list type backing `[a, b, c]`.
 pub const LANG_LIST: &str = "list";
@@ -309,9 +309,8 @@ impl<T> List<T> {
     fn untagged() -> Int { 0 }
 }
 ";
-        let result = axiom_parser::parse(source);
-        let root = <axiom_parser::ast::SourceFile as axiom_parser::ast::AstNode>::cast(result.tree)
-            .unwrap();
+        let result = parser::parse(source);
+        let root = <parser::ast::SourceFile as parser::ast::AstNode>::cast(result.tree).unwrap();
         let (items, _defs, _diags, _nid) = crate::lower_structural(&root, source, 0);
         let bindings = collect_lang_bindings(&items);
         let keys: Vec<&str> = bindings.iter().map(|b| b.key.as_str()).collect();
@@ -336,12 +335,12 @@ impl<T> List<T> {
     #[test]
     fn test_no_raw_qualified_list_strings_outside_lang_module() {
         let banned = [LIST_NEW, LIST_WITH_CAPACITY, LIST_PUSH];
-        let crate_roots = ["axiom-hir", "axiom-typeck", "axiom-ir", "axiom-vm"];
+        let crate_roots = ["hir", "typecheck", "ir", "vm"];
         // This file lives at <repo>/crates/axiom-hir/src/lang.rs.
         let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|p| p.parent())
-            .expect("crates/axiom-hir → repo root")
+            .expect("crates/resolver → repo root")
             .to_path_buf();
         let this_file = std::path::Path::new(file!())
             .file_name()
@@ -355,7 +354,7 @@ impl<T> List<T> {
         assert!(
             offenders.is_empty(),
             "raw qualified List::… string(s) found outside lang.rs — use the \
-             axiom_hir::lang constants instead:\n{}",
+             hir::lang constants instead:\n{}",
             offenders.join("\n")
         );
     }

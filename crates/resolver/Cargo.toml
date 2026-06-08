@@ -1,5 +1,5 @@
 [package]
-name = "axiom-resolver"
+name = "resolver"
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
@@ -9,9 +9,9 @@ publish = false
 workspace = true
 
 [dependencies]
-axiom-lower = { path = "../lower" }
-axiom-lexer = { path = "../axiom-lexer" }
+lower = { path = "../lower" }
+lexer = { path = "../lexer" }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-axiom-parser = { path = "../axiom-parser" }
+parser = { path = "../parser" }

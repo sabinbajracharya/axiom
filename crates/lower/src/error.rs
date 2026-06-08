@@ -2,7 +2,7 @@
 //! to a human-facing string uses the lexer's `LineMap` + `Span`, mirroring
 //! `ParseError::render`.
 
-use axiom_lexer::Span;
+use lexer::Span;
 
 /// A single HIR diagnostic: what went wrong and where.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
@@ -59,7 +59,7 @@ impl HirDiagnostic {
     }
 
     pub fn render(&self, source: &str) -> String {
-        use axiom_lexer::LineMap;
+        use lexer::LineMap;
         let map = LineMap::new(source);
         let (line, col) = map.locate(source, self.span().lo);
         format!("{line}:{col}: {}", self)

@@ -1,29 +1,26 @@
 //! Name resolution for the Axiom compiler: assigns a `DefId` to every name
 //! reference in a lowered HIR, producing a resolved `Hir`.
 //!
-//! Depends on `axiom-lower` for base HIR types (`Item`, `FnDef`, `HirDiagnostic`,
+//! Depends on `lower` for base HIR types (`Item`, `FnDef`, `HirDiagnostic`,
 //! `Def`, `DefKind`, `HirId`, etc.).
 
-// Re-export axiom-lower modules so that `crate::hir`, `crate::error`,
-// and `crate::lower` resolve correctly within this crate's source files.
-pub mod error {
-    pub use axiom_lower::error::*;
-}
-pub mod hir {
-    pub use axiom_lower::hir::*;
-}
-pub mod lower {
-    pub use axiom_lower::lower::*;
-}
+// Re-export lower crate's modules so that `crate::hir`, `crate::error`,
+// `crate::lowering`, `crate::serialize` paths work in this crate's source.
+pub use lower::error;
+pub use lower::hir_types as hir;
+pub use lower::lowering;
+pub use lower::serialize;
+
+// Re-export commonly-used types at crate level.
+pub use lower::{
+    Block, CallingConvention, Def, DefKind, Expr, FnDef, Hir, HirDiagnostic, HirId, Item, NameRef,
+    Stmt, lower_structural,
+};
 
 pub mod desugar;
 pub mod intrinsic;
 pub mod lang;
 pub mod resolve;
-
-// Re-export everything from axiom-lower so that bare type names resolve via
-// `crate::TypeName` as well as the module paths above.
-pub use axiom_lower::*;
 
 pub use desugar::desugar;
 pub use intrinsic::{

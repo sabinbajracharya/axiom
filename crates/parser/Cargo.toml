@@ -1,0 +1,21 @@
+[package]
+name = "parser"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+lexer = { path = "../lexer" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+# Integration tests cross-check the tree against the lexer's own token stream.
+lexer = { path = "../lexer" }
+
+[[example]]
+name = "parse"
+path = "examples/parse.rs"

@@ -2,7 +2,7 @@
 //! the golden-test dump (`docs/hir-testing.md` §2). Kept separate from `mod.rs`
 //! so the serializer stays under the file-size cap (RUST_CONVENTIONS.md §10).
 
-use crate::hir::*;
+use crate::hir_types::*;
 
 pub(super) fn fmt_ty(ty: &HirTy) -> String {
     match ty {

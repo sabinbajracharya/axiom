@@ -286,7 +286,7 @@ fn desugar_non_empty_list(elements: Vec<Expr>, ctx: &mut DesugarCtx) -> Expr {
             id: var_stmt_id,
             name: temp_name.clone(),
             binding: Some(var_stmt_id),
-            span: axiom_lexer::Span { lo: 0, hi: 0 },
+            span: lexer::Span { lo: 0, hi: 0 },
         }),
         ty: None,
         value: with_capacity_call,

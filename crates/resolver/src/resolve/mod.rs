@@ -11,9 +11,9 @@ mod body;
 mod item;
 
 use crate::hir::*;
-use crate::lower::{Def, DefKind};
+use crate::lowering::{Def, DefKind};
 use crate::HirDiagnostic;
-use axiom_lexer::Span;
+use lexer::Span;
 use std::collections::{HashMap, HashSet};
 
 /// Maps module name → { item name → (DefId, DefKind, Visibility) }.
@@ -50,7 +50,7 @@ pub fn build_global_exports(modules: &[(String, Vec<Def>)]) -> GlobalExports {
 /// When `global_exports` is provided, pub items from the `"std::io"` module are
 /// injected into scope at lowest priority — an implicit `use std::io::*` so that
 /// single-file programs can call `println` without an explicit import.
-pub fn resolve(ctx: &mut crate::lower::LowerCtx, global_exports: Option<&GlobalExports>) {
+pub fn resolve(ctx: &mut crate::lowering::LowerCtx, global_exports: Option<&GlobalExports>) {
     // Pass 1: top-level item defs are already collected in ctx.defs during lowering.
     let mut top_level = build_top_level(&ctx.defs, &mut ctx.diagnostics);
 

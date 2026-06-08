@@ -12,42 +12,42 @@
 /// type-checking the combined HIR. Single-file, project, and stdlib-backed test
 /// compilation all funnel through here — they differ only in *which* modules they
 /// pass. See `docs/stdlib-loading-unification.md`.
-pub fn check_modules(modules: &[(&str, &str)]) -> axiom_typeck::Thir {
-    use axiom_parser::ast::AstNode;
+pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
+    use parser::ast::AstNode;
 
     type Lowered = (
         String,
-        Vec<axiom_hir::Item>,
-        Vec<axiom_hir::Def>,
-        Vec<axiom_hir::HirDiagnostic>,
+        Vec<hir::Item>,
+        Vec<hir::Def>,
+        Vec<hir::HirDiagnostic>,
     );
 
     let mut lowered: Vec<Lowered> = Vec::new();
     let mut next_id = 0usize;
     for (name, source) in modules {
-        let result = axiom_parser::parse(source);
-        let Some(root) = axiom_parser::ast::SourceFile::cast(result.tree) else {
+        let result = parser::parse(source);
+        let Some(root) = parser::ast::SourceFile::cast(result.tree) else {
             continue;
         };
-        let (items, defs, diags, nid) = axiom_hir::lower_structural(&root, source, next_id);
+        let (items, defs, diags, nid) = hir::lower_structural(&root, source, next_id);
         next_id = nid;
         lowered.push(((*name).to_string(), items, defs, diags));
     }
 
-    let export_input: Vec<(String, Vec<axiom_hir::Def>)> = lowered
+    let export_input: Vec<(String, Vec<hir::Def>)> = lowered
         .iter()
         .map(|(name, _, defs, _)| (name.clone(), defs.clone()))
         .collect();
-    let exports = axiom_hir::build_global_exports(&export_input);
+    let exports = hir::build_global_exports(&export_input);
 
-    let mut all_items: Vec<axiom_hir::Item> = Vec::new();
-    let mut all_diags: Vec<axiom_hir::HirDiagnostic> = Vec::new();
-    let mut stdlib_bindings: Vec<axiom_hir::LangBinding> = Vec::new();
+    let mut all_items: Vec<hir::Item> = Vec::new();
+    let mut all_diags: Vec<hir::HirDiagnostic> = Vec::new();
+    let mut stdlib_bindings: Vec<hir::LangBinding> = Vec::new();
     let mut stdlib_present = false;
     for (name, items, defs, diags) in &mut lowered {
         let mut items = std::mem::take(items);
         let mut diagnostics = std::mem::take(diags);
-        axiom_hir::resolve_with_globals(&mut items, defs, &mut diagnostics, &exports, name);
+        hir::resolve_with_globals(&mut items, defs, &mut diagnostics, &exports, name);
         if is_stdlib_module(name) {
             stdlib_present = true;
         }
@@ -62,15 +62,14 @@ pub fn check_modules(modules: &[(&str, &str)]) -> axiom_typeck::Thir {
         all_items.append(&mut items);
     }
 
-    let (lang_items, mut lang_diags) =
-        axiom_hir::resolve_lang_items(&stdlib_bindings, stdlib_present);
+    let (lang_items, mut lang_diags) = hir::resolve_lang_items(&stdlib_bindings, stdlib_present);
     all_diags.append(&mut lang_diags);
 
-    let hir = axiom_hir::Hir {
+    let hir = hir::Hir {
         items: all_items,
         diagnostics: all_diags,
     };
-    axiom_typeck::check_with_lang_items(hir, lang_items)
+    typecheck::check_with_lang_items(hir, lang_items)
 }
 
 /// Bare type-check — the deliberate, **labeled** no-stdlib mode: the user source
@@ -78,51 +77,49 @@ pub fn check_modules(modules: &[(&str, &str)]) -> axiom_typeck::Thir {
 /// floor built-ins that legitimately stay. It is the *same* `check_modules`
 /// pipeline with an empty stdlib input (module name `""`), not a separate path —
 /// so it cannot diverge. See `docs/stdlib-loading-unification.md` §3.
-pub fn check_source(source: &str) -> axiom_typeck::Thir {
+pub fn check_source(source: &str) -> typecheck::Thir {
     check_modules(&[("", source)])
 }
 
 /// Whether a module path belongs to the embedded standard library. Delegates to
-/// `axiom_stdlib::is_stdlib_module` which checks the build-time verified set of
+/// `stdlib::is_stdlib_module` which checks the build-time verified set of
 /// known stdlib module paths. See `docs/intrinsic-and-stdlib-identity.md` §2a.
 fn is_stdlib_module(name: &str) -> bool {
-    axiom_stdlib::is_stdlib_module(name)
+    stdlib::is_stdlib_module(name)
 }
 
 /// Validate `@lang` and `@intrinsic` annotations for one lowered module.
 /// Stdlib modules may use both; non-stdlib modules may use neither.
 /// Accumulates lang-item bindings for later registry consistency checks.
 fn validate_module_annotations(
-    items: &[axiom_hir::Item],
+    items: &[hir::Item],
     _module_name: &str,
     is_stdlib: bool,
-    stdlib_bindings: &mut Vec<axiom_hir::LangBinding>,
-    diagnostics: &mut Vec<axiom_hir::HirDiagnostic>,
+    stdlib_bindings: &mut Vec<hir::LangBinding>,
+    diagnostics: &mut Vec<hir::HirDiagnostic>,
 ) {
     // ── @lang ────────────────────────────────────────────────────────────
-    let lang_bindings = axiom_hir::collect_lang_bindings(items);
+    let lang_bindings = hir::collect_lang_bindings(items);
     if is_stdlib {
         stdlib_bindings.extend(lang_bindings);
     } else {
         for b in lang_bindings {
-            diagnostics.push(axiom_hir::HirDiagnostic::LangItemOutsideStdlib {
+            diagnostics.push(hir::HirDiagnostic::LangItemOutsideStdlib {
                 key: b.key,
-                span: axiom_lexer::Span { lo: 0, hi: 0 },
+                span: lexer::Span { lo: 0, hi: 0 },
             });
         }
     }
 
     // ── @intrinsic ───────────────────────────────────────────────────────
-    let intrinsic_bindings = axiom_hir::collect_intrinsic_bindings(items);
+    let intrinsic_bindings = hir::collect_intrinsic_bindings(items);
     if is_stdlib {
-        diagnostics.append(&mut axiom_hir::validate_intrinsic_bindings(
-            &intrinsic_bindings,
-        ));
+        diagnostics.append(&mut hir::validate_intrinsic_bindings(&intrinsic_bindings));
     } else {
         for b in intrinsic_bindings {
-            diagnostics.push(axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib {
+            diagnostics.push(hir::HirDiagnostic::IntrinsicOutsideStdlib {
                 key: b.key.clone(),
-                span: axiom_lexer::Span { lo: 0, hi: 0 },
+                span: lexer::Span { lo: 0, hi: 0 },
             });
         }
     }

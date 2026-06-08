@@ -1,0 +1,24 @@
+[package]
+name = "typecheck"
+version = "0.0.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+hir = { path = "../hir" }
+lexer = { path = "../lexer" }
+parser = { path = "../parser" }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+driver = { path = "../driver" }
+modules = { path = "../modules" }
+stdlib = { path = "../stdlib" }
+
+[[example]]
+name = "typeck"
+path = "examples/typeck.rs"
