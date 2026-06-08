@@ -40,25 +40,13 @@ impl TypeChecker {
                 Ty::Error
             }
             Expr::Try(_) => {
-                self.emit(TypeDiagnostic::NotYetSupported {
-                    feature: "try expression".to_string(),
-                    span: lexer::Span { lo: 0, hi: 0 },
-                });
-                Ty::Error
+                unreachable!("Try is desugared to Match before typecheck")
             }
             Expr::Else(_) => {
-                self.emit(TypeDiagnostic::NotYetSupported {
-                    feature: "else expression".to_string(),
-                    span: lexer::Span { lo: 0, hi: 0 },
-                });
-                Ty::Error
+                unreachable!("Else is desugared to Match before typecheck")
             }
             Expr::Catch(_) => {
-                self.emit(TypeDiagnostic::NotYetSupported {
-                    feature: "catch expression".to_string(),
-                    span: lexer::Span { lo: 0, hi: 0 },
-                });
-                Ty::Error
+                unreachable!("Catch is desugared to Match before typecheck")
             }
         }
     }

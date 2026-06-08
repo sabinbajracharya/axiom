@@ -94,11 +94,15 @@ impl TypeChecker {
             .collect();
 
         if !helpers::is_error(&scrutinee_ty) {
-            if let Ty::Enum(enum_ty) = &scrutinee_ty {
-                let all_variants: Vec<String> = self
+            let all_variants: Vec<String> = match &scrutinee_ty {
+                Ty::Enum(enum_ty) => self
                     .lookup_enum_variants(&enum_ty.name)
                     .map(|vs| vs.iter().map(|v| v.name.clone()).collect())
-                    .unwrap_or_default();
+                    .unwrap_or_default(),
+                Ty::ErrorSet(es) => es.variant_names.clone(),
+                _ => Vec::new(),
+            };
+            if !all_variants.is_empty() {
                 let span = self.span_for(match_expr.id);
                 let is_unit_variant = |name: &str| self.is_unit_variant(name);
                 for diag in crate::exhaustiveness::check_match_exhaustiveness(

@@ -448,6 +448,9 @@ pub struct AssignExpr {
 pub struct TryExpr {
     pub id: HirId,
     pub expr: Box<Expr>,
+    /// `true` for `?` (Option propagation, Some/None), `false` for `try`
+    /// (error propagation, Ok/Err).
+    pub is_option: bool,
 }
 
 #[derive(Debug, Clone)]

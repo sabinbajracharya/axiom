@@ -50,6 +50,7 @@ tests. See `docs/stdlib-loading-unification.md`.
 | `src/typeck/` | The type checker module folder | — |
 | `src/typeck/mod.rs` | Entry point: `TypeChecker` struct, `TypeEnv`, two passes, inline tests | `check()`, bidirectional typing |
 | `src/typeck/collect.rs` | Pass 1: collect fn signatures, struct/enum defs | `collect_pass` |
+| `src/typeck/ty_resolve.rs` | HIR type → Ty resolution (extracted from collect.rs) | `resolve_hir_ty`, `resolve_named_type` |
 | `src/typeck/infer.rs` | Expression type rules: literals, paths, binary/unary ops, calls, fields | `infer_expr`, `check_expr` |
 | `src/typeck/control.rs` | Control-flow type rules: blocks, if/else, match, loop, struct lit, assign | `infer_block`, `infer_if`, `infer_match` |
 | `src/typeck/typeinfo.rs` | Generic type-def introspection: a struct's fields / an enum's variant payloads resolved in the type's own type-param scope | `struct_generic_info`, `enum_generic_info` |

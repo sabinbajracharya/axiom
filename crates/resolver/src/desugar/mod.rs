@@ -148,7 +148,11 @@ fn desugar_expr(expr: &mut Expr, ctx: &mut DesugarCtx) {
         }
         Expr::Try(e) => {
             desugar_expr(&mut e.expr, ctx);
-            *expr = desugar_try(e, ctx);
+            *expr = if e.is_option {
+                desugar_option_question(e, ctx)
+            } else {
+                desugar_try(e, ctx)
+            };
         }
         Expr::Catch(e) => {
             desugar_expr(&mut e.expr, ctx);
@@ -223,6 +227,65 @@ fn desugar_try(try_expr: &TryExpr, ctx: &mut DesugarCtx) -> Expr {
         id: match_id,
         scrutinee,
         arms: vec![ok_arm, err_arm],
+    })
+}
+
+/// Desugar `expr?` → `match expr { Some(v) => v, None => return None }`.
+fn desugar_option_question(try_expr: &TryExpr, ctx: &mut DesugarCtx) -> Expr {
+    let scrutinee = try_expr.expr.clone();
+    let match_id = ctx.fresh_id();
+
+    let some_binding_name = format!("__q_some_{}", ctx.temp_counter);
+    ctx.temp_counter += 1;
+
+    let some_pat_id = ctx.fresh_id();
+    let some_binding_id = ctx.fresh_id();
+    let some_body_id = ctx.fresh_id();
+    let none_block_id = ctx.fresh_id();
+    let none_return_id = ctx.fresh_id();
+
+    let some_pat = Pattern::TupleStruct(TupleStructPat {
+        id: some_pat_id,
+        path: NameRef::unresolved("Some"),
+        fields: vec![Pattern::Ident(IdentPat {
+            id: some_binding_id,
+            name: some_binding_name.clone(),
+            binding: Some(some_binding_id),
+            span: lexer::Span { lo: 0, hi: 0 },
+        })],
+    });
+
+    let some_arm = MatchArm {
+        pattern: some_pat,
+        guard: None,
+        body: Expr::Path(PathExpr {
+            id: some_body_id,
+            name_ref: NameRef::resolved(some_binding_id, &some_binding_name),
+        }),
+    };
+
+    let none_body = Expr::Block(Block {
+        id: none_block_id,
+        stmts: vec![Stmt::ReturnStmt(ReturnStmt {
+            id: none_return_id,
+            value: Some(Expr::Path(PathExpr {
+                id: ctx.fresh_id(),
+                name_ref: NameRef::unresolved("None"),
+            })),
+        })],
+        tail: None,
+    });
+
+    let none_arm = MatchArm {
+        pattern: Pattern::Wildcard(ctx.fresh_id()),
+        guard: None,
+        body: none_body,
+    };
+
+    Expr::Match(MatchExpr {
+        id: match_id,
+        scrutinee,
+        arms: vec![some_arm, none_arm],
     })
 }
 

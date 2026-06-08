@@ -28,6 +28,7 @@ mod unify;
 
 use crate::error::{Diagnostic, TypeDiagnostic};
 use crate::thir::{Thir, TypeMap};
+use crate::types::ErrorSetTy;
 
 use resolver::*;
 use std::collections::HashMap;
@@ -100,6 +101,10 @@ struct TypeChecker {
     /// no-stdlib test mode. Read when synthesizing list-literal types so they
     /// point at the true `List` def instead of a placeholder (§3.2).
     lang_items: resolver::LangItems,
+    /// The error set declared in the current function's return type.
+    /// `Some(es)` when the function returns `E!T` (error union), `None` otherwise.
+    /// Used for error set coercion checks on `return` statements.
+    current_fn_error_set: Option<ErrorSetTy>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -256,6 +261,7 @@ impl TypeChecker {
             current_self_type: None,
             type_param_bounds: HashMap::new(),
             lang_items,
+            current_fn_error_set: None,
         }
     }
 
@@ -436,6 +442,8 @@ impl TypeChecker {
             .as_ref()
             .map(|t| self.resolve_hir_ty(t))
             .unwrap_or(crate::types::Ty::Unit);
+        // Extract the error set from the return type for coercion checks.
+        self.current_fn_error_set = extract_error_set_from_type(&return_type);
         // Extern fns (`extern "C" fn …;`) and intrinsics (`@intrinsic`) have
         // no body we should check — the platform or compiler supplies it.
         // Record the signature and skip the body/return reconciliation.
@@ -582,6 +590,26 @@ impl TypeChecker {
             });
         }
         self.env.pop_scope();
+    }
+}
+
+/// Extract the error set from a function's return type.
+/// Returns `Some(ErrorSetTy)` when the return type is `Instance("Result", [_, E])`
+/// where `E` is an error set or error set union. Returns `None` for all other types.
+fn extract_error_set_from_type(ty: &crate::types::Ty) -> Option<ErrorSetTy> {
+    match ty {
+        crate::types::Ty::Instance(inst) if inst.name == "Result" && inst.args.len() == 2 => {
+            match &inst.args[1] {
+                crate::types::Ty::ErrorSet(es) => Some(es.clone()),
+                crate::types::Ty::Instance(_) => {
+                    // The error part could be `Instance("IO", [])` — a named error set
+                    // resolved as an instance. For v0, ignore.
+                    None
+                }
+                _ => None,
+            }
+        }
+        _ => None,
     }
 }
 

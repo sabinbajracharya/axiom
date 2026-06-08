@@ -104,7 +104,13 @@ fn lower_literal(e: &ast::LiteralExpr, ctx: &mut LowerCtx) -> Expr {
     let kind = e
         .token()
         .map(|tok| super::lit_kind_from_token(&tok))
-        .unwrap_or(LitKind::Unit);
+        .unwrap_or_else(|| {
+            ctx.diag(HirDiagnostic::NotYetSupported {
+                feature: "malformed literal token".to_string(),
+                span: ctx.span_of(e.syntax()),
+            });
+            LitKind::Unit
+        });
     Expr::Lit(LitExpr { id, kind })
 }
 
@@ -122,7 +128,13 @@ fn lower_bin_expr(e: &ast::BinExpr, ctx: &mut LowerCtx) -> Expr {
     let op = e
         .op_token()
         .map(|t| bin_op_from_token(t.kind()))
-        .unwrap_or(BinOp::Add);
+        .unwrap_or_else(|| {
+            ctx.diag(HirDiagnostic::NotYetSupported {
+                feature: "malformed binary operator".to_string(),
+                span: ctx.span_of(e.syntax()),
+            });
+            BinOp::Add
+        });
     let left = e
         .lhs()
         .map(|n| Box::new(lower_expr(&n, ctx)))
@@ -148,7 +160,13 @@ fn lower_prefix_expr(e: &ast::PrefixExpr, ctx: &mut LowerCtx) -> Expr {
             SyntaxKind::Bang => UnaryOp::Not,
             _ => UnaryOp::Neg,
         })
-        .unwrap_or(UnaryOp::Neg);
+        .unwrap_or_else(|| {
+            ctx.diag(HirDiagnostic::NotYetSupported {
+                feature: "malformed unary operator".to_string(),
+                span: ctx.span_of(e.syntax()),
+            });
+            UnaryOp::Neg
+        });
     let operand = e
         .expr()
         .map(|n| Box::new(lower_expr(&n, ctx)))
@@ -344,17 +362,11 @@ fn lower_list_lit_expr(e: &ast::ListLitExpr, ctx: &mut LowerCtx) -> Expr {
 
 fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx, node: &parser::SyntaxNode) -> Expr {
     let id = ctx.alloc_id();
-    // Disambiguate: prefix `try expr` (error propagation) vs postfix `expr?`
-    // (Option propagation). The CST TryExpr node is overloaded; scan for the
-    // `try` keyword token. If present → error propagation; absent → `?` Option.
     let has_try_keyword = node
         .children()
         .iter()
         .any(|c| c.kind() == parser::SyntaxKind::KwTry);
-    let is_option_propagation = !has_try_keyword;
-    if is_option_propagation {
-        return unsupported_expr(ctx, "option propagation (?)", node);
-    }
+    let is_option = !has_try_keyword;
     let operand = e
         .expr()
         .map(|node| lower_expr(&node, ctx))
@@ -362,6 +374,7 @@ fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx, node: &parser::SyntaxNod
     Expr::Try(TryExpr {
         id,
         expr: Box::new(operand),
+        is_option,
     })
 }
 

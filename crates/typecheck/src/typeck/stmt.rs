@@ -1,6 +1,7 @@
 //! Statement type rules and pattern binding.
 
 use super::{helpers, Mutability, TypeChecker};
+use crate::error::TypeDiagnostic;
 use crate::types::Ty;
 
 use resolver::*;
@@ -60,6 +61,30 @@ impl TypeChecker {
     fn type_return_stmt(&mut self, s: &ReturnStmt) {
         if let Some(v) = &s.value {
             self.infer_expr(v);
+        }
+        // Error set coercion: if the function declares an error set, check
+        // that returned error values' variants all belong to it.
+        let fn_err = self.current_fn_error_set.clone();
+        if let (Some(ref fn_err), Some(v)) = (fn_err, &s.value) {
+            let val_ty = self.types.get(&v.id()).cloned();
+            if let Some(ref val_ty) = val_ty {
+                let returned_err = match val_ty {
+                    Ty::ErrorSet(es) => Some(es.clone()),
+                    Ty::Instance(_) => None, // named error set as value, defer
+                    _ => None,
+                };
+                if let Some(ref returned_err) = returned_err {
+                    for vn in &returned_err.variant_names {
+                        if !fn_err.variant_names.contains(vn) {
+                            self.emit(TypeDiagnostic::TypeMismatch {
+                                expected: fn_err.variant_names.join(" || "),
+                                found: vn.clone(),
+                                span: lexer::Span { lo: 0, hi: 0 },
+                            });
+                        }
+                    }
+                }
+            }
         }
         self.types.insert(s.id, Ty::Unit);
     }

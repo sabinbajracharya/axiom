@@ -11,7 +11,9 @@ stable `HirId` but names are still `Unresolved`. Name resolution lives in `resol
 | `src/error.rs` | `HirDiagnostic` enum — lowering + resolution diagnostics |
 | `src/hir_types/` | Core HIR types: `Hir`, `Item`, `FnDef`, `Expr`, `Block`, `Stmt`, `NameRef`, `HirId`, etc. |
 | `src/lowering/` | Lowering pass: CST→HIR transformation (`lower_structural`, `LowerCtx`) |
+| `src/lowering/error.rs` | Error set definition lowering (`lower_error_set_def`) |
 | `src/serialize/` | Canonical HIR dump format (used as golden-test oracle) |
+| `src/serialize/patterns.rs` | Pattern serialization for the HIR dump |
 
 ## Key entry points
 
