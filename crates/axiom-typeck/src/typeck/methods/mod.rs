@@ -1,26 +1,28 @@
 //! Method call, field access, index, and list literal type inference.
 
+mod subscript;
+
+use super::unify::Substitution;
 use super::{helpers, TypeChecker, TypeParamScope};
 use crate::error::TypeDiagnostic;
 use crate::types::{InstanceTy, Ty, TypeParamId};
-use super::unify::Substitution;
 
 use axiom_hir::*;
-
-/// A resolved method with its type-parameter scope.
-pub(super) struct ResolvedMethod<'a> {
-    fn_def: &'a FnDef,
-    scope: TypeParamScope,
-}
 
 /// Build a TypeParamScope from an ImplInfo's type parameters. Bounds are
 /// omitted — the scope is only used for name/def_id resolution in
 /// `resolve_hir_ty`; bound checking is handled separately by the typeck.
-fn impl_type_param_scope(info: &super::ImplInfo) -> TypeParamScope {
+pub(super) fn impl_type_param_scope(info: &super::ImplInfo) -> TypeParamScope {
     info.type_params
         .iter()
         .map(|(name, def_id)| (name.clone(), *def_id, Vec::new()))
         .collect()
+}
+
+/// A resolved method with its type-parameter scope.
+pub(super) struct ResolvedMethod<'a> {
+    pub(super) fn_def: &'a FnDef,
+    pub(super) scope: TypeParamScope,
 }
 
 impl TypeChecker {
@@ -103,8 +105,7 @@ impl TypeChecker {
         if let Ty::Instance(inst) = receiver_ty {
             for (i, tp) in fn_def.type_params.iter().enumerate() {
                 if let Some(arg) = inst.args.get(i) {
-                    if !matches!(arg, Ty::TypeParam(p) if p.name == tp.name && p.def_id == tp.id)
-                    {
+                    if !matches!(arg, Ty::TypeParam(p) if p.name == tp.name && p.def_id == tp.id) {
                         subst
                             .entry(TypeParamId {
                                 name: tp.name.clone(),
@@ -347,9 +348,7 @@ impl TypeChecker {
             return return_type;
         }
 
-        let has_params = param_types
-            .iter()
-            .any(Self::contains_type_param)
+        let has_params = param_types.iter().any(Self::contains_type_param)
             || Self::contains_type_param(&return_type);
         if has_params {
             for (arg_ty, param_ty) in arg_types.iter().zip(param_types.iter()) {
@@ -367,9 +366,7 @@ impl TypeChecker {
             Self::substitute(&return_type, subst)
         } else {
             for (arg_ty, param_ty) in arg_types.iter().zip(param_types.iter()) {
-                if !helpers::is_error(arg_ty)
-                    && !helpers::is_error(param_ty)
-                    && arg_ty != param_ty
+                if !helpers::is_error(arg_ty) && !helpers::is_error(param_ty) && arg_ty != param_ty
                 {
                     self.emit(TypeDiagnostic::TypeMismatch {
                         expected: param_ty.to_string(),
@@ -491,162 +488,5 @@ impl TypeChecker {
             }
         }
         Self::substitute(field_ty, &subst)
-    }
-
-    /// Walk the impl table to find a subscript matching `name` with the given
-    /// number of index parameters and setter flag. Returns the resolved
-    /// subscript definition, its substitution, and type-parameter scope.
-    fn find_impl_subscript(
-        &self,
-        name: &str,
-        base_ty: &Ty,
-        num_indices: usize,
-        is_setter: bool,
-    ) -> Option<(SubscriptDef, Substitution, TypeParamScope)> {
-        for info in &self.impl_table {
-            if info.type_name != name {
-                continue;
-            }
-            if let Some(s) = info
-                .subscripts
-                .iter()
-                .find(|s| s.is_setter == is_setter && index_param_count(s) == num_indices)
-            {
-                let subst = self.build_impl_subst(info, base_ty);
-                let scope = impl_type_param_scope(info);
-                return Some((s.clone(), subst, scope));
-            }
-        }
-        None
-    }
-
-    pub(super) fn infer_index(&mut self, index: &IndexExpr) -> Ty {
-        let base_ty = self.infer_expr(&index.base);
-        for idx in &index.indices {
-            self.infer_expr(idx);
-        }
-
-        // A heap buffer `[T]` (the P4 storage primitive) indexes by `Int`,
-        // yielding `T` directly — no library subscript needed.
-        if let Ty::HeapBuffer(elem) = &base_ty {
-            let ty = (**elem).clone();
-            self.types.insert(index.id, ty.clone());
-            return ty;
-        }
-
-        // Extract the type name for subscript lookup.
-        let type_name = Self::type_name_from_ty(&base_ty);
-
-        // Try subscript lookup first (library-defined indexing).
-        if let Some(ref name) = type_name {
-            if let Some((sub, subst, scope)) =
-                self.find_impl_subscript(name, &base_ty, index.indices.len(), false)
-            {
-                let ty = self.with_type_params(scope, |s| {
-                    sub.return_type
-                        .as_ref()
-                        .map(|t| {
-                            let resolved = s.resolve_hir_ty(t);
-                            Self::substitute(&resolved, &subst)
-                        })
-                        .unwrap_or(Ty::Unit)
-                });
-                self.types.insert(index.id, ty.clone());
-                return ty;
-            }
-        }
-
-        if !helpers::is_error(&base_ty) {
-            self.emit(TypeDiagnostic::NotYetSupported {
-                feature: "index expressions".to_string(),
-                span: self.span_for(index.id),
-            });
-        }
-        self.types.insert(index.id, Ty::Error);
-        Ty::Error
-    }
-
-    /// Type-check an indexed-place assignment target `base[index] = value`.
-    ///
-    /// A raw `[T]` heap buffer accepts a `T`. A library collection or user
-    /// struct must expose a **write** subscript (`subscript(index, value)`, no
-    /// return type — `docs/mutable-subscript-design.md` §4.2); the assigned
-    /// value is checked against that setter's value-parameter type. A base with
-    /// no writable subscript is a hard error.
-    pub(super) fn check_index_assign(
-        &mut self,
-        base: &Expr,
-        indices: &[Expr],
-        value_ty: &Ty,
-        assign_id: HirId,
-    ) {
-        let base_ty = self.infer_expr(base);
-        for idx in indices {
-            self.infer_expr(idx);
-        }
-
-        if let Ty::HeapBuffer(elem) = &base_ty {
-            if !helpers::is_error(value_ty) && !helpers::is_error(elem) && value_ty != elem.as_ref()
-            {
-                self.emit(TypeDiagnostic::TypeMismatch {
-                    expected: elem.to_string(),
-                    found: value_ty.to_string(),
-                    span: self.span_for(assign_id),
-                });
-            }
-            return;
-        }
-
-        if helpers::is_error(&base_ty) {
-            return;
-        }
-
-        let Some(name) = Self::type_name_from_ty(&base_ty) else {
-            self.emit(TypeDiagnostic::NoWritableSubscript {
-                ty: base_ty.to_string(),
-                span: self.span_for(assign_id),
-            });
-            return;
-        };
-
-        // Walk the impl table manually — same reason as infer_index.
-        let Some((sub_def, subst, scope)) = self.find_impl_subscript(&name, &base_ty, indices.len(), true)
-        else {
-            self.emit(TypeDiagnostic::NoWritableSubscript {
-                ty: name,
-                span: self.span_for(assign_id),
-            });
-            return;
-        };
-
-        self.with_type_params(scope, |s| {
-            if let Some(value_param) = sub_def.params.last() {
-                if let Some(param_ty) = &value_param.ty {
-                    let expected =
-                        Self::substitute(&s.resolve_hir_ty(param_ty), &subst);
-                    if !helpers::is_error(value_ty)
-                        && !helpers::is_error(&expected)
-                        && *value_ty != expected
-                    {
-                        s.emit(TypeDiagnostic::TypeMismatch {
-                            expected: expected.to_string(),
-                            found: value_ty.to_string(),
-                            span: s.span_for(assign_id),
-                        });
-                    }
-                }
-            }
-        });
-    }
-}
-
-/// Number of index params for a subscript (total params minus self, minus value
-/// param for setters).
-fn index_param_count(s: &SubscriptDef) -> usize {
-    let total = s.params.len();
-    if s.is_setter {
-        total.saturating_sub(2) // self + value
-    } else {
-        total.saturating_sub(1) // self
     }
 }

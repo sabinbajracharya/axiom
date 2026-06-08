@@ -222,7 +222,9 @@ fn expr_max_id(expr: &axiom_hir::Expr) -> usize {
         }
         axiom_hir::Expr::Block(e) => max = max.max(block_max_id(e)),
         axiom_hir::Expr::If(e) => {
-            max = max.max(expr_max_id(&e.condition)).max(block_max_id(&e.then_branch));
+            max = max
+                .max(expr_max_id(&e.condition))
+                .max(block_max_id(&e.then_branch));
             if let Some(ref eb) = e.else_branch {
                 max = max.max(expr_max_id(eb));
             }
@@ -260,8 +262,8 @@ fn loop_max_id(kind: &axiom_hir::LoopKind) -> usize {
         axiom_hir::LoopKind::Conditional { condition, body } => {
             expr_max_id(condition).max(block_max_id(body))
         }
-        axiom_hir::LoopKind::Iterator {
-            iterable, body, ..
-        } => expr_max_id(iterable).max(block_max_id(body)),
+        axiom_hir::LoopKind::Iterator { iterable, body, .. } => {
+            expr_max_id(iterable).max(block_max_id(body))
+        }
     }
 }

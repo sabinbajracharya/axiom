@@ -38,7 +38,7 @@ impl TypeChecker {
                     span: axiom_lexer::Span { lo: 0, hi: 0 },
                 });
                 Ty::Error
-            },
+            }
         }
     }
 
