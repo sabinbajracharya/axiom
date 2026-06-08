@@ -145,7 +145,7 @@ fn validate_module_annotations(
     } else {
         for b in intrinsic_bindings {
             diagnostics.push(axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib {
-                key: b.key,
+                key: b.key.clone(),
                 span: axiom_lexer::Span { lo: 0, hi: 0 },
             });
         }

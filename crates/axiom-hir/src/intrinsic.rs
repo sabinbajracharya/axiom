@@ -33,8 +33,11 @@ pub struct IntrinsicBinding {
     pub def_id: HirId,
 }
 
-/// Collect every `@intrinsic("…")` binding in a module's items — functions only.
-/// Struct intrinsics are not yet supported (deferred; see the design doc §5).
+/// Collect every `@intrinsic("…")` binding in a module's items — top-level
+/// functions only. Impl methods and structs are not yet scanned (deferred; see
+/// the design doc §5). This differs from `collect_lang_bindings` which also scans
+/// impl-associated methods — that difference is intentional until `@intrinsic` on
+/// methods has a concrete use case.
 pub fn collect_intrinsic_bindings(items: &[Item]) -> Vec<IntrinsicBinding> {
     let mut out = Vec::new();
     for item in items {
