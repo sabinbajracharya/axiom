@@ -81,9 +81,8 @@ fn alloc<T>(count: Int) -> [T]
 fn free<T>(buf: [T])
 ";
         let result = axiom_parser::parse(source);
-        let root =
-            <axiom_parser::ast::SourceFile as axiom_parser::ast::AstNode>::cast(result.tree)
-                .unwrap();
+        let root = <axiom_parser::ast::SourceFile as axiom_parser::ast::AstNode>::cast(result.tree)
+            .unwrap();
         let (items, _defs, _diags, _nid) = crate::lower_structural(&root, source, 0);
         let bindings = collect_intrinsic_bindings(&items);
         let keys: Vec<&str> = bindings.iter().map(|b| b.key.as_str()).collect();
@@ -96,9 +95,8 @@ fn free<T>(buf: [T])
     fn test_collect_intrinsic_bindings_ignores_untagged_fn() {
         let source = "fn add(a: Int, b: Int) -> Int { a + b }";
         let result = axiom_parser::parse(source);
-        let root =
-            <axiom_parser::ast::SourceFile as axiom_parser::ast::AstNode>::cast(result.tree)
-                .unwrap();
+        let root = <axiom_parser::ast::SourceFile as axiom_parser::ast::AstNode>::cast(result.tree)
+            .unwrap();
         let (items, _defs, _diags, _nid) = crate::lower_structural(&root, source, 0);
         let bindings = collect_intrinsic_bindings(&items);
         assert!(bindings.is_empty());
@@ -155,13 +153,7 @@ fn free<T>(buf: [T])
 
         for root in crate_roots {
             let src = repo.join("crates").join(root).join("src");
-            scan_dir(
-                &src,
-                &banned,
-                &this_file,
-                &allow,
-                &mut offenders,
-            );
+            scan_dir(&src, &banned, &this_file, allow, &mut offenders);
         }
 
         assert!(

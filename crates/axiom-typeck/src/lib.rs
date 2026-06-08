@@ -75,44 +75,22 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
 
     let mut all_items: Vec<axiom_hir::Item> = Vec::new();
     let mut all_diags: Vec<axiom_hir::HirDiagnostic> = Vec::new();
-    // Lang-item bindings discovered in the stdlib; any `@lang` tag in a
-    // non-stdlib module is rejected so user code can't hijack a lang item.
     let mut stdlib_bindings: Vec<axiom_hir::LangBinding> = Vec::new();
     let mut stdlib_present = false;
     for (name, items, defs, diags) in &mut lowered {
         let mut items = std::mem::take(items);
         let mut diagnostics = std::mem::take(diags);
         axiom_hir::resolve_with_globals(&mut items, defs, &mut diagnostics, &exports, name);
-
-        // ── @lang validation ────────────────────────────────────────────────
-        let bindings = axiom_hir::collect_lang_bindings(&items);
         if is_stdlib_module(name) {
             stdlib_present = true;
-            stdlib_bindings.extend(bindings);
-        } else {
-            for b in bindings {
-                diagnostics.push(axiom_hir::HirDiagnostic::LangItemOutsideStdlib {
-                    key: b.key,
-                    span: axiom_lexer::Span { lo: 0, hi: 0 },
-                });
-            }
         }
-
-        // ── @intrinsic validation ───────────────────────────────────────────
-        let intrinsic_bindings = axiom_hir::collect_intrinsic_bindings(&items);
-        if is_stdlib_module(name) {
-            diagnostics.append(&mut axiom_hir::validate_intrinsic_bindings(
-                &intrinsic_bindings,
-            ));
-        } else {
-            for b in intrinsic_bindings {
-                diagnostics.push(axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib {
-                    key: b.key,
-                    span: axiom_lexer::Span { lo: 0, hi: 0 },
-                });
-            }
-        }
-
+        validate_module_annotations(
+            &items,
+            name,
+            is_stdlib_module(name),
+            &mut stdlib_bindings,
+            &mut diagnostics,
+        );
         all_diags.append(&mut diagnostics);
         all_items.append(&mut items);
     }
@@ -133,6 +111,45 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
 /// known stdlib module paths. See `docs/intrinsic-and-stdlib-identity.md` §2a.
 fn is_stdlib_module(name: &str) -> bool {
     axiom_stdlib::is_stdlib_module(name)
+}
+
+/// Validate `@lang` and `@intrinsic` annotations for one lowered module.
+/// Stdlib modules may use both; non-stdlib modules may use neither.
+/// Accumulates lang-item bindings for later registry consistency checks.
+fn validate_module_annotations(
+    items: &[axiom_hir::Item],
+    _module_name: &str,
+    is_stdlib: bool,
+    stdlib_bindings: &mut Vec<axiom_hir::LangBinding>,
+    diagnostics: &mut Vec<axiom_hir::HirDiagnostic>,
+) {
+    // ── @lang ────────────────────────────────────────────────────────────
+    let lang_bindings = axiom_hir::collect_lang_bindings(items);
+    if is_stdlib {
+        stdlib_bindings.extend(lang_bindings);
+    } else {
+        for b in lang_bindings {
+            diagnostics.push(axiom_hir::HirDiagnostic::LangItemOutsideStdlib {
+                key: b.key,
+                span: axiom_lexer::Span { lo: 0, hi: 0 },
+            });
+        }
+    }
+
+    // ── @intrinsic ───────────────────────────────────────────────────────
+    let intrinsic_bindings = axiom_hir::collect_intrinsic_bindings(items);
+    if is_stdlib {
+        diagnostics.append(&mut axiom_hir::validate_intrinsic_bindings(
+            &intrinsic_bindings,
+        ));
+    } else {
+        for b in intrinsic_bindings {
+            diagnostics.push(axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib {
+                key: b.key,
+                span: axiom_lexer::Span { lo: 0, hi: 0 },
+            });
+        }
+    }
 }
 
 /// Bare type-check — the deliberate, **labeled** no-stdlib mode: the user source

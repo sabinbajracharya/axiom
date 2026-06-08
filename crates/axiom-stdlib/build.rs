@@ -44,8 +44,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     out.push_str("];\n");
 
-    // ── STDLIB module path set (unspoofable identity) ───────────────────────
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("pub static STDLIB_MODULE_PATHS: phf::Set<&str> = phf::phf_set! {\n");
     // Quote each module path so `phf_set!` gets string literals.
     for (name, _path) in &entries {

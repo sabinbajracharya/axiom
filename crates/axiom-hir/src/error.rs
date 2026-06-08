@@ -52,7 +52,7 @@ impl HirDiagnostic {
             | HirDiagnostic::MissingLangItem { span, .. }
             | HirDiagnostic::DuplicateLangItem { span, .. }
             | HirDiagnostic::OrphanLangItem { span, .. }
-            |             HirDiagnostic::LangItemOutsideStdlib { span, .. }
+            | HirDiagnostic::LangItemOutsideStdlib { span, .. }
             | HirDiagnostic::IntrinsicOutsideStdlib { span, .. }
             | HirDiagnostic::UnknownIntrinsic { span, .. } => *span,
         }

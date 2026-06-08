@@ -1,4 +1,3 @@
-
 use super::*;
 
 fn test_lang_items() -> LangItems {
@@ -78,6 +77,7 @@ fn count_stmt_expr_kind(stmt: &Stmt, f: fn(&Expr) -> bool, count: &mut usize) {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn count_sub_expr_kind(expr: &Expr, f: fn(&Expr) -> bool, count: &mut usize) {
     match expr {
         Expr::Lit(_) | Expr::Path(_) => {}

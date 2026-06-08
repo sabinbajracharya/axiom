@@ -154,10 +154,7 @@ fn lower_heap_intrinsic(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Option
 
 /// Determine the intrinsic key for a call expression from the resolved
 /// callee's `@intrinsic` tag on its HIR FnDef.
-fn intrinsic_key_for_call(
-    e: &axiom_hir::CallExpr,
-    ctx: &mut FnLowerCtx,
-) -> Option<String> {
+fn intrinsic_key_for_call(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Option<String> {
     let callee_id = match &e.callee {
         axiom_hir::NameRef::Resolved(r) => r.def_id,
         _ => return None,
