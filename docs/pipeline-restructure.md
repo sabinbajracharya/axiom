@@ -1,6 +1,6 @@
 # Pipeline & Crate Restructure — Design Plan
 
-> **Status: Phase 1 complete — 2025-06-08.** Companion docs: `DESIGN_SPEC.md`, `docs/intrinsic-and-stdlib-identity.md`,
+> **Status: Implemented — 2025-06-08.** Companion docs: `DESIGN_SPEC.md`, `docs/intrinsic-and-stdlib-identity.md`,
 > `docs/stdlib-loading-unification.md`, `ENFORCEMENT.md`, `RUST_CONVENTIONS.md`.
 
 ## 0. The concern this answers
