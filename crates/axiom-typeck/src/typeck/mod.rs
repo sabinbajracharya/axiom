@@ -224,6 +224,15 @@ impl TypeEnv {
         }
         None
     }
+
+    fn update_type(&mut self, name: &str, new_ty: crate::types::Ty) {
+        for scope in self.scopes.iter_mut().rev() {
+            if let Some(info) = scope.bindings.get_mut(name) {
+                info.ty = new_ty;
+                return;
+            }
+        }
+    }
 }
 
 impl TypeChecker {

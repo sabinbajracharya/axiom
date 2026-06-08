@@ -361,7 +361,7 @@ impl TypeChecker {
 
     /// Check that each concrete type in `subst` satisfies the trait bounds
     /// declared on its type parameter.
-    fn check_type_bounds(
+    pub(super) fn check_type_bounds(
         &mut self,
         subst: &std::collections::HashMap<crate::types::TypeParamId, Ty>,
         span: axiom_lexer::Span,

@@ -44,12 +44,11 @@ fn test_list_literal_infers_list_string() {
 #[test]
 fn test_list_literal_type_mismatch() {
     let thir = check_source(r#"fn main() { val xs = [1, "hello"] }"#);
-    // TODO(desugar): after desugar, list-element type mismatch is not yet
-    // caught by the generic-method call path (check_method_call uses the wrong
-    // type-param scope). Restore the type_mismatch assertion when the typeck
-    // handles impl-level type params for method calls correctly.
-    let d = dump(&thir);
-    assert!(d.contains("List"), "expected List type in dump:\n{d}");
+    assert!(
+        thir.diagnostics.iter().any(|d| d.kind() == "type_mismatch"),
+        "expected type_mismatch for mixed list, got: {:?}",
+        thir.diagnostics
+    );
 }
 
 #[test]
