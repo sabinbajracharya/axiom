@@ -99,11 +99,15 @@ fn bad_alloc() -> Int {
 fn main() {}"#,
     );
     assert!(
-        thir.hir
-            .diagnostics
-            .iter()
-            .any(|d| matches!(d, axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib { .. })),
-        "expected IntrinsicOutsideStdlib in HIR diagnostics, got: {:?}",
-        thir.hir.diagnostics
+        thir.diagnostics.iter().any(|d| {
+            matches!(
+                d,
+                axiom_typeck::Diagnostic::Hir(
+                    axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib { .. }
+                )
+            )
+        }),
+        "expected IntrinsicOutsideStdlib, got: {:?}",
+        thir.diagnostics
     );
 }

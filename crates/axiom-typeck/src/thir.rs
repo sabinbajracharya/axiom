@@ -5,7 +5,7 @@
 //! plus type-check diagnostics. Downstream stages walk the HIR and look up
 //! types by ID.
 
-use crate::error::TypeDiagnostic;
+use crate::error::Diagnostic;
 use crate::types::Ty;
 use axiom_hir::*;
 use std::collections::HashMap;
@@ -17,8 +17,8 @@ pub struct Thir {
     pub hir: axiom_hir::Hir,
     /// Maps every HirId (expressions, statements, patterns) to its type.
     pub types: TypeMap,
-    /// Type-check diagnostics (type mismatches, missing fields, etc.).
-    pub diagnostics: Vec<TypeDiagnostic>,
+    /// Unified diagnostics (HIR-level + type-check errors).
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 /// A HashMap from HirId to Ty. The THIR's core payload.

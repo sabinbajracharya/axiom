@@ -64,4 +64,22 @@ impl HirDiagnostic {
         let (line, col) = map.locate(source, self.span().lo);
         format!("{line}:{col}: {}", self)
     }
+
+    /// A human-readable short label for the diagnostic kind, useful for
+    /// categorization in tests and diagnostic filtering.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            HirDiagnostic::UnresolvedName { .. } => "unresolved_name",
+            HirDiagnostic::DuplicateDefinition { .. } => "duplicate_definition",
+            HirDiagnostic::ArityMismatch { .. } => "arity_mismatch",
+            HirDiagnostic::NotYetSupported { .. } => "not_yet_supported",
+            HirDiagnostic::PrivateImport { .. } => "private_import",
+            HirDiagnostic::MissingLangItem { .. } => "missing_lang_item",
+            HirDiagnostic::DuplicateLangItem { .. } => "duplicate_lang_item",
+            HirDiagnostic::OrphanLangItem { .. } => "orphan_lang_item",
+            HirDiagnostic::LangItemOutsideStdlib { .. } => "lang_item_outside_stdlib",
+            HirDiagnostic::IntrinsicOutsideStdlib { .. } => "intrinsic_outside_stdlib",
+            HirDiagnostic::UnknownIntrinsic { .. } => "unknown_intrinsic",
+        }
+    }
 }

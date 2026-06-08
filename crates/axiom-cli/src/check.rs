@@ -9,9 +9,9 @@
 //! At **M2** the `check` command runs the full pipeline through type checking.
 //! Type errors produce `TypeDiagnostic`s in the report alongside HIR diagnostics.
 
-use axiom_hir::{serialize as hir_serialize, HirDiagnostic};
+use axiom_hir::serialize as hir_serialize;
 use axiom_parser::{parse, serialize as cst_serialize};
-use axiom_typeck::{serialize as thir_serialize, Thir, TypeDiagnostic};
+use axiom_typeck::{serialize as thir_serialize, Thir};
 
 /// The outcome of checking one source string.
 pub struct CheckReport {
@@ -61,13 +61,9 @@ pub fn compile_source(source: &str, with_stdlib: bool) -> CompileResult {
     };
     let thir = axiom_typeck::check_modules(&modules);
 
-    // Render HIR (lower + resolve) then type diagnostics against the user source.
-    // stdlib modules are clean, so every real diagnostic is user-side.
-    for diag in &thir.hir.diagnostics {
-        diagnostics.push(HirDiagnostic::render(diag, source));
-    }
+    // Render all diagnostics (HIR + type) against the user source.
     for diag in &thir.diagnostics {
-        diagnostics.push(TypeDiagnostic::render(diag, source));
+        diagnostics.push(diag.render(source));
     }
     let hir_dump = hir_serialize(&thir.hir);
     let thir_dump = thir_serialize(&thir, None);

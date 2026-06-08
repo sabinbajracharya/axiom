@@ -24,7 +24,7 @@ mod stmt;
 mod typeinfo;
 mod unify;
 
-use crate::error::TypeDiagnostic;
+use crate::error::{Diagnostic, TypeDiagnostic};
 use crate::thir::{Thir, TypeMap};
 
 use axiom_hir::*;
@@ -55,13 +55,18 @@ pub fn check(hir: Hir) -> Thir {
 pub fn check_with_lang_items(mut hir: Hir, lang_items: axiom_hir::LangItems) -> Thir {
     let max_id = crate::hir_max_id(&hir);
     axiom_hir::desugar::desugar(&mut hir, &lang_items, max_id + 1);
+    let hir_diagnostics: Vec<Diagnostic> = hir.diagnostics.drain(..).map(Diagnostic::Hir).collect();
     let mut checker = TypeChecker::new(hir, lang_items);
     checker.collect_pass();
     checker.check_pass();
     Thir {
         hir: checker.hir,
         types: checker.types,
-        diagnostics: checker.diagnostics,
+        diagnostics: {
+            let mut d = hir_diagnostics;
+            d.append(&mut checker.diagnostics);
+            d
+        },
     }
 }
 
@@ -70,7 +75,7 @@ pub fn check_with_lang_items(mut hir: Hir, lang_items: axiom_hir::LangItems) -> 
 struct TypeChecker {
     hir: Hir,
     types: TypeMap,
-    diagnostics: Vec<TypeDiagnostic>,
+    diagnostics: Vec<Diagnostic>,
     env: TypeEnv,
     /// Tracks which HirIds correspond to mutable bindings (var, not val).
     mutability: HashMap<HirId, Mutability>,

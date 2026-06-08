@@ -124,14 +124,9 @@ fn compile_dir(search_dir: &Path) -> Result<axiom_typeck::Thir, ExitCode> {
     Ok(axiom_typeck::check_modules(&modules))
 }
 
-/// Print all HIR (parse/lower/resolve) then type diagnostics from a compiled
-/// `Thir`. Returns true if any were emitted.
+/// Print all diagnostics from a compiled `Thir`. Returns true if any were emitted.
 fn print_thir_diagnostics(thir: &axiom_typeck::Thir) -> bool {
     let mut any = false;
-    for diag in &thir.hir.diagnostics {
-        eprintln!("{diag}");
-        any = true;
-    }
     for diag in &thir.diagnostics {
         eprintln!("{diag}");
         any = true;

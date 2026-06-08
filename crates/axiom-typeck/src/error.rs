@@ -1,11 +1,66 @@
-//! Type-check diagnostics. Separate from `HirDiagnostic` — type errors are a
-//! distinct concern from name-resolution errors.
+//! Type-check errors and unified diagnostics.
+//!
+//! `TypeDiagnostic` captures type-check specific errors. The top-level `Diagnostic`
+//! enum wraps both HIR-level diagnostics (from lowering/resolution) and type-check
+//! errors into one unified vector — so downstream consumers never need to know
+//! which phase produced an error.
 //!
 //! Each `TypeDiagnostic` variant corresponds to a specific type-error scenario.
 //! The coverage invariant (`check_all`) verifies that every `Ty::Error` in the
 //! TypeMap has a matching diagnostic, and vice versa.
 
 use axiom_lexer::Span;
+use std::fmt;
+
+/// A unified diagnostic that folds all pipeline phases into one vector.
+/// Consumers iterate one vec, check one `kind()`, without knowing which phase
+/// produced the error.
+#[derive(Debug, Clone)]
+pub enum Diagnostic {
+    /// HIR-level diagnostic (lowering, resolution, annotation validation).
+    Hir(axiom_hir::HirDiagnostic),
+    /// Type-check diagnostic.
+    Type(TypeDiagnostic),
+}
+
+impl Diagnostic {
+    pub fn span(&self) -> Span {
+        match self {
+            Diagnostic::Hir(d) => d.span(),
+            Diagnostic::Type(d) => d.span(),
+        }
+    }
+
+    pub fn render(&self, source: &str) -> String {
+        match self {
+            Diagnostic::Hir(d) => d.render(source),
+            Diagnostic::Type(d) => d.render(source),
+        }
+    }
+
+    /// Returns a short label string usable in tests and diagnostic filtering.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Diagnostic::Hir(d) => d.kind(),
+            Diagnostic::Type(d) => d.kind(),
+        }
+    }
+}
+
+impl<'a> From<&'a Diagnostic> for &'a str {
+    fn from(d: &'a Diagnostic) -> &'a str {
+        d.kind()
+    }
+}
+
+impl fmt::Display for Diagnostic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Diagnostic::Hir(d) => write!(f, "{d}"),
+            Diagnostic::Type(d) => write!(f, "{d}"),
+        }
+    }
+}
 
 /// A type-check diagnostic: what went wrong during type checking and where.
 #[derive(Debug, Clone, thiserror::Error)]

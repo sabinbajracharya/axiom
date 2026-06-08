@@ -15,18 +15,15 @@ fn compile(source: &str) -> Thir {
     axiom_typeck::check_modules(&axiom_stdlib::with_main(source))
 }
 
-fn lang_diagnostics(thir: &Thir) -> Vec<&HirDiagnostic> {
-    thir.hir
-        .diagnostics
+fn lang_diagnostics(thir: &Thir) -> Vec<&axiom_hir::HirDiagnostic> {
+    thir.diagnostics
         .iter()
-        .filter(|d| {
-            matches!(
-                d,
-                HirDiagnostic::MissingLangItem { .. }
-                    | HirDiagnostic::DuplicateLangItem { .. }
-                    | HirDiagnostic::OrphanLangItem { .. }
-                    | HirDiagnostic::LangItemOutsideStdlib { .. }
-            )
+        .filter_map(|d| {
+            if let axiom_typeck::Diagnostic::Hir(hir_diag) = d {
+                Some(hir_diag)
+            } else {
+                None
+            }
         })
         .collect()
 }

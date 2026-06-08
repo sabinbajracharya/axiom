@@ -152,9 +152,8 @@ fn test_unknown_method_on_list() {
 fn test_empty_list_literal_with_annotation_is_ok() {
     let thir = check_source("fn main() { val xs: List<Int> = [] }");
     assert!(
-        thir.hir.diagnostics.is_empty() && thir.diagnostics.is_empty(),
-        "unexpected diagnostics: hir={:?} typeck={:?}",
-        thir.hir.diagnostics,
+        thir.diagnostics.is_empty(),
+        "unexpected diagnostics: {:?}",
         thir.diagnostics
     );
     let d = dump(&thir);

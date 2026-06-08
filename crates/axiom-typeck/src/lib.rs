@@ -31,7 +31,7 @@ mod typeck;
 mod types;
 
 pub use coverage::{check_all, TypeckCoverageError};
-pub use error::TypeDiagnostic;
+pub use error::{Diagnostic, TypeDiagnostic};
 pub use mono::{monomorphize, MonoInstance, MonoResult};
 pub use serialize::serialize;
 pub use thir::{Thir, TypeMap};

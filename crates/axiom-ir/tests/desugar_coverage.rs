@@ -88,9 +88,8 @@ fn goldens_dir() -> PathBuf {
 fn desugared_main_ir(source: &str) -> String {
     let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
     assert!(
-        thir.hir.diagnostics.is_empty() && thir.diagnostics.is_empty(),
-        "driver program did not compile cleanly:\nhir: {:?}\ntypeck: {:?}",
-        thir.hir.diagnostics,
+        thir.diagnostics.is_empty(),
+        "driver program did not compile cleanly: {:?}",
         thir.diagnostics
     );
     let mono = axiom_typeck::monomorphize(&thir);

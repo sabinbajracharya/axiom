@@ -4,7 +4,7 @@
 
 use super::unify::Substitution;
 use super::{helpers, Mutability, TypeChecker, VariantInfo};
-use crate::error::TypeDiagnostic;
+use crate::error::{Diagnostic, TypeDiagnostic};
 use crate::types::{FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 
 use axiom_hir::*;
@@ -149,7 +149,7 @@ impl TypeChecker {
     }
 
     pub(super) fn emit(&mut self, diag: TypeDiagnostic) {
-        self.diagnostics.push(diag);
+        self.diagnostics.push(Diagnostic::Type(diag));
     }
 
     // TODO(v1): wire up real spans from the HIR. Currently all diagnostics

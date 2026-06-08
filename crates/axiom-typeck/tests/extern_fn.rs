@@ -11,11 +11,17 @@ fn check_source_with_stdlib(src: &str) -> axiom_typeck::Thir {
     axiom_typeck::check_modules(&axiom_stdlib::with_main(src))
 }
 
-fn diags(src: &str) -> Vec<String> {
+fn type_diags(src: &str) -> Vec<String> {
     check_source_with_stdlib(src)
         .diagnostics
         .iter()
-        .map(|d| format!("{d:?}"))
+        .filter_map(|d| {
+            if let axiom_typeck::Diagnostic::Type(td) = d {
+                Some(format!("{td:?}"))
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
@@ -23,7 +29,7 @@ fn diags(src: &str) -> Vec<String> {
 fn test_extern_fn_with_return_type_is_clean() {
     // A non-Unit return type on a bodiless extern fn must NOT trip the
     // return-type-vs-body check (the body is empty → would otherwise be Unit).
-    let d = diags(r#"extern "C" fn now() -> Int;"#);
+    let d = type_diags(r#"extern "C" fn now() -> Int;"#);
     assert!(d.is_empty(), "unexpected diagnostics: {d:?}");
 }
 
@@ -35,7 +41,7 @@ fn test_extern_fn_bytes_buffer_param_accepts_as_bytes() {
 extern "C" fn mywrite(fd: Int, let buf: Bytes) -> Int;
 fn main() { let n = mywrite(1, "hi".as_bytes()) }
 "#;
-    let d = diags(src);
+    let d = type_diags(src);
     assert!(d.is_empty(), "unexpected diagnostics: {d:?}");
 }
 
@@ -43,6 +49,6 @@ fn main() { let n = mywrite(1, "hi".as_bytes()) }
 fn test_extern_fn_inout_buffer_param() {
     // `read`'s mutable-buffer shape: `inout buf: Bytes`.
     let src = r#"extern "C" fn myread(fd: Int, inout buf: Bytes) -> Int;"#;
-    let d = diags(src);
+    let d = type_diags(src);
     assert!(d.is_empty(), "unexpected diagnostics: {d:?}");
 }
