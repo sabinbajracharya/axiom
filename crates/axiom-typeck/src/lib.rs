@@ -83,6 +83,8 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
         let mut items = std::mem::take(items);
         let mut diagnostics = std::mem::take(diags);
         axiom_hir::resolve_with_globals(&mut items, defs, &mut diagnostics, &exports, name);
+
+        // ── @lang validation ────────────────────────────────────────────────
         let bindings = axiom_hir::collect_lang_bindings(&items);
         if is_stdlib_module(name) {
             stdlib_present = true;
@@ -95,6 +97,22 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
                 });
             }
         }
+
+        // ── @intrinsic validation ───────────────────────────────────────────
+        let intrinsic_bindings = axiom_hir::collect_intrinsic_bindings(&items);
+        if is_stdlib_module(name) {
+            diagnostics.append(&mut axiom_hir::validate_intrinsic_bindings(
+                &intrinsic_bindings,
+            ));
+        } else {
+            for b in intrinsic_bindings {
+                diagnostics.push(axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib {
+                    key: b.key,
+                    span: axiom_lexer::Span { lo: 0, hi: 0 },
+                });
+            }
+        }
+
         all_diags.append(&mut diagnostics);
         all_items.append(&mut items);
     }
@@ -110,10 +128,11 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
     check_with_lang_items(hir, lang_items)
 }
 
-/// Whether a module path belongs to the embedded standard library. Lang-item
-/// `@lang` tags are honored only here; everywhere else they are an error.
+/// Whether a module path belongs to the embedded standard library. Delegates to
+/// `axiom_stdlib::is_stdlib_module` which checks the build-time verified set of
+/// known stdlib module paths. See `docs/intrinsic-and-stdlib-identity.md` §2a.
 fn is_stdlib_module(name: &str) -> bool {
-    name.starts_with("core") || name.starts_with("std")
+    axiom_stdlib::is_stdlib_module(name)
 }
 
 /// Bare type-check — the deliberate, **labeled** no-stdlib mode: the user source

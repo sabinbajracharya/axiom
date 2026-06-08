@@ -13,10 +13,12 @@ fn id__Int(x: Int) -> Int {
 fn main() -> fn() -> Unit {
   entry:
   %0 = Const Int(42)
-  %1 = Call id__Int [%0]
-  %2 = Const Bool(true)
-  %3 = Call id__Bool [%2]
-  %4 = Const Unit
-  Return %4
+  %2 = Const Int(42)
+  %3 = Call id__Int [%2]
+  %4 = Const Bool(true)
+  %6 = Const Bool(true)
+  %7 = Call id__Bool [%6]
+  %8 = Const Unit
+  Return %8
 }
 

@@ -8,8 +8,10 @@ fn main() -> fn() -> Unit {
   entry:
   %0 = Const Int(1)
   %1 = Const Int(2)
-  %2 = Call add [%0, %1]
-  %3 = Const Unit
-  Return %3
+  %3 = Const Int(1)
+  %4 = Const Int(2)
+  %5 = Call add [%3, %4]
+  %6 = Const Unit
+  Return %6
 }
 

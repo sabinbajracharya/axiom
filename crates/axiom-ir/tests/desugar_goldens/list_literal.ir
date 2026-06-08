@@ -1,13 +1,14 @@
 fn main() -> fn() -> Unit {
   entry:
   %0 = Const Int(3)
-  %1 = Call List::with_capacity [%0]
-  %2 = Const Int(10)
-  %3 = MethodCall %1 List::push [%2]
-  %4 = Const Int(20)
-  %5 = MethodCall %1 List::push [%4]
-  %6 = Const Int(30)
-  %7 = MethodCall %1 List::push [%6]
-  %8 = Const Unit
-  Return %8
+  %2 = Const Int(3)
+  %3 = Call List::with_capacity [%2]
+  %4 = Const Int(10)
+  %5 = MethodCall %3 List::push [%4]
+  %6 = Const Int(20)
+  %7 = MethodCall %3 List::push [%6]
+  %8 = Const Int(30)
+  %9 = MethodCall %3 List::push [%8]
+  %10 = Const Unit
+  Return %10
 }

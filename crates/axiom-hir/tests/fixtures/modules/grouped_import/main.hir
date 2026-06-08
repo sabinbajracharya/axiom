@@ -109,13 +109,56 @@ TraitDef(7) name=Hashable: Equatable→<unresolved> vis=pub methods=[
 TraitDef(10) name=Ord: Equatable→<unresolved> vis=pub methods=[
   Method(11) name=lt params=[let self: _, let other: Self→<unresolved>] return=Bool→<unresolved>
 ]
-StructDef(0) name=List<T: Deinit→<unresolved>> vis=private fields=[private buf: [T→1], private count: Int→<unresolved>, private cap: Int→<unresolved>]
-ImplDef(5) List→0<T: Deinit→<unresolved>> methods=[
-  FnDef(7) name=new vis=private params=[] return=List→0<T→6> {
-    tail: StructLit(10) List→0 { buf: Call(11) heap_alloc→1000007(Lit(12) Int(0)), count: Lit(13) Int(0), cap: Lit(14) Int(0) }
+UseItem(0) std::mem{alloc_buffer, free_buffer}
+StructDef(1) name=List<T: Deinit→<unresolved>> vis=private fields=[private buf: [T→2], private count: Int→<unresolved>, private cap: Int→<unresolved>]
+ImplDef(6) List→1<T: Deinit→<unresolved>> methods=[
+  FnDef(8) name=new vis=private params=[] return=List→1<T→7> {
+    tail: StructLit(11) List→1 { buf: Call(12) alloc_buffer→0(Lit(13) Int(0)), count: Lit(14) Int(0), cap: Lit(15) Int(0) }
   }
-  FnDef(15) name=with_capacity vis=private params=[let capacity: Int→<unresolved>] return=List→0<T→6> {
-    tail: StructLit(19) List→0 { buf: Call(20) heap_alloc→1000007(Path(21) capacity→16), count: Lit(22) Int(0), cap: Path(23) capacity→16 }
+  FnDef(16) name=with_capacity vis=private params=[let capacity: Int→<unresolved>] return=List→1<T→7> {
+    tail: StructLit(20) List→1 { buf: Call(21) alloc_buffer→0(Path(22) capacity→17), count: Lit(23) Int(0), cap: Path(24) capacity→17 }
+  }
+  FnDef(25) name=count vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(30) self→26.Field(29) count
+  }
+  FnDef(31) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
+    tail: Bin(35) ==(Path(37) self→32.Field(36) count, Lit(38) Int(0))
+  }
+  FnDef(39) name=capacity vis=private params=[let self: _] return=Int→<unresolved> {
+    tail: Path(44) self→40.Field(43) cap
+  }
+  FnDef(45) name=push vis=private params=[inout self: _, sink element: T→7] return=_ {
+    ExprStmt(49) If(50) Bin(51) ==(Path(53) self→46.Field(52) count, Path(55) self→46.Field(54) cap) Block(56) {
+      tail: Path(59) self→46.Method(58) grow()
+    }
+    ExprStmt(60) Path(63) self→46.Field(62) buf[Path(65) self→46.Field(64) count] = Path(66) element→47
+    tail: Path(69) self→46.count = Bin(70) +(Path(72) self→46.Field(71) count, Lit(73) Int(1))
+  }
+  FnDef(74) name=grow vis=private params=[inout self: _] return=_ {
+    VarStmt(82) Ident(77) new_cap→77: _ = Bin(78) *(Path(80) self→75.Field(79) cap, Lit(81) Int(2))
+    ExprStmt(83) If(84) Bin(85) ==(Path(86) new_cap→77, Lit(87) Int(0)) Block(88) {
+      tail: new_cap→77 = Lit(91) Int(4)
+    }
+    VarStmt(95) Ident(92) new_buf→92: [T→<unresolved>] = Call(93) alloc_buffer→0(Path(94) new_cap→77)
+    VarStmt(98) Ident(96) i→96: _ = Lit(97) Int(0)
+    ExprStmt(99) LoopCond(100) Bin(115) <(Path(116) i→96, Path(118) self→75.Field(117) count) Block(101) {
+      ExprStmt(102) Path(104) new_buf→92[Path(105) i→96] = Path(108) self→75.Field(107) buf[Path(109) i→96]
+      tail: i→96 = Bin(112) +(Path(113) i→96, Lit(114) Int(1))
+    }
+    ExprStmt(119) Call(120) free_buffer→4(Path(122) self→75.Field(121) buf)
+    ExprStmt(123) Path(125) self→75.buf = Path(126) new_buf→92
+    tail: Path(129) self→75.cap = Path(130) new_cap→77
+  }
+  SubscriptDef(131) (self, index) -> T→7 body
+    tail: Path(138) self→132.Field(137) buf[Path(139) index→133]
+  SubscriptDef(140) set (self, index, value) body
+    tail: Path(148) self→141.Field(147) buf[Path(149) index→142] = Path(150) value→143
+]
+UseItem(0) std::mem{alloc_buffer, free_buffer}
+StructDef(1) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private keys: [K→2], private vals: [V→3], private used: [Bool→<unresolved>], private count: Int→<unresolved>, private cap: Int→<unresolved>]
+ImplDef(9) Map→1<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[
+  FnDef(12) name=new vis=private params=[] return=Map→1<K→10, V→11> {
+    tail: StructLit(15) Map→1 { keys: Call(16) alloc_buffer→0(Lit(17) Int(0)), vals: Call(18) alloc_buffer→0(Lit(19) Int(0)), used: Call(20) alloc_buffer→0(Lit(21) Int(0)), count: Lit(22) Int(0), cap: Lit(23) Int(0) }
   }
   FnDef(24) name=count vis=private params=[let self: _] return=Int→<unresolved> {
     tail: Path(29) self→25.Field(28) count
@@ -123,174 +166,133 @@ ImplDef(5) List→0<T: Deinit→<unresolved>> methods=[
   FnDef(30) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
     tail: Bin(34) ==(Path(36) self→31.Field(35) count, Lit(37) Int(0))
   }
-  FnDef(38) name=capacity vis=private params=[let self: _] return=Int→<unresolved> {
-    tail: Path(43) self→39.Field(42) cap
+  FnDef(38) name=has vis=private params=[let self: _, let key: K→10] return=Bool→<unresolved> {
+    tail: Bin(43) >=(Path(45) self→39.Method(44) find_slot(Path(46) key→40), Lit(47) Int(0))
   }
-  FnDef(44) name=push vis=private params=[inout self: _, sink element: T→6] return=_ {
-    ExprStmt(48) If(49) Bin(50) ==(Path(52) self→45.Field(51) count, Path(54) self→45.Field(53) cap) Block(55) {
-      tail: Path(58) self→45.Method(57) grow()
-    }
-    ExprStmt(59) Path(62) self→45.Field(61) buf[Path(64) self→45.Field(63) count] = Path(65) element→46
-    tail: Path(68) self→45.count = Bin(69) +(Path(71) self→45.Field(70) count, Lit(72) Int(1))
-  }
-  FnDef(73) name=grow vis=private params=[inout self: _] return=_ {
-    VarStmt(81) Ident(76) new_cap→76: _ = Bin(77) *(Path(79) self→74.Field(78) cap, Lit(80) Int(2))
-    ExprStmt(82) If(83) Bin(84) ==(Path(85) new_cap→76, Lit(86) Int(0)) Block(87) {
-      tail: new_cap→76 = Lit(90) Int(4)
-    }
-    VarStmt(94) Ident(91) new_buf→91: [T→<unresolved>] = Call(92) heap_alloc→1000007(Path(93) new_cap→76)
-    VarStmt(97) Ident(95) i→95: _ = Lit(96) Int(0)
-    ExprStmt(98) LoopCond(99) Bin(114) <(Path(115) i→95, Path(117) self→74.Field(116) count) Block(100) {
-      ExprStmt(101) Path(103) new_buf→91[Path(104) i→95] = Path(107) self→74.Field(106) buf[Path(108) i→95]
-      tail: i→95 = Bin(111) +(Path(112) i→95, Lit(113) Int(1))
-    }
-    ExprStmt(118) Call(119) heap_free→1000010(Path(121) self→74.Field(120) buf)
-    ExprStmt(122) Path(124) self→74.buf = Path(125) new_buf→91
-    tail: Path(128) self→74.cap = Path(129) new_cap→76
-  }
-  SubscriptDef(130) (self, index) -> T→6 body
-    tail: Path(137) self→131.Field(136) buf[Path(138) index→132]
-  SubscriptDef(139) set (self, index, value) body
-    tail: Path(147) self→140.Field(146) buf[Path(148) index→141] = Path(149) value→142
-]
-StructDef(0) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private keys: [K→1], private vals: [V→2], private used: [Bool→<unresolved>], private count: Int→<unresolved>, private cap: Int→<unresolved>]
-ImplDef(8) Map→0<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> methods=[
-  FnDef(11) name=new vis=private params=[] return=Map→0<K→9, V→10> {
-    tail: StructLit(14) Map→0 { keys: Call(15) heap_alloc→1000007(Lit(16) Int(0)), vals: Call(17) heap_alloc→1000007(Lit(18) Int(0)), used: Call(19) heap_alloc→1000007(Lit(20) Int(0)), count: Lit(21) Int(0), cap: Lit(22) Int(0) }
-  }
-  FnDef(23) name=count vis=private params=[let self: _] return=Int→<unresolved> {
-    tail: Path(28) self→24.Field(27) count
-  }
-  FnDef(29) name=is_empty vis=private params=[let self: _] return=Bool→<unresolved> {
-    tail: Bin(33) ==(Path(35) self→30.Field(34) count, Lit(36) Int(0))
-  }
-  FnDef(37) name=has vis=private params=[let self: _, let key: K→9] return=Bool→<unresolved> {
-    tail: Bin(42) >=(Path(44) self→38.Method(43) find_slot(Path(45) key→39), Lit(46) Int(0))
-  }
-  FnDef(47) name=get vis=private params=[let self: _, let key: K→9] return=Option→0<V→10> {
-    ValStmt(55) Ident(51) slot→51: _ = Path(53) self→48.Method(52) find_slot(Path(54) key→49)
-    ExprStmt(56) If(57) Bin(58) <(Path(59) slot→51, Lit(60) Int(0)) Block(61) {
-      tail: Block(63) {
-        ReturnStmt(65) Path(64) None→3
+  FnDef(48) name=get vis=private params=[let self: _, let key: K→10] return=Option→0<V→11> {
+    ValStmt(56) Ident(52) slot→52: _ = Path(54) self→49.Method(53) find_slot(Path(55) key→50)
+    ExprStmt(57) If(58) Bin(59) <(Path(60) slot→52, Lit(61) Int(0)) Block(62) {
+      tail: Block(64) {
+        ReturnStmt(66) Path(65) None→3
       }
     }
-    tail: Call(67) Some→2(Path(70) self→48.Field(69) vals[Path(71) slot→51])
+    tail: Call(68) Some→2(Path(71) self→49.Field(70) vals[Path(72) slot→52])
   }
-  FnDef(72) name=set vis=private params=[inout self: _, sink key: K→9, sink value: V→10] return=_ {
-    ExprStmt(77) If(78) Path(80) self→73.Method(79) should_grow() Block(81) {
-      tail: Path(84) self→73.Method(83) grow()
+  FnDef(73) name=set vis=private params=[inout self: _, sink key: K→10, sink value: V→11] return=_ {
+    ExprStmt(78) If(79) Path(81) self→74.Method(80) should_grow() Block(82) {
+      tail: Path(85) self→74.Method(84) grow()
     }
-    tail: Path(87) self→73.Method(86) insert_raw(Path(88) key→74, Path(89) value→75)
+    tail: Path(88) self→74.Method(87) insert_raw(Path(89) key→75, Path(90) value→76)
   }
-  FnDef(90) name=slot_for vis=private params=[let self: _, let key: K→9] return=Int→<unresolved> {
-    ValStmt(100) Ident(94) m→94: _ = Bin(95) %(Path(97) key→92.Method(96) hash(), Path(99) self→91.Field(98) cap)
-    tail: If(102) Bin(103) <(Path(104) m→94, Lit(105) Int(0)) Block(106) {
-      tail: Bin(108) +(Path(109) m→94, Path(111) self→91.Field(110) cap)
-    } else Block(112) {
-      tail: Path(114) m→94
+  FnDef(91) name=slot_for vis=private params=[let self: _, let key: K→10] return=Int→<unresolved> {
+    ValStmt(101) Ident(95) m→95: _ = Bin(96) %(Path(98) key→93.Method(97) hash(), Path(100) self→92.Field(99) cap)
+    tail: If(103) Bin(104) <(Path(105) m→95, Lit(106) Int(0)) Block(107) {
+      tail: Bin(109) +(Path(110) m→95, Path(112) self→92.Field(111) cap)
+    } else Block(113) {
+      tail: Path(115) m→95
     }
   }
-  FnDef(115) name=next_slot vis=private params=[let self: _, let i: Int→<unresolved>] return=Int→<unresolved> {
-    tail: Bin(120) %(Bin(121) +(Path(122) i→117, Lit(123) Int(1)), Path(125) self→116.Field(124) cap)
+  FnDef(116) name=next_slot vis=private params=[let self: _, let i: Int→<unresolved>] return=Int→<unresolved> {
+    tail: Bin(121) %(Bin(122) +(Path(123) i→118, Lit(124) Int(1)), Path(126) self→117.Field(125) cap)
   }
-  FnDef(126) name=find_slot vis=private params=[let self: _, let key: K→9] return=Int→<unresolved> {
-    ExprStmt(130) If(131) Bin(132) ==(Path(134) self→127.Field(133) cap, Lit(135) Int(0)) Block(136) {
-      tail: Block(138) {
-        ReturnStmt(141) Unary(139) -(Lit(140) Int(1))
+  FnDef(127) name=find_slot vis=private params=[let self: _, let key: K→10] return=Int→<unresolved> {
+    ExprStmt(131) If(132) Bin(133) ==(Path(135) self→128.Field(134) cap, Lit(136) Int(0)) Block(137) {
+      tail: Block(139) {
+        ReturnStmt(142) Unary(140) -(Lit(141) Int(1))
       }
     }
-    VarStmt(146) Ident(142) i→142: _ = Path(144) self→127.Method(143) slot_for(Path(145) key→128)
-    VarStmt(149) Ident(147) probes→147: _ = Lit(148) Int(0)
-    VarStmt(153) Ident(150) result→150: _ = Unary(151) -(Lit(152) Int(1))
-    ExprStmt(154) Loop(155) Block(156) {
-      ExprStmt(157) If(158) Bin(159) ==(Path(160) probes→147, Path(162) self→127.Field(161) cap) Block(163) {
-        tail: Block(165) {
-          BreakStmt(166)
+    VarStmt(147) Ident(143) i→143: _ = Path(145) self→128.Method(144) slot_for(Path(146) key→129)
+    VarStmt(150) Ident(148) probes→148: _ = Lit(149) Int(0)
+    VarStmt(154) Ident(151) result→151: _ = Unary(152) -(Lit(153) Int(1))
+    ExprStmt(155) Loop(156) Block(157) {
+      ExprStmt(158) If(159) Bin(160) ==(Path(161) probes→148, Path(163) self→128.Field(162) cap) Block(164) {
+        tail: Block(166) {
+          BreakStmt(167)
         }
       }
-      ExprStmt(167) If(168) Bin(169) ==(Path(172) self→127.Field(171) used[Path(173) i→142], Lit(174) Bool(false)) Block(175) {
-        tail: Block(177) {
-          BreakStmt(178)
+      ExprStmt(168) If(169) Bin(170) ==(Path(173) self→128.Field(172) used[Path(174) i→143], Lit(175) Bool(false)) Block(176) {
+        tail: Block(178) {
+          BreakStmt(179)
         }
       }
-      ExprStmt(179) If(180) Bin(181) ==(Path(184) self→127.Field(183) keys[Path(185) i→142], Path(186) key→128) Block(187) {
-        ExprStmt(188) result→150 = Path(190) i→142
-        tail: Block(192) {
-          BreakStmt(193)
+      ExprStmt(180) If(181) Bin(182) ==(Path(185) self→128.Field(184) keys[Path(186) i→143], Path(187) key→129) Block(188) {
+        ExprStmt(189) result→151 = Path(191) i→143
+        tail: Block(193) {
+          BreakStmt(194)
         }
       }
-      ExprStmt(194) i→142 = Path(197) self→127.Method(196) next_slot(Path(198) i→142)
-      tail: probes→147 = Bin(201) +(Path(202) probes→147, Lit(203) Int(1))
+      ExprStmt(195) i→143 = Path(198) self→128.Method(197) next_slot(Path(199) i→143)
+      tail: probes→148 = Bin(202) +(Path(203) probes→148, Lit(204) Int(1))
     }
-    tail: Path(205) result→150
+    tail: Path(206) result→151
   }
-  FnDef(206) name=probe_insert vis=private params=[let self: _, let key: K→9] return=Int→<unresolved> {
-    VarStmt(214) Ident(210) i→210: _ = Path(212) self→207.Method(211) slot_for(Path(213) key→208)
-    VarStmt(217) Ident(215) result→215: _ = Lit(216) Int(0)
-    ExprStmt(218) Loop(219) Block(220) {
-      ExprStmt(221) If(222) Bin(223) ==(Path(226) self→207.Field(225) used[Path(227) i→210], Lit(228) Bool(false)) Block(229) {
-        ExprStmt(230) result→215 = Path(232) i→210
-        tail: Block(234) {
-          BreakStmt(235)
+  FnDef(207) name=probe_insert vis=private params=[let self: _, let key: K→10] return=Int→<unresolved> {
+    VarStmt(215) Ident(211) i→211: _ = Path(213) self→208.Method(212) slot_for(Path(214) key→209)
+    VarStmt(218) Ident(216) result→216: _ = Lit(217) Int(0)
+    ExprStmt(219) Loop(220) Block(221) {
+      ExprStmt(222) If(223) Bin(224) ==(Path(227) self→208.Field(226) used[Path(228) i→211], Lit(229) Bool(false)) Block(230) {
+        ExprStmt(231) result→216 = Path(233) i→211
+        tail: Block(235) {
+          BreakStmt(236)
         }
       }
-      ExprStmt(236) If(237) Bin(238) ==(Path(241) self→207.Field(240) keys[Path(242) i→210], Path(243) key→208) Block(244) {
-        ExprStmt(245) result→215 = Path(247) i→210
-        tail: Block(249) {
-          BreakStmt(250)
+      ExprStmt(237) If(238) Bin(239) ==(Path(242) self→208.Field(241) keys[Path(243) i→211], Path(244) key→209) Block(245) {
+        ExprStmt(246) result→216 = Path(248) i→211
+        tail: Block(250) {
+          BreakStmt(251)
         }
       }
-      tail: i→210 = Path(254) self→207.Method(253) next_slot(Path(255) i→210)
+      tail: i→211 = Path(255) self→208.Method(254) next_slot(Path(256) i→211)
     }
-    tail: Path(257) result→215
+    tail: Path(258) result→216
   }
-  FnDef(258) name=insert_raw vis=private params=[inout self: _, sink key: K→9, sink value: V→10] return=_ {
-    ValStmt(267) Ident(263) slot→263: _ = Path(265) self→259.Method(264) probe_insert(Path(266) key→260)
-    ExprStmt(268) If(269) Bin(270) ==(Path(273) self→259.Field(272) used[Path(274) slot→263], Lit(275) Bool(false)) Block(276) {
-      tail: Path(279) self→259.count = Bin(280) +(Path(282) self→259.Field(281) count, Lit(283) Int(1))
+  FnDef(259) name=insert_raw vis=private params=[inout self: _, sink key: K→10, sink value: V→11] return=_ {
+    ValStmt(268) Ident(264) slot→264: _ = Path(266) self→260.Method(265) probe_insert(Path(267) key→261)
+    ExprStmt(269) If(270) Bin(271) ==(Path(274) self→260.Field(273) used[Path(275) slot→264], Lit(276) Bool(false)) Block(277) {
+      tail: Path(280) self→260.count = Bin(281) +(Path(283) self→260.Field(282) count, Lit(284) Int(1))
     }
-    ExprStmt(284) Path(287) self→259.Field(286) used[Path(288) slot→263] = Lit(289) Bool(true)
-    ExprStmt(290) Path(293) self→259.Field(292) keys[Path(294) slot→263] = Path(295) key→260
-    tail: Path(299) self→259.Field(298) vals[Path(300) slot→263] = Path(301) value→261
+    ExprStmt(285) Path(288) self→260.Field(287) used[Path(289) slot→264] = Lit(290) Bool(true)
+    ExprStmt(291) Path(294) self→260.Field(293) keys[Path(295) slot→264] = Path(296) key→261
+    tail: Path(300) self→260.Field(299) vals[Path(301) slot→264] = Path(302) value→262
   }
-  FnDef(302) name=should_grow vis=private params=[let self: _] return=Bool→<unresolved> {
-    tail: Bin(306) ||(Bin(307) ==(Path(309) self→303.Field(308) cap, Lit(310) Int(0)), Bin(311) >=(Bin(312) *(Bin(313) +(Path(315) self→303.Field(314) count, Lit(316) Int(1)), Lit(317) Int(4)), Bin(318) *(Path(320) self→303.Field(319) cap, Lit(321) Int(3))))
+  FnDef(303) name=should_grow vis=private params=[let self: _] return=Bool→<unresolved> {
+    tail: Bin(307) ||(Bin(308) ==(Path(310) self→304.Field(309) cap, Lit(311) Int(0)), Bin(312) >=(Bin(313) *(Bin(314) +(Path(316) self→304.Field(315) count, Lit(317) Int(1)), Lit(318) Int(4)), Bin(319) *(Path(321) self→304.Field(320) cap, Lit(322) Int(3))))
   }
-  FnDef(322) name=grow vis=private params=[inout self: _] return=_ {
-    VarStmt(330) Ident(325) new_cap→325: _ = Bin(326) *(Path(328) self→323.Field(327) cap, Lit(329) Int(2))
-    ExprStmt(331) If(332) Bin(333) ==(Path(334) new_cap→325, Lit(335) Int(0)) Block(336) {
-      tail: new_cap→325 = Lit(339) Int(8)
+  FnDef(323) name=grow vis=private params=[inout self: _] return=_ {
+    VarStmt(331) Ident(326) new_cap→326: _ = Bin(327) *(Path(329) self→324.Field(328) cap, Lit(330) Int(2))
+    ExprStmt(332) If(333) Bin(334) ==(Path(335) new_cap→326, Lit(336) Int(0)) Block(337) {
+      tail: new_cap→326 = Lit(340) Int(8)
     }
-    VarStmt(343) Ident(340) new_keys→340: [K→<unresolved>] = Call(341) heap_alloc→1000007(Path(342) new_cap→325)
-    VarStmt(347) Ident(344) new_vals→344: [V→<unresolved>] = Call(345) heap_alloc→1000007(Path(346) new_cap→325)
-    VarStmt(351) Ident(348) new_used→348: [Bool→<unresolved>] = Call(349) heap_alloc→1000007(Path(350) new_cap→325)
-    VarStmt(354) Ident(352) j→352: _ = Lit(353) Int(0)
-    ExprStmt(355) LoopCond(356) Bin(368) <(Path(369) j→352, Path(370) new_cap→325) Block(357) {
-      ExprStmt(358) Path(360) new_used→348[Path(361) j→352] = Lit(362) Bool(false)
-      tail: j→352 = Bin(365) +(Path(366) j→352, Lit(367) Int(1))
+    VarStmt(344) Ident(341) new_keys→341: [K→<unresolved>] = Call(342) alloc_buffer→0(Path(343) new_cap→326)
+    VarStmt(348) Ident(345) new_vals→345: [V→<unresolved>] = Call(346) alloc_buffer→0(Path(347) new_cap→326)
+    VarStmt(352) Ident(349) new_used→349: [Bool→<unresolved>] = Call(350) alloc_buffer→0(Path(351) new_cap→326)
+    VarStmt(355) Ident(353) j→353: _ = Lit(354) Int(0)
+    ExprStmt(356) LoopCond(357) Bin(369) <(Path(370) j→353, Path(371) new_cap→326) Block(358) {
+      ExprStmt(359) Path(361) new_used→349[Path(362) j→353] = Lit(363) Bool(false)
+      tail: j→353 = Bin(366) +(Path(367) j→353, Lit(368) Int(1))
     }
-    ValStmt(374) Ident(371) old_keys→371: _ = Path(373) self→323.Field(372) keys
-    ValStmt(378) Ident(375) old_vals→375: _ = Path(377) self→323.Field(376) vals
-    ValStmt(382) Ident(379) old_used→379: _ = Path(381) self→323.Field(380) used
-    ValStmt(386) Ident(383) old_cap→383: _ = Path(385) self→323.Field(384) cap
-    ExprStmt(387) Path(389) self→323.keys = Path(390) new_keys→340
-    ExprStmt(391) Path(393) self→323.vals = Path(394) new_vals→344
-    ExprStmt(395) Path(397) self→323.used = Path(398) new_used→348
-    ExprStmt(399) Path(401) self→323.cap = Path(402) new_cap→325
-    ExprStmt(403) Path(405) self→323.count = Lit(406) Int(0)
-    VarStmt(409) Ident(407) k→407: _ = Lit(408) Int(0)
-    ExprStmt(410) LoopCond(411) Bin(433) <(Path(434) k→407, Path(435) old_cap→383) Block(412) {
-      ExprStmt(413) If(414) Path(416) old_used→379[Path(417) k→407] Block(418) {
-        tail: Path(421) self→323.Method(420) insert_raw(Path(423) old_keys→371[Path(424) k→407], Path(426) old_vals→375[Path(427) k→407])
+    ValStmt(375) Ident(372) old_keys→372: _ = Path(374) self→324.Field(373) keys
+    ValStmt(379) Ident(376) old_vals→376: _ = Path(378) self→324.Field(377) vals
+    ValStmt(383) Ident(380) old_used→380: _ = Path(382) self→324.Field(381) used
+    ValStmt(387) Ident(384) old_cap→384: _ = Path(386) self→324.Field(385) cap
+    ExprStmt(388) Path(390) self→324.keys = Path(391) new_keys→341
+    ExprStmt(392) Path(394) self→324.vals = Path(395) new_vals→345
+    ExprStmt(396) Path(398) self→324.used = Path(399) new_used→349
+    ExprStmt(400) Path(402) self→324.cap = Path(403) new_cap→326
+    ExprStmt(404) Path(406) self→324.count = Lit(407) Int(0)
+    VarStmt(410) Ident(408) k→408: _ = Lit(409) Int(0)
+    ExprStmt(411) LoopCond(412) Bin(434) <(Path(435) k→408, Path(436) old_cap→384) Block(413) {
+      ExprStmt(414) If(415) Path(417) old_used→380[Path(418) k→408] Block(419) {
+        tail: Path(422) self→324.Method(421) insert_raw(Path(424) old_keys→372[Path(425) k→408], Path(427) old_vals→376[Path(428) k→408])
       }
-      tail: k→407 = Bin(430) +(Path(431) k→407, Lit(432) Int(1))
+      tail: k→408 = Bin(431) +(Path(432) k→408, Lit(433) Int(1))
     }
-    ExprStmt(436) Call(437) heap_free→1000010(Path(438) old_keys→371)
-    ExprStmt(439) Call(440) heap_free→1000010(Path(441) old_vals→375)
-    tail: Call(443) heap_free→1000010(Path(444) old_used→379)
+    ExprStmt(437) Call(438) free_buffer→4(Path(439) old_keys→372)
+    ExprStmt(440) Call(441) free_buffer→4(Path(442) old_vals→376)
+    tail: Call(444) free_buffer→4(Path(445) old_used→380)
   }
-  SubscriptDef(445) (self, key) -> V→10 body
-    tail: Path(452) self→446.Field(451) vals[Path(454) self→446.Method(453) find_slot(Path(455) key→447)]
+  SubscriptDef(446) (self, key) -> V→11 body
+    tail: Path(453) self→447.Field(452) vals[Path(455) self→447.Method(454) find_slot(Path(456) key→448)]
 ]
 UseItem(0) core::platform::write
 FnDef(1) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
@@ -300,15 +302,23 @@ FnDef(9) name=println vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(12) Call(13) write→0(Lit(14) Int(1), Path(16) s→10.Method(15) as_bytes())
   ExprStmt(17) Call(18) write→0(Lit(19) Int(1), Lit(21) String("\n").Method(20) as_bytes())
 }
-UseItem(448) utils{greet, add}
-FnDef(449) name=main vis=private params=[] return=_ {
-  ExprStmt(451) Call(452) greet→460(Lit(453) String("hello"))
-  ValStmt(458) Ident(454) x→454: _ = Call(455) add→466(Lit(456) Int(1), Lit(457) Int(2))
+FnDef(0) name=alloc_buffer<T> vis=pub params=[let count: Int→<unresolved>] return=[T→1] {
 }
-UseItem(459) std::io::print
-FnDef(460) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
-  tail: Call(464) print→1(Path(465) name→461)
+FnDef(4) name=free_buffer<T> vis=pub params=[let buf: [T→5]] return=_ {
 }
-FnDef(466) name=add vis=pub params=[let a: Int→<unresolved>, let b: Int→<unresolved>] return=Int→<unresolved> {
-  tail: Bin(471) +(Path(472) a→467, Path(473) b→468)
+FnDef(8) name=get_buffer<T> vis=pub params=[let buf: [T→9], let index: Int→<unresolved>] return=T→9 {
+}
+FnDef(13) name=set_buffer<T> vis=pub params=[let buf: [T→14], let index: Int→<unresolved>, let value: T→14] return=_ {
+}
+UseItem(449) utils{greet, add}
+FnDef(450) name=main vis=private params=[] return=_ {
+  ExprStmt(452) Call(453) greet→461(Lit(454) String("hello"))
+  ValStmt(459) Ident(455) x→455: _ = Call(456) add→467(Lit(457) Int(1), Lit(458) Int(2))
+}
+UseItem(460) std::io::print
+FnDef(461) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
+  tail: Call(465) print→1(Path(466) name→462)
+}
+FnDef(467) name=add vis=pub params=[let a: Int→<unresolved>, let b: Int→<unresolved>] return=Int→<unresolved> {
+  tail: Bin(472) +(Path(473) a→468, Path(474) b→469)
 }

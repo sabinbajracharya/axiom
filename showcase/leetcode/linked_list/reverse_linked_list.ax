@@ -1,0 +1,54 @@
+// === Problem: Reverse Linked List (LeetCode #206) ===
+// Given the head of a singly linked list, reverse it and return the new head.
+//
+// === Pattern: In-place reversal (two pointers) ===
+// Use prev/curr pointers. At each step, save next, point curr to prev,
+// advance prev and curr. O(n) time, O(1) space.
+//
+// In Axiom we simulate linked list nodes with a raw buffer + index pointers.
+// Each "node" is an index into the buffer; -1 = null.
+
+fn main() {
+    // Build list: 1 -> 2 -> 3 -> 4 -> 5
+    var nodes: [Int] = heap_alloc(5)
+    nodes[0] = 1
+    nodes[1] = 2
+    nodes[2] = 3
+    nodes[3] = 4
+    nodes[4] = 5
+    // next pointers (simulated): nodes[i] stores value, next[i] stores next index
+    var next: [Int] = heap_alloc(5)
+    next[0] = 1
+    next[1] = 2
+    next[2] = 3
+    next[3] = 4
+    next[4] = -1  // null
+
+    println("Original: 1 -> 2 -> 3 -> 4 -> 5")
+
+    // Reverse
+    var prev = -1
+    var curr = 0
+    loop if curr != -1 {
+        val nxt = next[curr]
+        next[curr] = prev
+        prev = curr
+        curr = nxt
+    }
+
+    // Print reversed: prev is now the new head
+    var result = ""
+    var idx = prev
+    loop if idx != -1 {
+        if result == "" {
+            result = format("{}", nodes[idx])
+        } else {
+            result = format("{} -> {}", result, nodes[idx])
+        }
+        idx = next[idx]
+    }
+    println(format("Reversed: {}", result))
+
+    heap_free(nodes)
+    heap_free(next)
+}

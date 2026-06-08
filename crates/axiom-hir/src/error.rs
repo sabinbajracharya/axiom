@@ -35,6 +35,10 @@ pub enum HirDiagnostic {
     OrphanLangItem { key: String, span: Span },
     #[error("`@lang` attributes are only allowed in the standard library (found `{key}`)")]
     LangItemOutsideStdlib { key: String, span: Span },
+    #[error("`@intrinsic` attributes are only allowed in the standard library (found `{key}`)")]
+    IntrinsicOutsideStdlib { key: String, span: Span },
+    #[error("unknown intrinsic `{key}`: the compiler does not know how to lower it")]
+    UnknownIntrinsic { key: String, span: Span },
 }
 
 impl HirDiagnostic {
@@ -48,7 +52,9 @@ impl HirDiagnostic {
             | HirDiagnostic::MissingLangItem { span, .. }
             | HirDiagnostic::DuplicateLangItem { span, .. }
             | HirDiagnostic::OrphanLangItem { span, .. }
-            | HirDiagnostic::LangItemOutsideStdlib { span, .. } => *span,
+            |             HirDiagnostic::LangItemOutsideStdlib { span, .. }
+            | HirDiagnostic::IntrinsicOutsideStdlib { span, .. }
+            | HirDiagnostic::UnknownIntrinsic { span, .. } => *span,
         }
     }
 

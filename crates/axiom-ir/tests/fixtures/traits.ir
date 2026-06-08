@@ -19,7 +19,7 @@ fn main() -> fn() -> Unit {
   %0 = Const Float(3)
   %1 = StructNew Circle {r: %0}
   %2 = MethodCall %1 Circle::area []
-  %3 = Call print [%2]
-  Return %3
+  %4 = Call print [%2]
+  Return %4
 }
 

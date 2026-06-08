@@ -8,13 +8,19 @@
 [fn Circle::area] %5 = BinOp Mul(%3, %4)
 [fn Circle::area] Return %5
 [fn main] %3 = Const(String("{}"))
+[fn main] %5 = Const(String("{}"))
 [fn main] 
-[fn main] Call std::io::print(%4)
+[fn main] %8 = Const(String("{}"))
+[fn main] %10 = Const(String("{}"))
+[fn main] 
+[fn main] Call std::io::print(%11)
 [fn std::io::print] %1 = Const(Int(1))
+[fn std::io::print] 
+[fn std::io::print] %4 = Const(Int(1))
 [fn std::io::print] 
 [fn extern] write(28.274309999999996) => ()
 [fn output] 28.274309999999996
 [fn std::io::print] 
-[fn std::io::print] %4 = Const(Unit)
-[fn std::io::print] Return %4
-[fn main] Return %5
+[fn std::io::print] %7 = Const(Unit)
+[fn std::io::print] Return %7
+[fn main] Return %12

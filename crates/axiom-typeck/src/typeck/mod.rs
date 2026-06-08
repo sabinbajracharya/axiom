@@ -435,10 +435,10 @@ impl TypeChecker {
             .as_ref()
             .map(|t| self.resolve_hir_ty(t))
             .unwrap_or(crate::types::Ty::Unit);
-        // Extern fns (`extern "C" fn …;`) have no body — the platform supplies
-        // it. There is nothing to check the declared return type against, so we
-        // record the signature and skip the body/return reconciliation.
-        if f.extern_abi.is_none() {
+        // Extern fns (`extern "C" fn …;`) and intrinsics (`@intrinsic`) have
+        // no body we should check — the platform or compiler supplies it.
+        // Record the signature and skip the body/return reconciliation.
+        if f.extern_abi.is_none() && f.intrinsic_tag.is_none() {
             let body_type = self.check_block(&f.body, &return_type);
             if !helpers::is_error(&body_type)
                 && !helpers::is_error(&return_type)

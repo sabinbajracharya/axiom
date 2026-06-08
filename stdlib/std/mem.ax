@@ -1,0 +1,22 @@
+// std/mem.ax — heap-buffer primitives for the standard library.
+//
+// These functions are compiler intrinsics: the bodies are supplied by the
+// compiler as IR instructions (HeapAlloc, HeapFree, HeapGet, HeapSet), not
+// by user-written Axiom code. The `@intrinsic` annotation tells the compiler
+// which IR instruction to emit for each call site.
+//
+// These are NOT in the prelude. User code should use `List<T>`, `Map<K,V>`,
+// and future collection types — never raw heap buffers directly.
+// See `docs/intrinsic-and-stdlib-identity.md` §2b.
+
+@intrinsic("heap_alloc")
+pub fn alloc_buffer<T>(count: Int) -> [T]
+
+@intrinsic("heap_free")
+pub fn free_buffer<T>(buf: [T])
+
+@intrinsic("heap_get")
+pub fn get_buffer<T>(buf: [T], index: Int) -> T
+
+@intrinsic("heap_set")
+pub fn set_buffer<T>(buf: [T], index: Int, value: T)

@@ -24,6 +24,7 @@
 pub mod desugar;
 mod error;
 mod hir;
+pub mod intrinsic;
 pub mod lang;
 mod lower;
 mod resolve;
@@ -31,6 +32,10 @@ mod serialize;
 
 pub use error::HirDiagnostic;
 pub use hir::*;
+pub use intrinsic::{
+    collect_intrinsic_bindings, validate_intrinsic_bindings, IntrinsicBinding, HEAP_ALLOC,
+    HEAP_FREE, HEAP_GET, HEAP_SET, KNOWN_INTRINSICS,
+};
 pub use lang::{
     collect_lang_bindings, resolve_lang_items, LangBinding, LangItems, REQUIRED_LANG_ITEMS,
 };

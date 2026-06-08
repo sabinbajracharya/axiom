@@ -1,18 +1,25 @@
 [fn main] %0 = Const(Int(0))
-[fn main] Call describe(%0)
+[fn main] %2 = Const(Int(0))
+[fn main] Call describe(%2)
 [fn describe] Match %0 => match_arm_1
 [fn describe] %2 = Const(Float(1.0))
 [fn describe] %1 = Copy %2
 [fn describe] Jump match_merge_0
 [fn describe] Return %1
-[fn main] %2 = Const(String("{}"))
+[fn main] %4 = Const(String("{}"))
+[fn main] %6 = Const(String("{}"))
 [fn main] 
-[fn main] Call std::io::print(%3)
+[fn main] %9 = Const(String("{}"))
+[fn main] %11 = Const(String("{}"))
+[fn main] 
+[fn main] Call std::io::print(%12)
 [fn std::io::print] %1 = Const(Int(1))
+[fn std::io::print] 
+[fn std::io::print] %4 = Const(Int(1))
 [fn std::io::print] 
 [fn extern] write(1) => ()
 [fn output] 1
 [fn std::io::print] 
-[fn std::io::print] %4 = Const(Unit)
-[fn std::io::print] Return %4
-[fn main] Return %4
+[fn std::io::print] %7 = Const(Unit)
+[fn std::io::print] Return %7
+[fn main] Return %13

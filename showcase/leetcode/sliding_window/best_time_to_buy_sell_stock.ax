@@ -1,0 +1,45 @@
+// === Problem: Best Time to Buy and Sell Stock (LeetCode #121) ===
+// Given an array `prices` where prices[i] is the price of a stock on day i,
+// find the maximum profit from a single buy-sell transaction.
+// You must buy before you sell.
+//
+// === Pattern: Sliding Window (single pass) ===
+// Track the minimum price seen so far. At each day, compute profit if
+// you sold today. Update max profit. O(n) time, O(1) space.
+
+fn main() {
+    var prices1: List<Int> = List::new()
+    prices1.push(7)
+    prices1.push(1)
+    prices1.push(5)
+    prices1.push(3)
+    prices1.push(6)
+    prices1.push(4)
+    max_profit(prices1, 6)
+
+    var prices2: List<Int> = List::new()
+    prices2.push(7)
+    prices2.push(6)
+    prices2.push(4)
+    prices2.push(3)
+    prices2.push(1)
+    max_profit(prices2, 5)
+}
+
+fn max_profit(prices: List<Int>, len: Int) {
+    var min_price = prices[0]
+    var max_profit = 0
+    var i = 1
+    loop if i < len {
+        val price = prices[i]
+        if price < min_price {
+            min_price = price
+        }
+        val profit = price - min_price
+        if profit > max_profit {
+            max_profit = profit
+        }
+        i = i + 1
+    }
+    println(format("Max profit: {}", max_profit))
+}

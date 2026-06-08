@@ -84,6 +84,7 @@ fn lower_fn_inner(f: &ast::FnDef, ctx: &mut LowerCtx) -> FnDef {
         body,
         extern_abi: f.extern_abi(),
         lang_tag: lang_tag_of(f.attr_list()),
+        intrinsic_tag: intrinsic_tag_of(f.attr_list()),
     }
 }
 
@@ -261,6 +262,19 @@ fn lang_tag_of(attrs: Option<ast::AttrList>) -> Option<String> {
         .attrs()
         .into_iter()
         .find(|a| a.name().as_deref() == Some("lang"))
+        .and_then(|a| a.arg())
+}
+
+/// Extract the `@intrinsic("…")` binding tag from an item's attribute list, if
+/// any. Only the `intrinsic` attribute is recognized; its single string argument
+/// is the intrinsic key (e.g. `heap_alloc`). The compiler matches this key at
+/// IR lowering time and emits the corresponding instruction instead of a real
+/// function call. See `docs/intrinsic-and-stdlib-identity.md` §2b.
+fn intrinsic_tag_of(attrs: Option<ast::AttrList>) -> Option<String> {
+    attrs?
+        .attrs()
+        .into_iter()
+        .find(|a| a.name().as_deref() == Some("intrinsic"))
         .and_then(|a| a.arg())
 }
 

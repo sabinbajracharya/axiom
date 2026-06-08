@@ -36,6 +36,12 @@ pub struct FnDef {
     /// item (e.g. `list_new`). `None` for ordinary functions. See
     /// `docs/lang-items-and-desugaring-design.md` §3.3.
     pub lang_tag: Option<String>,
+    /// The `@intrinsic("…")` binding tag, if this fn's body is supplied by the
+    /// compiler (e.g. `heap_alloc`). The compiler matches the key to a known
+    /// intrinsic and emits the corresponding IR instruction or VM builtin
+    /// instead of generating a function body. See
+    /// `docs/intrinsic-and-stdlib-identity.md` §2b.
+    pub intrinsic_tag: Option<String>,
 }
 
 #[derive(Debug, Clone)]

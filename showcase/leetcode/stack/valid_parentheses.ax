@@ -1,0 +1,80 @@
+// === Problem: Valid Parentheses (LeetCode #20) ===
+// Given a string `s` containing only '(', ')', '{', '}', '[' and ']',
+// determine if the input is valid.
+//
+// === Pattern: Stack ===
+// Push opening brackets (as integers). On closing bracket, check if
+// top of stack matches. At the end, stack must be empty.
+//
+// Uses integer codes: '('=1, '{'=2, '['=3, ')'=4, '}'=5, ']'=6
+
+fn main() {
+    // Test cases as integer arrays (1='(', 2='{', 3='[', 4=')', 5='}', 6=']')
+    val t1: List<Int> = List::new()
+    t1.push(1)
+    t1.push(4)
+    valid_parens(t1, 2)
+
+    val t2: List<Int> = List::new()
+    t2.push(1)
+    t2.push(4)
+    t2.push(3)
+    t2.push(6)
+    t2.push(2)
+    t2.push(5)
+    valid_parens(t2, 6)
+
+    val t3: List<Int> = List::new()
+    t3.push(1)
+    t3.push(4)
+    t3.push(3)
+    t3.push(5)
+    valid_parens(t3, 4)
+
+    val t4: List<Int> = List::new()
+    t4.push(2)
+    t4.push(3)
+    t4.push(6)
+    t4.push(5)
+    valid_parens(t4, 4)
+}
+
+fn is_open(code: Int) -> Bool {
+    code >= 1 && code <= 3
+}
+
+fn matches(open: Int, close: Int) -> Bool {
+    open + 3 == close
+}
+
+fn valid_parens(s: List<Int>, len: Int) {
+    var stack: [Int] = heap_alloc(len)
+    var stack_size = 0
+    var i = 0
+    loop if i < len {
+        val ch = s[i]
+        if is_open(ch) {
+            stack[stack_size] = ch
+            stack_size = stack_size + 1
+        } else {
+            if stack_size == 0 {
+                println("false (nothing to match)")
+                heap_free(stack)
+                return
+            }
+            stack_size = stack_size - 1
+            if !matches(stack[stack_size], ch) {
+                println("false (mismatch)")
+                heap_free(stack)
+                return
+            }
+        }
+        i = i + 1
+    }
+    if stack_size == 0 {
+        println("true")
+    } else {
+        println("false (unclosed)")
+    }
+    heap_free(stack)
+}

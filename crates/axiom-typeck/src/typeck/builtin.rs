@@ -37,6 +37,7 @@ fn make_fn(
         },
         extern_abi: None,
         lang_tag: None,
+        intrinsic_tag: None,
     }
 }
 

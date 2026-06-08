@@ -18,6 +18,11 @@ use super::LowerCtx;
 pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
     match item {
         Item::FnDef(f) => {
+            // Skip `@intrinsic` functions — the compiler emits the corresponding
+            // IR instruction inline at each call site; no function body to lower.
+            if f.intrinsic_tag.is_some() {
+                return;
+            }
             // Skip generic FnDefs — they are lowered as monomorphized instances.
             if !f.type_params.is_empty() {
                 return;
@@ -35,6 +40,9 @@ pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
         Item::ImplDef(impl_def) => {
             let type_name = name_ref_text(&impl_def.type_name);
             for m in &impl_def.methods {
+                if m.intrinsic_tag.is_some() {
+                    continue; // Skip @intrinsic — compiler emits inline.
+                }
                 if m.type_params.is_empty() {
                     lower_fn_def(m, ctx, None, Some(&type_name));
                 }

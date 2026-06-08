@@ -6,6 +6,8 @@
 // `List` — every method below has a real body (migration M6; see
 // docs/builtin-to-stdlib-migration.md).
 
+use std::mem::{alloc_buffer, free_buffer}
+
 @lang("list")
 struct List<T: Deinit> {
     buf: [T],
@@ -18,7 +20,7 @@ impl<T: Deinit> List<T> {
     // (capacity starts at 0), so `new` never needs an element witness.
     @lang("list_new")
     fn new() -> List<T> {
-        List { buf: heap_alloc(0), count: 0, cap: 0 }
+        List { buf: alloc_buffer(0), count: 0, cap: 0 }
     }
 
     // A list pre-sized for `capacity` elements: the buffer is allocated once up
@@ -27,7 +29,7 @@ impl<T: Deinit> List<T> {
     // fixed-size literal allocates exactly once instead of growing 0 → 4 → 8 → …
     @lang("list_with_capacity")
     fn with_capacity(capacity: Int) -> List<T> {
-        List { buf: heap_alloc(capacity), count: 0, cap: capacity }
+        List { buf: alloc_buffer(capacity), count: 0, cap: capacity }
     }
 
     fn count(self) -> Int {
@@ -59,13 +61,13 @@ impl<T: Deinit> List<T> {
         if new_cap == 0 {
             new_cap = 4
         }
-        var new_buf: [T] = heap_alloc(new_cap)
+        var new_buf: [T] = alloc_buffer(new_cap)
         var i = 0
         loop if i < self.count {
             new_buf[i] = self.buf[i]
             i = i + 1
         }
-        heap_free(self.buf)
+        free_buffer(self.buf)
         self.buf = new_buf
         self.cap = new_cap
     }

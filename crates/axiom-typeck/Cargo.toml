@@ -12,11 +12,11 @@ workspace = true
 axiom-hir = { path = "../axiom-hir" }
 axiom-lexer = { path = "../axiom-lexer" }
 axiom-parser = { path = "../axiom-parser" }
+axiom-stdlib = { path = "../axiom-stdlib" }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 axiom-modules = { path = "../axiom-modules" }
-axiom-stdlib = { path = "../axiom-stdlib" }
 
 [[example]]
 name = "typeck"

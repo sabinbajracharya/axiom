@@ -1,7 +1,8 @@
 fn main() -> fn() -> Unit {
   entry:
   %0 = Const String("Hello, Axiom!")
-  %1 = Call print [%0]
-  Return %1
+  %2 = Const String("Hello, Axiom!")
+  %3 = Call print [%2]
+  Return %3
 }
 

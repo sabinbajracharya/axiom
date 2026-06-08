@@ -61,9 +61,8 @@ fn lower_lit(e: &axiom_hir::LitExpr, ctx: &mut FnLowerCtx) -> Reg {
 }
 
 fn lower_call(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Reg {
-    // `HeapBuffer<T>` floor ops (P4) lower to dedicated heap instructions rather
-    // than function calls — there is no `heap_*` FnDef; they are compiler
-    // intrinsics the VM implements directly.
+    // Heap-buffer intrinsics lower to dedicated heap instructions rather than
+    // function calls — matched by `@intrinsic` tag on the callee's HIR FnDef.
     if let Some(reg) = lower_heap_intrinsic(e, ctx) {
         return reg;
     }
@@ -124,38 +123,73 @@ fn assoc_method_type(e: &axiom_hir::CallExpr, items: &[axiom_hir::Item]) -> Opti
     None
 }
 
-/// Lower a `HeapBuffer<T>` floor-op call (`heap_alloc`/`heap_get`/`heap_set`/
-/// `heap_free`) to its dedicated heap instruction. Returns `None` for any other
-/// call so normal function-call lowering proceeds.
+/// Lower a heap-buffer intrinsic call to its dedicated IR instruction.
+/// Returns `None` for normal function calls.
+///
+/// Two paths (the second is transitional — removed in Phase 6 cleanup):
+/// 1. `@intrinsic` tag on a real HIR FnDef (the post-migration path).
+/// 2. String name match for the old `builtin_def_id()` path (transitional).
 fn lower_heap_intrinsic(e: &axiom_hir::CallExpr, ctx: &mut FnLowerCtx) -> Option<Reg> {
-    let name = name_ref_text(&e.callee);
-    let args: Vec<Reg> = match name.as_str() {
-        "heap_alloc" | "heap_get" | "heap_set" | "heap_free" => {
-            e.args.iter().map(|a| lower_expr(a, ctx)).collect()
-        }
-        _ => return None,
-    };
+    let key = intrinsic_key_for_call(e, ctx);
+    let args: Vec<Reg> = e.args.iter().map(|a| lower_expr(a, ctx)).collect();
     let dst = ctx.fresh_reg();
-    let instr = match name.as_str() {
-        "heap_alloc" => IrInstr::HeapAlloc {
+    let instr = match key.as_deref() {
+        Some(axiom_hir::HEAP_ALLOC) => IrInstr::HeapAlloc {
             dst,
             count: args[0],
         },
-        "heap_get" => IrInstr::HeapGet {
+        Some(axiom_hir::HEAP_GET) => IrInstr::HeapGet {
             dst,
             ptr: args[0],
             index: args[1],
         },
-        "heap_set" => IrInstr::HeapSet {
+        Some(axiom_hir::HEAP_SET) => IrInstr::HeapSet {
             ptr: args[0],
             index: args[1],
             value: args[2],
         },
-        "heap_free" => IrInstr::HeapFree { ptr: args[0] },
-        _ => unreachable!("guarded by the match above"),
+        Some(axiom_hir::HEAP_FREE) => IrInstr::HeapFree { ptr: args[0] },
+        _ => return None,
     };
     ctx.emit(instr);
     Some(dst)
+}
+
+/// Determine the intrinsic key for a call expression.
+/// Checks `@intrinsic` tag first (post-migration), then falls back to
+/// string-name match (transitional, for the old `builtin_def_id()` global).
+fn intrinsic_key_for_call(
+    e: &axiom_hir::CallExpr,
+    ctx: &mut FnLowerCtx,
+) -> Option<String> {
+    // Path 1: @intrinsic tag on the resolved FnDef.
+    let callee_id = match &e.callee {
+        axiom_hir::NameRef::Resolved(r) => r.def_id,
+        _ => return None,
+    };
+    if let Some(tag) = find_intrinsic_tag(callee_id, ctx.hir_items) {
+        return Some(tag);
+    }
+
+    // Path 2: transitional — match by name string for old builtin_def_id()
+    // global names (removed in Phase 6 cleanup).
+    let name = name_ref_text(&e.callee);
+    match name.as_str() {
+        "heap_alloc" | "heap_get" | "heap_set" | "heap_free" => Some(name),
+        _ => None,
+    }
+}
+
+/// Scan HIR items for the `@intrinsic` tag on the FnDef with the given DefId.
+fn find_intrinsic_tag(def_id: axiom_hir::HirId, items: &[axiom_hir::Item]) -> Option<String> {
+    for item in items {
+        if let axiom_hir::Item::FnDef(f) = item {
+            if f.id == def_id {
+                return f.intrinsic_tag.clone();
+            }
+        }
+    }
+    None
 }
 
 fn lower_method_call(e: &axiom_hir::MethodCallExpr, ctx: &mut FnLowerCtx) -> Reg {

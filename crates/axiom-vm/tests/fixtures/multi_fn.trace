@@ -1,30 +1,41 @@
 [fn main] %0 = Const(Int(3))
 [fn main] %1 = Const(Int(4))
-[fn main] Call sum_of_squares(%0, %1)
+[fn main] %3 = Const(Int(3))
+[fn main] %4 = Const(Int(4))
+[fn main] Call sum_of_squares(%3, %4)
 [fn sum_of_squares] Call square(%0)
 [fn square] %1 = BinOp Mul(%0, %0)
 [fn square] Return %1
 [fn sum_of_squares] Call square(%1)
 [fn square] %1 = BinOp Mul(%0, %0)
 [fn square] Return %1
-[fn sum_of_squares] %4 = BinOp Add(%2, %3)
-[fn sum_of_squares] Return %4
-[fn main] %3 = Const(String("{}"))
+[fn sum_of_squares] %6 = BinOp Add(%3, %5)
+[fn sum_of_squares] Return %6
+[fn main] %6 = Const(String("{}"))
+[fn main] %8 = Const(String("{}"))
 [fn main] 
-[fn main] Call std::io::println(%4)
+[fn main] %11 = Const(String("{}"))
+[fn main] %13 = Const(String("{}"))
+[fn main] 
+[fn main] Call std::io::println(%14)
 [fn std::io::println] %1 = Const(Int(1))
+[fn std::io::println] 
+[fn std::io::println] %4 = Const(Int(1))
 [fn std::io::println] 
 [fn extern] write(25) => ()
 [fn output] 25
 [fn std::io::println] 
-[fn std::io::println] %4 = Const(Int(1))
-[fn std::io::println] %5 = Const(String("\n"))
+[fn std::io::println] %7 = Const(Int(1))
+[fn std::io::println] %8 = Const(String("\n"))
+[fn std::io::println] 
+[fn std::io::println] %11 = Const(Int(1))
+[fn std::io::println] %12 = Const(String("\n"))
 [fn std::io::println] 
 [fn extern] write(
 ) => ()
 [fn output] 
 
 [fn std::io::println] 
-[fn std::io::println] %8 = Const(Unit)
-[fn std::io::println] Return %8
-[fn main] Return %5
+[fn std::io::println] %15 = Const(Unit)
+[fn std::io::println] Return %15
+[fn main] Return %15

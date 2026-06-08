@@ -23,9 +23,10 @@ fn area(s: Shape) -> fn(Shape) -> Float {
 fn main() -> fn() -> Unit {
   entry:
   %0 = Const Float(3)
-  %1 = Call Circle [%0]
-  %2 = Call area [%1]
-  %3 = Call print [%2]
-  Return %3
+  %2 = Const Float(3)
+  %3 = Call Circle [%2]
+  %5 = Call area [%3]
+  %7 = Call print [%5]
+  Return %7
 }
 

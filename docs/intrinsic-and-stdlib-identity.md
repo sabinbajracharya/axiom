@@ -1,0 +1,399 @@
+# Intrinsics & Stdlib Identity — Design Plan
+
+> **Status: Proposed.** Companion docs: `DESIGN_SPEC.md` §10, `docs/lang-items-and-desugaring-design.md`,
+> `docs/builtin-to-stdlib-migration.md`, `docs/modules-design.md`.
+
+## 0. The concern this answers
+
+`heap_alloc`, `heap_free`, `heap_get`, and `heap_set` are compiler intrinsics available in **every**
+Axiom source file with no import and no access check. This is a security and correctness footgun:
+user application code can allocate and free raw heap buffers, bypassing the stdlib collections
+(`List`, `Map`) entirely — use-after-free, double-free, and leak bugs are guaranteed.
+
+The same `builtin_def_id()` namespace also contains `format`, `Int`, `todo`, etc. — items with
+completely different visibility needs. Today there is no mechanism to distinguish
+"visible to everyone" from "stdlib-only," and the sole `@lang` gate
+(`is_stdlib_module(name.starts_with("std"))`) is spoofable by any user file named
+`std::something.ax`.
+
+This document defines **two coupled mechanisms** that fix both problems:
+
+1. **Robust stdlib identity** — the compiler knows, with cryptographic certainty, which modules
+   are the standard library.
+2. **`@intrinsic` annotation** — the reverse of `@lang`: a stdlib-only attribute that tells the
+   compiler "this function signature is a declaration; the body is supplied by the compiler as an
+   IR instruction or VM builtin."
+
+Together they give the compiler a single, unspoofable trust boundary that gates all
+compiler↔stdlib coupling — `@lang`, `@intrinsic`, and any future mechanism.
+
+## 1. The problem, stated plainly
+
+### 1a. Current state — the three global-resolve tiers
+
+Every name that resolves through `builtin_def_id()` (`crates/axiom-hir/src/resolve/mod.rs:369`)
+is a global with no per-file or per-module access check:
+
+| Tier | Names | Desired visibility | Current reality |
+|---|---|---|---|
+| Universal types | `Int`, `Float`, `Bool`, `String`, `Unit` | Everyone | ✅ Works (but incidental — no check) |
+| Universal functions | `format`, `todo` | Everyone | ✅ Works (but incidental — no check) |
+| Stdlib-only intrinsics | `heap_alloc`, `heap_free`, `heap_get`, `heap_set` | Stdlib only | ❌ Anyone can call them |
+
+The `is_stdlib_module()` gate (`crates/axiom-typeck/src/lib.rs:115-117`) that guards `@lang` uses
+a trivial string-prefix check:
+
+```rust
+fn is_stdlib_module(name: &str) -> bool {
+    name.starts_with("core") || name.starts_with("std")
+}
+```
+
+A user file at `my_project/std/attack.ax` (module path `std::attack`) passes this check and can
+freely declare `@lang`-tagged items. The check is **spoofable by path alone**.
+
+### 1b. What we are not changing
+
+- `Int`, `Float`, `Bool`, `String`, `Unit` remain universal. They **are** the type system.
+- `format`, `todo` remain universal. User code needs them.
+- `String::as_bytes`, `Bytes::len`, `hash_raw` (the VM builtins in
+  `crates/axiom-vm/src/exec/builtins.rs`) remain universal. They are standard operations on
+  standard types — not a safety boundary.
+- The IR-instruction-vs-VM-builtin split inside the VM is an implementation detail. This document
+  does not change how `HeapAlloc`/`HeapFree` instructions execute — only who is allowed to emit
+  them.
+
+### 1c. Existing evidence of the problem
+
+Files that use `heap_alloc` / `heap_free` directly (outside the stdlib):
+
+| File | Lines |
+|---|---|
+| `showcase/showcase.ax` | 156, 174 |
+| `showcase/place_assignment.ax` | 38, 48, 72, 132 |
+| `showcase/leetcode/linked_list/reverse_linked_list.ax` | 13, 20, 52, 53 |
+| `showcase/leetcode/stack/valid_parentheses.ax` | 51, 62, 68, 79 |
+| `crates/axiom-vm/tests/heap_buffer_e2e.rs` | 33, 39, 50, 54, 65, 69 |
+| `crates/axiom-vm/tests/place_assign_e2e.rs` | 80, 109 |
+
+The showcase files are user-facing examples — they should use `List`/`Map`, not raw heap buffers.
+The e2e tests test the heap intrinsics themselves and will migrate to an `@intrinsic` gated path.
+
+## 2. The solution
+
+### 2a. Part 1 — Robust stdlib identity
+
+Replace the string-prefix check with a **build-time verified set** of known stdlib module paths.
+
+`axiom-stdlib/build.rs` already walks the `stdlib/` directory and knows every valid module path.
+In addition to the current `STDLIB: &[(&str, &str)]` (module path → source text), the build script
+will also emit `STDLIB_MODULE_PATHS: phf::Set<&str>` — a compile-time perfect-hash set of every
+module path the stdlib owns.
+
+`is_stdlib_module()` becomes an O(1) membership check against this set:
+
+```rust
+fn is_stdlib_module(name: &str) -> bool {
+    axiom_stdlib::STDLIB_MODULE_PATHS.contains(name)
+}
+```
+
+A user file at `my_project/std/attack.ax` resolves to module path `std::attack`. This path is
+**not** in `STDLIB_MODULE_PATHS` because it was not present in `stdlib/` when the compiler was
+built. The check returns `false`. **Unspoofable** — the set is baked into the compiler binary
+at Rust compile time.
+
+**[Decided]** The set is generated by `build.rs` from the physical `stdlib/` directory, not from a
+hand-maintained manifest. The directory IS the manifest.
+
+### 2b. Part 2 — `@intrinsic` annotation
+
+A new Axiom-level attribute that is the **reverse** of `@lang`:
+
+```
+// In stdlib/std/mem.ax:
+
+@intrinsic("heap_alloc")
+pub fn alloc_buffer<T>(count: Int) -> [T]
+
+@intrinsic("heap_free")
+pub fn free_buffer<T>(buf: [T])
+```
+
+| | `@lang("key")` | `@intrinsic("key")` |
+|---|---|---|
+| **Who declares** | Compiler needs this → lang key | Stdlib needs this → intrinsic key |
+| **Who supplies the body** | Stdlib (normal `.ax` code) | Compiler (IR instruction or VM builtin) |
+| **Who can annotate** | Stdlib only | Stdlib only |
+| **Gate** | `is_stdlib_module()` | `is_stdlib_module()` |
+| **Example** | `@lang("list") struct List<T>` | `@intrinsic("heap_alloc") fn alloc_buffer<T>(...)` |
+
+The Axiom function name (`alloc_buffer`) is arbitrary — only the intrinsic key string matters.
+The compiler matches the key to its internal intrinsic table at HIR lowering time and emits the
+appropriate IR instruction or VM builtin call instead of generating a function body.
+
+The `@intrinsic` annotation is **itself restricted to stdlib modules** by the same
+`is_stdlib_module()` check that gates `@lang`. User code that writes `@intrinsic(...)` gets a
+diagnostic: `IntrinsicOutsideStdlib`.
+
+### 2c. How callers use intrinsics
+
+The stdlib declares intrinsics in an internal module and marks them `pub` so other stdlib modules
+can import them:
+
+```
+// stdlib/std/collections/list.ax:
+use std::mem::{alloc_buffer, free_buffer}
+
+fn grow(mut self) -> List<T> {
+    var new_buf = alloc_buffer(new_cap)
+    // ... copy elements ...
+    free_buffer(self.buf)
+    self.buf = new_buf
+}
+```
+
+User code never imports `std::mem` because it is not in the prelude. Even if a user explicitly
+writes `use std::mem::alloc_buffer`, the function resolves to the stdlib's `@intrinsic` declaration
+and the compiler emits the heap instruction — but at that point the user is deliberately reaching
+for a sharp tool, and `std::mem` would be documented as an unsafe/internal module.
+
+**[Decided: interim]** For now, intrinsics remain callable by user code if the user imports the
+stdlib module (sharp-tool access). When Axiom gains a `pub(stdlib)` or `unsafe` visibility
+modifier, the module can be tightened. The immediate win is removing `heap_alloc` from the global
+namespace so it cannot be called by accident.
+
+### 2d. Intrinsic key registry
+
+Mirrors the `REQUIRED_LANG_ITEMS` list in `crates/axiom-hir/src/lang.rs:80`. Every intrinsic key
+the compiler knows how to lower gets a constant and a registry entry:
+
+```rust
+// In crates/axiom-hir/src/intrinsic.rs (new file):
+
+pub const HEAP_ALLOC: &str = "heap_alloc";
+pub const HEAP_FREE: &str = "heap_free";
+pub const HEAP_GET: &str = "heap_get";
+pub const HEAP_SET: &str = "heap_set";
+
+pub const KNOWN_INTRINSICS: &[&str] = &[
+    HEAP_ALLOC, HEAP_FREE, HEAP_GET, HEAP_SET,
+];
+```
+
+An `@intrinsic("unknown_key")` in the stdlib produces an `UnknownIntrinsic` diagnostic — the
+compiler does not know how to lower it. This is the intrinsic analogue of `OrphanLangItem`.
+
+## 3. Implementation phases
+
+### Phase 1 — Robust stdlib identity set ✅
+
+**Goal:** Replace `is_stdlib_module()` with a build-time verified set that cannot be spoofed.
+
+- [ ] `axiom-stdlib/build.rs`: emit `STDLIB_MODULE_PATHS: phf::Set<&str>` alongside `STDLIB`.
+  Add `phf` to `axiom-stdlib/Cargo.toml` build-dependencies.
+- [ ] `axiom-stdlib/src/lib.rs`: expose `pub static STDLIB_MODULE_PATHS: phf::Set<&str>`.
+- [ ] `axiom-typeck/src/lib.rs`: replace `is_stdlib_module()` body with
+  `axiom_stdlib::STDLIB_MODULE_PATHS.contains(name)`.
+- [ ] Verify: create a test file named `std::bogus.ax` in a temp project and confirm `@lang` in
+  it produces `LangItemOutsideStdlib`.
+- [ ] Verify: confirm all existing stdlib modules still pass `is_stdlib_module()`.
+
+**Test:**
+- Unit test in `axiom-stdlib` that `STDLIB_MODULE_PATHS` contains `"core::primitives"`,
+  `"std::collections::list"`, etc.
+- Integration test in `axiom-typeck` that a module named `"std::bogus"` is rejected.
+- All existing `@lang` tests continue to pass (the stdlib identity hasn't changed).
+
+### Phase 2 — `@intrinsic` attribute (parser → HIR) ✅
+
+**Goal:** The parser, AST, and HIR lowerer recognize `@intrinsic("key")` on function definitions
+and store the key.
+
+- [ ] `axiom-parser`: `@intrinsic` is already parseable — the parser handles `@name("arg")` for any
+  name (see `crates/axiom-parser/src/ast/item_part.rs:56-84`). No parser change needed.
+- [ ] `axiom-hir/src/hir/mod.rs`: add `intrinsic_tag: Option<String>` to `FnDef` (mirrors
+  `lang_tag` on `StructDef` and `FnDef`).
+- [ ] `axiom-hir/src/lower/item.rs`: add `intrinsic_tag_of()` helper (mirrors `lang_tag_of()` at
+  line 259), wire into `lower_fn_def()`.
+- [ ] `axiom-hir/src/intrinsic.rs` (new): intrinsic key constants + `KNOWN_INTRINSICS` list
+  (see §2d above). Add `IntrinsicOutsideStdlib` to the `HirDiagnostic` enum in `error.rs`.
+
+**Test:**
+- Unit test: parse `@intrinsic("heap_alloc") fn foo() -> [Int]` → HIR `FnDef` has
+  `intrinsic_tag: Some("heap_alloc")`.
+- Unit test: `@intrinsic("unknown")` → tag stored (validation happens later in Phase 3).
+
+### Phase 3 — Intrinsic validation (typeck gate) ✅
+
+**Goal:** Enforce that `@intrinsic` can only appear in stdlib modules, and only with known keys.
+
+- [ ] `axiom-hir/src/intrinsic.rs`: `collect_intrinsic_bindings()` — scans items for
+  `@intrinsic` tags (mirrors `collect_lang_bindings()` in `lang.rs:146`).
+- [ ] `axiom-typeck/src/lib.rs`: in `check_modules()`, after `collect_lang_bindings()`, also
+  call `collect_intrinsic_bindings()`. For each binding:
+  - If module is *not* stdlib → `HirDiagnostic::IntrinsicOutsideStdlib { key, span }`.
+  - If key is not in `KNOWN_INTRINSICS` → `HirDiagnostic::UnknownIntrinsic { key, span }`.
+  - (Duplicate intrinsic keys are fine — same intrinsic key can appear on different Axiom names,
+    e.g. both `List::alloc` and `Map::alloc` tag with `"heap_alloc"`.)
+- [ ] Add diagnostic variants to `axiom-hir/src/error.rs`:
+  ```rust
+  #[error("`@intrinsic` attributes are only allowed in the standard library (found `{key}`)")]
+  IntrinsicOutsideStdlib { key: String, span: Span },
+  #[error("unknown intrinsic `{key}`: the compiler does not know how to lower it")]
+  UnknownIntrinsic { key: String, span: Span },
+  ```
+
+**Test:**
+- E2e: `@intrinsic` in a non-stdlib file → `IntrinsicOutsideStdlib` diagnostic.
+- E2e: `@intrinsic("not_real")` in stdlib file → `UnknownIntrinsic` diagnostic.
+- E2e: `@intrinsic("heap_alloc")` in `stdlib/std/mem.ax` → no diagnostic.
+
+### Phase 4 — Intrinsic lowering (IR codegen) ✅
+
+**Goal:** When the IR lowerer encounters a call to an `@intrinsic`-tagged function, it emits the
+corresponding IR instruction or VM builtin instead of a real function call.
+
+- [ ] `axiom-ir/src/lower/expr.rs`: extend or replace the current `lower_heap_intrinsic()` logic
+  to work from the `intrinsic_tag` rather than the function name string. The lowerer checks the
+  callee's HIR `FnDef` for `intrinsic_tag`, and if present, matches the key:
+  - `"heap_alloc"` → `IrInstr::HeapAlloc`
+  - `"heap_free"` → `IrInstr::HeapFree`
+  - `"heap_get"` → `IrInstr::HeapGet`
+  - `"heap_set"` → `IrInstr::HeapSet`
+- [ ] Remove `heap_alloc`/`heap_free`/`heap_get`/`heap_set` from `builtin_def_id()` in
+  `crates/axiom-hir/src/resolve/mod.rs`. They are no longer global names — they resolve
+  through the normal module/`use` path because the stdlib declares them as real functions
+  (with `@intrinsic`).
+
+**Test:**
+- E2e: `stdlib/std/collections/list.ax` compiles and runs correctly with the new resolution path.
+- E2e: user file that calls `heap_alloc` without importing it → `UnresolvedName` (no longer
+  a global).
+- Existing e2e tests in `crates/axiom-vm/tests/heap_buffer_e2e.rs` must be updated to use
+  `use std::mem::alloc_buffer` or a test-only intrinsic import.
+
+### Phase 5 — Stdlib source migration ✅
+
+**Goal:** Create `stdlib/std/mem.ax` and migrate the stdlib and tests to use the new path.
+
+- [ ] Create `stdlib/std/mem.ax`:
+  ```
+  @intrinsic("heap_alloc")
+  pub fn alloc_buffer<T>(count: Int) -> [T]
+
+  @intrinsic("heap_free")
+  pub fn free_buffer<T>(buf: [T])
+
+  @intrinsic("heap_get")
+  pub fn get_buffer<T>(buf: [T], index: Int) -> T
+
+  @intrinsic("heap_set")
+  pub fn set_buffer<T>(buf: [T], index: Int, value: T)
+  ```
+- [ ] `stdlib/std/collections/list.ax`: replace `heap_alloc`/`heap_free` calls with
+  `use std::mem::{alloc_buffer, free_buffer, get_buffer, set_buffer}` and use the new names.
+- [ ] `stdlib/std/collections/map.ax`: same migration.
+- [ ] `showcase/`: replace raw `heap_alloc`/`heap_free` usage with `List`/`Map` (the stdlib
+  collections they should have been using all along).
+- [ ] `crates/axiom-vm/tests/heap_buffer_e2e.rs`: update to use `std::mem::alloc_buffer` etc.
+  via a test-specific import OR add a test-only intrinsic access mechanism.
+- [ ] `crates/axiom-vm/tests/place_assign_e2e.rs`: same.
+
+**Test:**
+- Full test suite passes (`cargo test`).
+- Every existing stdlib test passes.
+- Showcase examples that used raw heap now use `List`/`Map` and produce the same output.
+
+### Phase 6 — Cleanup & drift guards ✅
+
+**Goal:** Remove dead code and add mechanical drift guards.
+
+- [ ] Remove `heap_alloc`, `heap_free`, `heap_get`, `heap_set` entries from
+  `builtin_def_id()` in `crates/axiom-hir/src/resolve/mod.rs`. Re-number remaining entries
+  (or leave gaps — the reserved range is wide enough).
+- [ ] Remove the string-match `lower_heap_intrinsic()` logic in
+  `crates/axiom-ir/src/lower/expr.rs` (replaced by `intrinsic_tag` dispatch in Phase 4).
+- [ ] Add `intrinsic.rs` drift guard test: scan all `.rs` sources for the raw string
+  `"heap_alloc"`, `"heap_free"`, `"heap_get"`, `"heap_set"` appearing as string literals
+  outside `intrinsic.rs` (mirrors `lang.rs`'s `test_no_raw_qualified_list_strings_outside_lang_module` at line 337).
+- [ ] Add a consistency test: every key in `KNOWN_INTRINSICS` must have at least one
+  `@intrinsic` binding in the stdlib when the stdlib is loaded (mirrors `MissingLangItem`).
+
+**Test:**
+- `test_no_raw_heap_strings_outside_intrinsic_module` passes.
+- `test_known_intrinsics_all_bound` passes.
+- Full `cargo clippy && cargo test` is green.
+
+## 4. Build order
+
+```
+Phase 1 ──┐
+          ├── Phase 2 ── Phase 3 ── Phase 4 ── Phase 5 ── Phase 6
+          │
+```
+
+Phase 1 (identity) and Phase 2 (HIR plumbing) are independent and can be done in parallel.
+Phase 3 (validation) requires Phase 1 (identity) + Phase 2 (HIR).
+Phase 4 (lowering) requires Phase 2 (HIR tags) but not Phase 3.
+Phase 5 (stdlib migration) requires Phase 4 (lowering works).
+Phase 6 (cleanup) requires Phase 5 (everything moved over).
+
+## 5. Out of scope (deferred)
+
+| Item | Reason |
+|---|---|
+| `pub(stdlib)` visibility modifier | Requires a broader visibility-model design pass. The interim solution (intrinsics callable if explicitly imported) is acceptable. **Deferred → v1 visibility milestone.** |
+| `unsafe` blocks for raw memory operations | Axiom has no `unsafe` concept yet. Once added, `std::mem` functions should require `unsafe { ... }` at call sites. **Deferred → unsafe-design milestone.** |
+| User-defined intrinsics (plugins / compiler extensions) | Beyond scope. Only the compiler can provide intrinsic bodies. **Deferred → post-1.0 ecosystem milestone.** |
+| `@intrinsic` on structs or other non-function items | Not needed yet. The heap intrinsics are all functions. **Deferred → when needed.** |
+| Trusted third-party packages (not just stdlib) | The `kind = "stdlib"` manifest field in `forge.toml` is the future extension point. **Deferred → forge/packages milestone.** |
+| Removing `format` from `builtin_def_id()` | `format` is variadic, which Axiom has no syntax for, so it remains an intrinsic. But it's universal — no gating needed. **Deferred → varargs/format-design milestone.** |
+
+## 6. Testing strategy
+
+| Guarantee | Mechanism | Strength |
+|---|---|---|
+| `is_stdlib_module()` is unspoofable | `build.rs` generates set from `stdlib/` directory; unit test verifies membership; integration test verifies a non-member path is rejected | **Hard** |
+| `@intrinsic` is stdlib-only | Typeck gate + e2e test with non-stdlib file producing `IntrinsicOutsideStdlib` | **Hard** |
+| Unknown intrinsic keys are caught | Typeck gate + e2e test with bogus key producing `UnknownIntrinsic` | **Hard** |
+| Intrinsic lowering is correct | Existing heap-buffer e2e tests pass after migration; new e2e test for each intrinsic | **Hard** |
+| No raw intrinsic name strings drift outside `intrinsic.rs` | Source-scan drift guard test (Phase 6) | **Hard** |
+| Every known intrinsic is bound in stdlib | Consistency test mirroring `MissingLangItem` (Phase 6) | **Hard** |
+| User code can't accidentally call `heap_alloc` | `builtin_def_id()` no longer resolves it; user code must explicitly `use std::mem::*` | **Soft** (until `pub(stdlib)` / `unsafe`) |
+| Showcase and test files migrated | Manual audit + grep for `heap_alloc`/`heap_free` in `.ax` files outside `stdlib/` — must return zero hits | **Hard** (mechanical check in CI) |
+
+### Test file inventory (to be created/updated)
+
+| Crate | Test | What it proves |
+|---|---|---|
+| `axiom-stdlib` | `test_stdlib_module_paths_contains_expected` | Build-time set includes known stdlib modules |
+| `axiom-typeck` | `test_intrinsic_outside_stdlib` | `@intrinsic` in user file → error |
+| `axiom-typeck` | `test_unknown_intrinsic` | Bogus key → error |
+| `axiom-hir` | `test_collect_intrinsic_bindings` | `@intrinsic` tags are collected from HIR |
+| `axiom-hir` | `test_no_raw_heap_strings_outside_intrinsic_module` | Drift guard |
+| `axiom-ir` | `test_intrinsic_lowering` | `@intrinsic("heap_alloc")` → `IrInstr::HeapAlloc` |
+| `axiom-vm` | `heap_buffer_e2e.rs` (updated) | Heap ops work through the intrinsic path |
+| `axiom-cli` | `test_heap_alloc_unresolved_in_user_code` | User code without `use` → unresolved error |
+
+## 7. Decisions and open questions
+
+| Question | Decision / Lean | Tag |
+|---|---|---|
+| Should intrinsics be callable by user code if explicitly imported? | Yes, for now. Sharp-tool access via `use std::mem::*`. Tightened later with `unsafe` or `pub(stdlib)`. | **[Decided: interim]** |
+| Should the intrinsic key or the Axiom function name be the canonical name? | The intrinsic key. The function name is arbitrary. | **[Decided]** |
+| What happens when user code and stdlib both define `std::mem`? | Module shadowing is `[Not allowed]` per `docs/modules-design.md`. The compiler emits a duplicate-module error. | **[Decided]** (pre-existing rule) |
+| Should `heap_get`/`heap_set` also be gated? | Yes. The entire heap family (`alloc`, `free`, `get`, `set`) is stdlib-only. | **[Decided]** |
+| Should `todo` be moved to `@intrinsic`? | **[Deferred]**. Low priority — `todo` is harmless globally. | |
+| Should `format` be moved to `@intrinsic`? | **[Deferred]**. `format` is variadic and needs special lowering, but it's user-facing. | |
+| What about `hash_raw` and `String::as_bytes`? | These are VM builtins, not HIR intrinsics. They dispatch through the existing `is_builtin()` path. No change needed. | **[Decided]** |
+
+## 8. Cross-references
+
+- `DESIGN_SPEC.md` §10 — Module system & visibility design
+- `DESIGN_SPEC.md` §4 — Memory model (the `HeapBuffer<T>` floor)
+- `docs/lang-items-and-desugaring-design.md` — The `@lang` mechanism this mirrors
+- `docs/builtin-to-stdlib-migration.md` — Migration of collections from builtins to stdlib
+- `docs/modules-design.md` — Module graph, `use`, visibility, prelude
+- `docs/ir-design.md` — IR instruction set (HeapAlloc, HeapFree, HeapGet, HeapSet)
+- `docs/lexer-testing.md` §5.2 — The `symbols.rs` single-source-of-truth pattern (used by the drift guard)

@@ -1,22 +1,28 @@
 [fn main] %0 = Const(Int(42))
 [fn main] Match %0 => match_arm_2
-[fn main] %4 = Const(String("the answer"))
-[fn main] Call std::io::println(%4)
+[fn main] %6 = Const(String("the answer"))
+[fn main] %8 = Const(String("the answer"))
+[fn main] Call std::io::println(%8)
 [fn std::io::println] %1 = Const(Int(1))
+[fn std::io::println] 
+[fn std::io::println] %4 = Const(Int(1))
 [fn std::io::println] 
 [fn extern] write(the answer) => ()
 [fn output] the answer
 [fn std::io::println] 
-[fn std::io::println] %4 = Const(Int(1))
-[fn std::io::println] %5 = Const(String("\n"))
+[fn std::io::println] %7 = Const(Int(1))
+[fn std::io::println] %8 = Const(String("\n"))
+[fn std::io::println] 
+[fn std::io::println] %11 = Const(Int(1))
+[fn std::io::println] %12 = Const(String("\n"))
 [fn std::io::println] 
 [fn extern] write(
 ) => ()
 [fn output] 
 
 [fn std::io::println] 
-[fn std::io::println] %8 = Const(Unit)
-[fn std::io::println] Return %8
-[fn main] %1 = Copy %5
+[fn std::io::println] %15 = Const(Unit)
+[fn std::io::println] Return %15
+[fn main] %1 = Copy %9
 [fn main] Jump match_merge_0
 [fn main] Return %1

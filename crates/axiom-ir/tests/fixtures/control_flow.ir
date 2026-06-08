@@ -6,13 +6,15 @@ fn main() -> fn() -> Unit {
   Branch %2 then_0 else_2
   then_0:
   %4 = Const String("positive")
-  %5 = Call print [%4]
-  %3 = Copy %5
-  Jump if_merge_1
-  else_2:
-  %6 = Const String("non-positive")
+  %6 = Const String("positive")
   %7 = Call print [%6]
   %3 = Copy %7
+  Jump if_merge_1
+  else_2:
+  %8 = Const String("non-positive")
+  %10 = Const String("non-positive")
+  %11 = Call print [%10]
+  %3 = Copy %11
   Jump if_merge_1
   if_merge_1:
   Return %3

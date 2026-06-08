@@ -3,43 +3,61 @@
 [fn main] %2 = BinOp Gt(%0, %1)
 [fn main] Branch %2 => then_0
 [fn main] %4 = Const(String("{}"))
+[fn main] %6 = Const(String("{}"))
 [fn main] 
-[fn main] Call std::io::println(%5)
+[fn main] %9 = Const(String("{}"))
+[fn main] %11 = Const(String("{}"))
+[fn main] 
+[fn main] Call std::io::println(%12)
 [fn std::io::println] %1 = Const(Int(1))
+[fn std::io::println] 
+[fn std::io::println] %4 = Const(Int(1))
 [fn std::io::println] 
 [fn extern] write(42) => ()
 [fn output] 42
 [fn std::io::println] 
-[fn std::io::println] %4 = Const(Int(1))
-[fn std::io::println] %5 = Const(String("\n"))
+[fn std::io::println] %7 = Const(Int(1))
+[fn std::io::println] %8 = Const(String("\n"))
+[fn std::io::println] 
+[fn std::io::println] %11 = Const(Int(1))
+[fn std::io::println] %12 = Const(String("\n"))
 [fn std::io::println] 
 [fn extern] write(
 ) => ()
 [fn output] 
 
 [fn std::io::println] 
-[fn std::io::println] %8 = Const(Unit)
-[fn std::io::println] Return %8
-[fn main] %3 = Copy %6
+[fn std::io::println] %15 = Const(Unit)
+[fn std::io::println] Return %15
+[fn main] %3 = Copy %13
 [fn main] Jump if_merge_1
-[fn main] %7 = Const(Int(8))
-[fn main] %8 = BinOp Add(%0, %7)
-[fn main] %9 = Const(String("{}"))
+[fn main] %14 = Const(Int(8))
+[fn main] %15 = BinOp Add(%0, %14)
+[fn main] %16 = Const(String("{}"))
+[fn main] %18 = Const(String("{}"))
 [fn main] 
-[fn main] Call std::io::println(%10)
+[fn main] %21 = Const(String("{}"))
+[fn main] %23 = Const(String("{}"))
+[fn main] 
+[fn main] Call std::io::println(%24)
 [fn std::io::println] %1 = Const(Int(1))
+[fn std::io::println] 
+[fn std::io::println] %4 = Const(Int(1))
 [fn std::io::println] 
 [fn extern] write(50) => ()
 [fn output] 50
 [fn std::io::println] 
-[fn std::io::println] %4 = Const(Int(1))
-[fn std::io::println] %5 = Const(String("\n"))
+[fn std::io::println] %7 = Const(Int(1))
+[fn std::io::println] %8 = Const(String("\n"))
+[fn std::io::println] 
+[fn std::io::println] %11 = Const(Int(1))
+[fn std::io::println] %12 = Const(String("\n"))
 [fn std::io::println] 
 [fn extern] write(
 ) => ()
 [fn output] 
 
 [fn std::io::println] 
-[fn std::io::println] %8 = Const(Unit)
-[fn std::io::println] Return %8
-[fn main] Return %11
+[fn std::io::println] %15 = Const(Unit)
+[fn std::io::println] Return %15
+[fn main] Return %25
