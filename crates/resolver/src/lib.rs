@@ -13,6 +13,10 @@ pub use lower::serialize;
 
 // Re-export all lower types at crate level so `resolver::X` works for
 // everything (use as replacement for now-deleted `hir::X`).
+// Re-export all of `lower` so that `resolver::TypeName` works for every
+// lower type. This is a deliberate glob — consumers use `resolver::` as the
+// single HIR surface. Internal code in this crate uses `crate::hir` (aliased
+// from `lower::hir_types`) for module-path access.
 pub use lower::*;
 
 pub mod desugar;

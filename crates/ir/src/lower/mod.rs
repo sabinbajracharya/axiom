@@ -13,6 +13,7 @@ use typecheck::Thir;
 
 pub(super) mod assign;
 pub(super) mod expr;
+pub(super) mod expr_helpers;
 pub(super) mod helpers;
 pub(super) mod item;
 pub(super) mod stmt;

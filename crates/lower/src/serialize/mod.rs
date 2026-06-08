@@ -7,6 +7,7 @@
 use crate::hir_types::*;
 
 mod escape;
+mod formatting;
 mod types;
 use types::{fmt_ty, fmt_ty_maybe};
 
@@ -584,18 +585,4 @@ fn serialize_pattern_inline(pat: &Pattern, out: &mut String) {
     }
 }
 
-fn fmt_lit(kind: &LitKind) -> String {
-    match kind {
-        LitKind::Int(i) => format!("Int({i})"),
-        LitKind::Float(f) => format!("Float({f})"),
-        LitKind::Bool(b) => format!("Bool({b})"),
-        LitKind::String(s) => format!("String(\"{}\")", escape::escape_str(s)),
-        LitKind::Unit => "Unit".to_string(),
-    }
-}
-
-fn indent(out: &mut String, depth: usize) {
-    for _ in 0..depth {
-        out.push_str("  ");
-    }
-}
+use formatting::{fmt_lit, indent};

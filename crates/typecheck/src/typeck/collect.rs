@@ -566,66 +566,7 @@ impl TypeChecker {
     }
 }
 
-/// Duplicate-detection for subscripts (H6 guard): if an impl has two read
-/// subscripts (or two write subscripts) with the same index-param count,
-/// emit a diagnostic. Never silently pick one and ignore the other.
-fn check_duplicate_subscripts(subscripts: &[SubscriptDef], type_name: &str, tc: &mut TypeChecker) {
-    let mut read_counts: std::collections::HashMap<usize, HirId> = std::collections::HashMap::new();
-    let mut write_counts: std::collections::HashMap<usize, HirId> =
-        std::collections::HashMap::new();
-    for s in subscripts {
-        // Index params = total params minus the self param.
-        let index_count = s.params.len().saturating_sub(1);
-        if s.is_setter {
-            if let Some(&prev) = write_counts.get(&index_count) {
-                tc.emit(TypeDiagnostic::DuplicateSubscript {
-                    type_name: type_name.to_string(),
-                    index_param_count: index_count,
-                    kind: "write".to_string(),
-                    span: tc.span_for(s.id),
-                });
-                // Also mark the first one for context.
-                tc.emit(TypeDiagnostic::DuplicateSubscript {
-                    type_name: type_name.to_string(),
-                    index_param_count: index_count,
-                    kind: "write".to_string(),
-                    span: tc.span_for(prev),
-                });
-            } else {
-                write_counts.insert(index_count, s.id);
-            }
-        } else {
-            if let Some(&prev) = read_counts.get(&index_count) {
-                tc.emit(TypeDiagnostic::DuplicateSubscript {
-                    type_name: type_name.to_string(),
-                    index_param_count: index_count,
-                    kind: "read".to_string(),
-                    span: tc.span_for(s.id),
-                });
-                tc.emit(TypeDiagnostic::DuplicateSubscript {
-                    type_name: type_name.to_string(),
-                    index_param_count: index_count,
-                    kind: "read".to_string(),
-                    span: tc.span_for(prev),
-                });
-            } else {
-                read_counts.insert(index_count, s.id);
-            }
-        }
-    }
-}
-
-/// Extract the text from a `NameRef` (resolved or unresolved).
-pub(super) fn name_text(nr: &NameRef) -> String {
-    match nr {
-        NameRef::Resolved(r) => r.text.clone(),
-        NameRef::Unresolved(u) => u.text.clone(),
-    }
-}
-
-/// Whether `name` is a builtin primitive type. These are real types (resolved
-/// by `resolve_named_type`) that live outside the environment, so impl-target
-/// validation must recognize them explicitly.
-pub(super) fn is_builtin_type_name(name: &str) -> bool {
-    matches!(name, "Int" | "Float" | "Bool" | "String" | "Unit")
-}
+// Re-export helpers from collect_subscripts module.
+pub(super) use super::collect_subscripts::{
+    check_duplicate_subscripts, is_builtin_type_name, name_text,
+};

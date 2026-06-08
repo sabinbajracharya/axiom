@@ -16,6 +16,7 @@
 
 mod builtin;
 mod collect;
+mod collect_subscripts;
 mod control;
 mod helpers;
 mod infer;
