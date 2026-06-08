@@ -199,6 +199,20 @@ pub(super) fn resolve_ty_names(ty: &mut HirTy, bindings: &HashMap<String, (DefId
         HirTy::Slice(elem) => {
             resolve_ty_names(elem, bindings);
         }
+        HirTy::ErrorSet(nr) => {
+            let text = match nr {
+                NameRef::Resolved(_) => return,
+                NameRef::Unresolved(u) => u.text.clone(),
+            };
+            if let Some((def_id, _)) = bindings.get(&text) {
+                *nr = NameRef::resolved(*def_id, &text);
+            }
+        }
+        HirTy::ErrorSetUnion(members) => {
+            for m in members {
+                resolve_ty_names(m, bindings);
+            }
+        }
         HirTy::TypeParam(_) | HirTy::Unit | HirTy::Error => {}
     }
 }

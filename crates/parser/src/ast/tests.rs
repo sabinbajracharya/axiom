@@ -76,6 +76,7 @@ fn can_cast_expr(kind: SyntaxKind) -> bool {
         || TryExpr::can_cast(kind)
         || AssignExpr::can_cast(kind)
         || CatchExpr::can_cast(kind)
+        || ElseExpr::can_cast(kind)
         || ScopeExpr::can_cast(kind)
         || SpawnExpr::can_cast(kind)
         || ListLitExpr::can_cast(kind)

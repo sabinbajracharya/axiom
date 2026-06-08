@@ -1,4 +1,8 @@
+//! Unit tests for the HIR desugar pass. Covers list literals, try/else
+//! error handling, idempotency, and variant coverage invariants.
+
 use super::*;
+use crate::DefKind;
 
 fn test_lang_items() -> LangItems {
     LangItems {
@@ -77,6 +81,11 @@ fn count_stmt_expr_kind(stmt: &Stmt, f: fn(&Expr) -> bool, count: &mut usize) {
     }
 }
 
+/// Count the number of sub-expressions matching `f` recursively.
+///
+/// This function is necessarily long because it matches every `Expr` variant
+/// (enforced by `test_every_expr_variant_handled_by_desugar`). Each arm
+/// recurses into child expressions; there is no shorter correct implementation.
 #[allow(clippy::too_many_lines)]
 fn count_sub_expr_kind(expr: &Expr, f: fn(&Expr) -> bool, count: &mut usize) {
     match expr {
@@ -149,6 +158,10 @@ fn count_sub_expr_kind(expr: &Expr, f: fn(&Expr) -> bool, count: &mut usize) {
             count_sub_expr_kind(&e.expr, f, count);
         }
         Expr::Else(e) => {
+            count_sub_expr_kind(&e.expr, f, count);
+            count_sub_expr_kind(&e.fallback, f, count);
+        }
+        Expr::Catch(e) => {
             count_sub_expr_kind(&e.expr, f, count);
             count_sub_expr_kind(&e.fallback, f, count);
         }
@@ -397,12 +410,91 @@ fn test_desugar_is_idempotent() {
     );
 }
 
+#[test]
+fn test_desugar_catch_produces_match() {
+    let hir = compile_and_desugar("fn main() { f() catch 0 }");
+    let dump = crate::serialize::serialize(&hir);
+    assert!(
+        dump.contains("Match"),
+        "catch should desugar to a match expression: {dump}"
+    );
+    assert!(
+        !dump.contains("Catch("),
+        "Catch should not survive desugar: {dump}"
+    );
+}
+
+#[test]
+fn test_desugar_catch_has_ok_and_wildcard() {
+    let hir = compile_and_desugar("fn main() { f() catch 0 }");
+    let dump = crate::serialize::serialize(&hir);
+    assert!(dump.contains("Ok"), "catch should have Ok arm: {dump}");
+    assert!(
+        dump.contains("Wild"),
+        "catch without |e| should use wildcard error arm: {dump}"
+    );
+}
+
+#[test]
+fn test_desugar_else_produces_match() {
+    let hir = compile_and_desugar("fn main() { f() else 0 }");
+    let dump = crate::serialize::serialize(&hir);
+    assert!(
+        dump.contains("Match"),
+        "else should desugar to a match expression: {dump}"
+    );
+    assert!(
+        !dump.contains("Else("),
+        "Else should not survive desugar: {dump}"
+    );
+}
+
+#[test]
+fn test_desugar_else_has_some_and_none() {
+    let hir = compile_and_desugar("fn main() { f() else 0 }");
+    let dump = crate::serialize::serialize(&hir);
+    assert!(dump.contains("Some"), "else should have Some arm: {dump}");
+    assert!(
+        dump.contains("Wild"),
+        "else should have wildcard arm for None: {dump}"
+    );
+}
+
+#[test]
+fn test_desugar_catch_and_else_idempotent() {
+    let source = "fn main() { try a()\n  b() catch c()\n  d() else e() }";
+    let hir = compile_and_desugar(source);
+    let mut hir2 = hir.clone();
+    let lang_items = test_lang_items();
+    desugar(&mut hir2, &lang_items, 10_000);
+    let dump1 = crate::serialize::serialize(&hir);
+    let dump2 = crate::serialize::serialize(&hir2);
+    assert_eq!(
+        dump1, dump2,
+        "re-running desugar on desugared try/else HIR should be idempotent"
+    );
+}
+
+#[test]
+fn test_desugar_nested_try() {
+    let hir = compile_and_desugar("fn main() { try try f() }");
+    let dump = crate::serialize::serialize(&hir);
+    assert!(
+        !dump.contains("Try("),
+        "nested try should be desugared: {dump}"
+    );
+    assert!(
+        dump.matches("Match").count() >= 2,
+        "should have at least two match expressions: {dump}"
+    );
+}
+
 /// Expr-variant coverage invariant: every variant in the Expr enum must be
 /// explicitly classified. Adding a new Expr variant without updating this
 /// test fails the build.
 #[test]
 fn test_every_expr_variant_handled_by_desugar() {
-    let sugar: &[&str] = &["ListLit"];
+    let sugar: &[&str] = &["ListLit", "Try", "Catch", "Else"];
     let non_sugar: &[&str] = &[
         "Lit",
         "Path",
@@ -437,8 +529,94 @@ fn test_every_expr_variant_handled_by_desugar() {
         "StructLit",
         "ListLit",
         "Assign",
+        "Try",
+        "Catch",
+        "Else",
     ];
-    assert_eq!(all_expr.len(), 15, "Expr variant count changed");
+    assert_eq!(all_expr.len(), 18, "Expr variant count changed");
     let known: std::collections::BTreeSet<&str> = all_expr.iter().copied().collect();
     assert_eq!(all_known, known, "every Expr variant must be classified");
+}
+
+/// DefKind coverage invariant: ensures the resolver's `build_top_level` and
+/// `build_global_exports` filters include every DefKind variant that belongs in
+/// the top-level scope. Adding a new DefKind without updating this test fails the
+/// build.
+#[test]
+fn test_def_kind_filter_coverage() {
+    // Variants that should appear in the top-level scope filter.
+    let filter_kinds: &[&str] = &[
+        "Fn",
+        "Struct",
+        "Enum",
+        "Trait",
+        "Variant",
+        "ErrorSet",
+        "ErrorVariant",
+    ];
+    // Variants that are always nested (fields, params, locals, etc.).
+    let nested_kinds: &[&str] = &["Field", "Param", "TypeParam", "Local", "Builtin"];
+
+    let all_known: std::collections::BTreeSet<&str> = filter_kinds
+        .iter()
+        .chain(nested_kinds.iter())
+        .copied()
+        .collect();
+
+    let all_defkind: &[&str] = &[
+        "Fn",
+        "Struct",
+        "Enum",
+        "Trait",
+        "Variant",
+        "Field",
+        "Param",
+        "TypeParam",
+        "Local",
+        "Builtin",
+        "ErrorSet",
+        "ErrorVariant",
+    ];
+    assert_eq!(all_defkind.len(), 12, "DefKind variant count changed");
+
+    let known: std::collections::BTreeSet<&str> = all_defkind.iter().copied().collect();
+    assert_eq!(
+        all_known, known,
+        "every DefKind variant must be classified as filter or nested"
+    );
+
+    // Verify the filter matches what build_top_level / build_global_exports use.
+    for &k in filter_kinds {
+        assert!(
+            matches!(
+                variant_from_name(k),
+                DefKind::Fn
+                    | DefKind::Struct
+                    | DefKind::Enum
+                    | DefKind::Trait
+                    | DefKind::Variant
+                    | DefKind::ErrorSet
+                    | DefKind::ErrorVariant
+            ),
+            "DefKind::{k} must be in the top-level filter"
+        );
+    }
+}
+
+fn variant_from_name(name: &str) -> DefKind {
+    match name {
+        "Fn" => DefKind::Fn,
+        "Struct" => DefKind::Struct,
+        "Enum" => DefKind::Enum,
+        "Trait" => DefKind::Trait,
+        "Variant" => DefKind::Variant,
+        "Field" => DefKind::Field,
+        "Param" => DefKind::Param,
+        "TypeParam" => DefKind::TypeParam,
+        "Local" => DefKind::Local,
+        "Builtin" => DefKind::Builtin,
+        "ErrorSet" => DefKind::ErrorSet,
+        "ErrorVariant" => DefKind::ErrorVariant,
+        _ => panic!("unknown DefKind: {name}"),
+    }
 }

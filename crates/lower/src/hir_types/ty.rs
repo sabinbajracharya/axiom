@@ -16,6 +16,10 @@ pub enum HirTy {
     /// The box holds the element type. Used for byte buffers at the extern
     /// boundary (`let buf: [U8]`) and as the basis for array literals.
     Slice(Box<HirTy>),
+    /// A named error set type: `IO`, `FsError`.
+    ErrorSet(NameRef),
+    /// An error set union: `(E1 || E2)`.
+    ErrorSetUnion(Vec<HirTy>),
     Error,
 }
 

@@ -11,6 +11,9 @@ mod formatting;
 mod types;
 use types::{fmt_ty, fmt_ty_maybe};
 
+mod patterns;
+use patterns::serialize_pattern_inline;
+
 // ── Public entry point ─────────────────────────────────────────────────────────
 
 /// Serialize an HIR to the canonical dump format: one line per node, two-space
@@ -34,7 +37,7 @@ fn serialize_item(item: &Item, depth: usize, out: &mut String) {
         Item::ImplDef(i) => serialize_impl_def(i, depth, out),
         Item::SubscriptDef(s) => serialize_subscript_def(s, depth, out),
         Item::UseItem(u) => serialize_use_item(u, depth, out),
-        Item::ErrorSetDef(e) => serialize_error_set_def(e, depth, out),
+        Item::ErrorSetDef(e) => fmt_error_set_def(e, depth, out),
     }
 }
 
@@ -219,6 +222,21 @@ fn serialize_use_tree(tree: &UseTree, out: &mut String) {
     }
 }
 
+pub fn fmt_error_set_def(e: &ErrorSetDef, depth: usize, out: &mut String) {
+    indent(out, depth);
+    out.push_str(&format!(
+        "ErrorSetDef({}) name={} vis={} vars=[",
+        e.id, e.name, e.visibility
+    ));
+    for (i, v) in e.variants.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(&format!("{}({})", v.name, v.id));
+    }
+    out.push_str("]\n");
+}
+
 fn fmt_name_ref(nr: &NameRef) -> String {
     match nr {
         NameRef::Resolved(r) => format!("{}→{}", r.text, r.def_id),
@@ -244,20 +262,6 @@ fn serialize_enum_def(e: &EnumDef, depth: usize, out: &mut String) {
         };
         indent(out, depth + 1);
         out.push_str(&format!("Variant({}) name={}{}\n", v.id, v.name, payload));
-    }
-    indent(out, depth);
-    out.push_str("]\n");
-}
-
-fn serialize_error_set_def(e: &ErrorSetDef, depth: usize, out: &mut String) {
-    indent(out, depth);
-    out.push_str(&format!(
-        "ErrorSetDef({}) name={} vis={} variants=[\n",
-        e.id, e.name, e.visibility
-    ));
-    for v in &e.variants {
-        indent(out, depth + 1);
-        out.push_str(&format!("ErrorVariant({}) name={}\n", v.id, v.name));
     }
     indent(out, depth);
     out.push_str("]\n");
@@ -344,8 +348,29 @@ fn serialize_expr(expr: &Expr, depth: usize, out: &mut String) {
         Expr::StructLit(e) => serialize_struct_lit_expr(e, depth, out),
         Expr::Assign(e) => serialize_assign_expr(e, depth, out),
         Expr::ListLit(e) => serialize_list_lit_expr(e, depth, out),
-        Expr::Try(e) => serialize_try_expr(e, depth, out),
-        Expr::Else(e) => serialize_else_expr(e, depth, out),
+        Expr::Try(e) => {
+            out.push_str(&format!("Try({})(", e.id));
+            serialize_expr(&e.expr, depth, out);
+            out.push(')');
+        }
+        Expr::Catch(e) => {
+            out.push_str(&format!("Catch({})", e.id));
+            if let Some(ref name) = e.error_binding {
+                out.push_str(&format!(" |{name}|"));
+            }
+            out.push('(');
+            serialize_expr(&e.expr, depth, out);
+            out.push_str(", ");
+            serialize_expr(&e.fallback, depth, out);
+            out.push(')');
+        }
+        Expr::Else(e) => {
+            out.push_str(&format!("Else({})(", e.id));
+            serialize_expr(&e.expr, depth, out);
+            out.push_str(", ");
+            serialize_expr(&e.fallback, depth, out);
+            out.push(')');
+        }
     }
 }
 
@@ -500,20 +525,6 @@ fn serialize_assign_expr(e: &AssignExpr, depth: usize, out: &mut String) {
     serialize_expr(&e.value, depth, out);
 }
 
-fn serialize_try_expr(e: &TryExpr, depth: usize, out: &mut String) {
-    out.push_str(&format!("Try({})(", e.id));
-    serialize_expr(&e.expr, depth, out);
-    out.push(')');
-}
-
-fn serialize_else_expr(e: &ElseExpr, depth: usize, out: &mut String) {
-    out.push_str(&format!("Else({})(", e.id));
-    serialize_expr(&e.expr, depth, out);
-    out.push_str(", ");
-    serialize_expr(&e.fallback, depth, out);
-    out.push(')');
-}
-
 fn serialize_block(block: &Block, depth: usize, out: &mut String) {
     for stmt in &block.stmts {
         serialize_stmt(stmt, depth, out);
@@ -558,60 +569,6 @@ fn serialize_assign_target(target: &AssignTarget, depth: usize, out: &mut String
                 serialize_expr(idx, depth, out);
             }
             out.push(']');
-        }
-    }
-}
-
-// ── Patterns ────────────────────────────────────────────────────────────────────
-
-fn serialize_pattern_inline(pat: &Pattern, out: &mut String) {
-    match pat {
-        Pattern::Wildcard(id) => out.push_str(&format!("Wild({id})")),
-        Pattern::Ident(p) => {
-            let binding = p.binding.map(|b| format!("→{b}")).unwrap_or_default();
-            out.push_str(&format!("Ident({}) {}{}", p.id, p.name, binding));
-        }
-        Pattern::Literal(p) => out.push_str(&format!("Lit({}) {}", p.id, fmt_lit(&p.kind))),
-        Pattern::TupleStruct(p) => {
-            serialize_name_ref(&p.path, out);
-            out.push('(');
-            for (i, f) in p.fields.iter().enumerate() {
-                if i > 0 {
-                    out.push_str(", ");
-                }
-                serialize_pattern_inline(f, out);
-            }
-            out.push(')');
-        }
-        Pattern::Struct(p) => {
-            serialize_name_ref(&p.path, out);
-            out.push_str(" { ");
-            for (i, f) in p.fields.iter().enumerate() {
-                if i > 0 {
-                    out.push_str(", ");
-                }
-                out.push_str(&f.name);
-                out.push_str(": ");
-                serialize_pattern_inline(&f.pattern, out);
-            }
-            out.push_str(" }");
-        }
-        Pattern::Or(p) => {
-            for (i, alt) in p.alternatives.iter().enumerate() {
-                if i > 0 {
-                    out.push_str(" | ");
-                }
-                serialize_pattern_inline(alt, out);
-            }
-        }
-        Pattern::Range(p) => {
-            if let Some(s) = &p.start {
-                out.push_str(&fmt_lit(s));
-            }
-            out.push_str(if p.inclusive { "..=" } else { ".." });
-            if let Some(e) = &p.end {
-                out.push_str(&fmt_lit(e));
-            }
         }
     }
 }

@@ -160,6 +160,7 @@ pub fn is_expr_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::TryExpr
             | SyntaxKind::AssignExpr
             | SyntaxKind::CatchExpr
+            | SyntaxKind::ElseExpr
             | SyntaxKind::ScopeExpr
             | SyntaxKind::SpawnExpr
             | SyntaxKind::ListLitExpr

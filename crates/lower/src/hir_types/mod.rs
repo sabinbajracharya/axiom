@@ -204,6 +204,7 @@ pub enum Expr {
     ListLit(ListLitExpr),
     Assign(AssignExpr),
     Try(TryExpr),
+    Catch(CatchExpr),
     Else(ElseExpr),
 }
 
@@ -226,6 +227,7 @@ impl Expr {
             Expr::Assign(e) => e.id,
             Expr::ListLit(e) => e.id,
             Expr::Try(e) => e.id,
+            Expr::Catch(e) => e.id,
             Expr::Else(e) => e.id,
         }
     }
@@ -449,10 +451,25 @@ pub struct TryExpr {
 }
 
 #[derive(Debug, Clone)]
+pub struct CatchExpr {
+    pub id: HirId,
+    pub expr: Box<Expr>,
+    pub fallback: Box<Expr>,
+    /// If `Some(name)`, the error arm captures the error value as `name`
+    /// (i.e. `catch |e| handler`). If `None`, the error arm discards the
+    /// error with a wildcard pattern (`catch fallback`).
+    pub error_binding: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ElseExpr {
     pub id: HirId,
     pub expr: Box<Expr>,
     pub fallback: Box<Expr>,
+    /// If `Some(name)`, the error arm captures the error value as `name`
+    /// (i.e. `else |e| handler`). If `None`, the error arm discards the
+    /// error with a wildcard pattern (`else fallback`).
+    pub error_binding: Option<String>,
 }
 
 #[derive(Debug, Clone)]

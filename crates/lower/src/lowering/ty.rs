@@ -41,11 +41,32 @@ pub(super) fn lower_ty(node: &parser::SyntaxNode, ctx: &mut LowerCtx) -> HirTy {
     } else if let Some(_unit) = ast::UnitType::cast(node.clone()) {
         HirTy::Unit
     } else if let Some(_eu) = ast::ErrorUnionType::cast(node.clone()) {
-        ctx.diag(HirDiagnostic::NotYetSupported {
-            feature: "error union type".to_string(),
-            span: ctx.span_of(node),
-        });
-        HirTy::Error
+        // `E ! T` error-union sugar → desugared to `Result<T, E>` by the
+        // resolver. Until then, lower as a placeholder instance.
+        let error_type = _eu.error_type().map(|n| lower_ty(&n, ctx));
+        let success_type = _eu.success_type().map(|n| lower_ty(&n, ctx));
+        match (error_type, success_type) {
+            (Some(e), Some(s)) => HirTy::Instance(InstanceTy {
+                name: NameRef::unresolved("Result"),
+                args: vec![s, e],
+            }),
+            _ => HirTy::Error,
+        }
+    } else if let Some(eu) = ast::ErrorSetUnionType::cast(node.clone()) {
+        let members: Vec<HirTy> = eu
+            .members()
+            .into_iter()
+            .map(|n| lower_ty(&n, ctx))
+            .collect();
+        if members.is_empty() {
+            ctx.diag(HirDiagnostic::NotYetSupported {
+                feature: "empty error-set union".to_string(),
+                span: ctx.span_of(node),
+            });
+            HirTy::Error
+        } else {
+            HirTy::ErrorSetUnion(members)
+        }
     } else if node.kind() == SyntaxKind::Error {
         HirTy::Error
     } else {

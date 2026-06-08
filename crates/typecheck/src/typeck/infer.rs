@@ -53,6 +53,13 @@ impl TypeChecker {
                 });
                 Ty::Error
             }
+            Expr::Catch(_) => {
+                self.emit(TypeDiagnostic::NotYetSupported {
+                    feature: "catch expression".to_string(),
+                    span: lexer::Span { lo: 0, hi: 0 },
+                });
+                Ty::Error
+            }
         }
     }
 
@@ -322,8 +329,16 @@ impl TypeChecker {
             }
             // An unresolved callee has no FnDef — but it may still name a
             // compiler intrinsic (e.g. the `heap_*` floor ops, which have no
-            // library definition). Consult `builtin_fn` before giving up.
-            NameRef::Unresolved(u) => helpers::builtin_fn(&u.text).unwrap_or(Ty::Error),
+            // library definition). Also checks the environment (e.g. enum
+            // constructors like `Ok`/`Err`/`Some`/`None` registered by the
+            // collect pass).
+            NameRef::Unresolved(u) => {
+                if let Some(info) = self.env.lookup(&u.text) {
+                    info.ty.clone()
+                } else {
+                    helpers::builtin_fn(&u.text).unwrap_or(Ty::Error)
+                }
+            }
         }
     }
 

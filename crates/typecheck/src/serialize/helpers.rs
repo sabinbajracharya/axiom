@@ -66,6 +66,18 @@ pub(super) fn fmt_hir_ty(ty: &HirTy) -> String {
             }
         }
         HirTy::Slice(elem) => format!("[{}]", fmt_hir_ty(elem)),
+        HirTy::ErrorSet(nr) => match nr {
+            NameRef::Resolved(r) => format!("{}→{}", r.text, r.def_id),
+            NameRef::Unresolved(u) => format!("{}→<unresolved>", u.text),
+        },
+        HirTy::ErrorSetUnion(members) => {
+            let inner = members
+                .iter()
+                .map(fmt_hir_ty)
+                .collect::<Vec<_>>()
+                .join(" || ");
+            format!("({})", inner)
+        }
         HirTy::Error => "<error>".to_string(),
     }
 }

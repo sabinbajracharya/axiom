@@ -52,7 +52,8 @@ pub(super) const EXPR_START: &[K] = &[
 /// binds tighter than any binary operator.
 const PREFIX_BP: u8 = 24;
 
-/// Parse an expression, including a trailing low-precedence `catch` handler.
+/// Parse an expression, including a trailing low-precedence `catch` (error)
+/// or `else` (option) handler.
 pub(super) fn expr(p: &mut Parser) {
     let Some(cm) = expr_bp(p, 0) else {
         return;
@@ -60,8 +61,13 @@ pub(super) fn expr(p: &mut Parser) {
     if p.at(K::KwCatch) {
         let m = cm.precede(p);
         p.bump(); // catch
-        expr_bp(p, 0); // handler (commonly a `|e| ...` closure)
+        expr_bp(p, 0);
         m.complete(p, K::CatchExpr);
+    } else if p.at(K::KwElse) {
+        let m = cm.precede(p);
+        p.bump(); // else
+        expr_bp(p, 0);
+        m.complete(p, K::ElseExpr);
     }
 }
 

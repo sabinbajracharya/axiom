@@ -22,7 +22,7 @@ pub mod serialize;
 pub use error::HirDiagnostic;
 pub use hir_types::*;
 pub use lowering::{lower_structural, Def, DefKind};
-pub use serialize::serialize;
+pub use serialize::{fmt_error_set_def, serialize};
 
 /// Coverage checks: verifies that every `NameRef::Unresolved` in the HIR
 /// has a corresponding `HirDiagnostic::UnresolvedName`. Returns `Ok(())`
@@ -151,10 +151,16 @@ fn check_expr(expr: &Expr, diagnosed: &[String], errors: &mut Vec<CoverageError>
         Expr::Lit(_) => {}
         Expr::Try(t) => check_expr(&t.expr, diagnosed, errors),
         Expr::Else(e) => check_else(e, diagnosed, errors),
+        Expr::Catch(e) => check_catch(e, diagnosed, errors),
     }
 }
 
 fn check_else(e: &ElseExpr, diagnosed: &[String], errors: &mut Vec<CoverageError>) {
+    check_expr(&e.expr, diagnosed, errors);
+    check_expr(&e.fallback, diagnosed, errors);
+}
+
+fn check_catch(e: &CatchExpr, diagnosed: &[String], errors: &mut Vec<CoverageError>) {
     check_expr(&e.expr, diagnosed, errors);
     check_expr(&e.fallback, diagnosed, errors);
 }

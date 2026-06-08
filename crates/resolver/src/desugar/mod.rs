@@ -148,10 +148,17 @@ fn desugar_expr(expr: &mut Expr, ctx: &mut DesugarCtx) {
         }
         Expr::Try(e) => {
             desugar_expr(&mut e.expr, ctx);
+            *expr = desugar_try(e, ctx);
+        }
+        Expr::Catch(e) => {
+            desugar_expr(&mut e.expr, ctx);
+            desugar_expr(&mut e.fallback, ctx);
+            *expr = desugar_catch(e, ctx);
         }
         Expr::Else(e) => {
             desugar_expr(&mut e.expr, ctx);
             desugar_expr(&mut e.fallback, ctx);
+            *expr = desugar_else(e, ctx);
         }
     }
 }
@@ -197,6 +204,186 @@ fn desugar_assign_target(target: &mut AssignTarget, ctx: &mut DesugarCtx) {
             }
         }
     }
+}
+
+/// Desugar `try expr` → `match expr { Ok(v) => v, Err(e) => return Err(e) }`.
+fn desugar_try(try_expr: &TryExpr, ctx: &mut DesugarCtx) -> Expr {
+    let scrutinee = try_expr.expr.clone();
+    let (match_id, ok_binding_name, err_binding_name) = {
+        let ok_name = format!("__try_ok_{}", ctx.temp_counter);
+        let err_name = format!("__try_err_{}", ctx.temp_counter);
+        ctx.temp_counter += 1;
+        (ctx.fresh_id(), ok_name, err_name)
+    };
+
+    let ok_arm = build_result_ok_arm(&ok_binding_name, ctx);
+    let err_arm = build_result_err_return_arm(&err_binding_name, ctx);
+
+    Expr::Match(MatchExpr {
+        id: match_id,
+        scrutinee,
+        arms: vec![ok_arm, err_arm],
+    })
+}
+
+/// Build the `Ok(v) => v` success arm for try/else desugaring.
+fn build_result_ok_arm(binding_name: &str, ctx: &mut DesugarCtx) -> MatchArm {
+    let ok_pat_id = ctx.fresh_id();
+    let ok_binding_id = ctx.fresh_id();
+    let ok_body_id = ctx.fresh_id();
+
+    let ok_pat = Pattern::TupleStruct(TupleStructPat {
+        id: ok_pat_id,
+        path: NameRef::unresolved("Ok"),
+        fields: vec![Pattern::Ident(IdentPat {
+            id: ok_binding_id,
+            name: binding_name.to_string(),
+            binding: Some(ok_binding_id),
+            span: lexer::Span { lo: 0, hi: 0 },
+        })],
+    });
+
+    MatchArm {
+        pattern: ok_pat,
+        guard: None,
+        body: Expr::Path(PathExpr {
+            id: ok_body_id,
+            name_ref: NameRef::resolved(ok_binding_id, binding_name),
+        }),
+    }
+}
+
+/// Build the `Err(e) => return Err(e)` error arm for try desugaring.
+fn build_result_err_return_arm(binding_name: &str, ctx: &mut DesugarCtx) -> MatchArm {
+    let err_pat_id = ctx.fresh_id();
+    let err_binding_id = ctx.fresh_id();
+    let err_call_id = ctx.fresh_id();
+    let err_path_id = ctx.fresh_id();
+    let err_return_id = ctx.fresh_id();
+    let err_block_id = ctx.fresh_id();
+
+    let err_pat = Pattern::TupleStruct(TupleStructPat {
+        id: err_pat_id,
+        path: NameRef::unresolved("Err"),
+        fields: vec![Pattern::Ident(IdentPat {
+            id: err_binding_id,
+            name: binding_name.to_string(),
+            binding: Some(err_binding_id),
+            span: lexer::Span { lo: 0, hi: 0 },
+        })],
+    });
+
+    let err_body = Expr::Block(Block {
+        id: err_block_id,
+        stmts: vec![Stmt::ReturnStmt(ReturnStmt {
+            id: err_return_id,
+            value: Some(Expr::Call(CallExpr {
+                id: err_call_id,
+                callee: NameRef::unresolved("Err"),
+                qualifier: None,
+                args: vec![Expr::Path(PathExpr {
+                    id: err_path_id,
+                    name_ref: NameRef::resolved(err_binding_id, binding_name),
+                })],
+            })),
+        })],
+        tail: None,
+    });
+
+    MatchArm {
+        pattern: err_pat,
+        guard: None,
+        body: err_body,
+    }
+}
+
+/// Desugar `expr catch fallback` → `match expr { Ok(v) => v, Err(_) => fallback }`
+/// or `expr catch |e| handler` → `match expr { Ok(v) => v, Err(e) => handler }`.
+fn desugar_catch(catch_expr: &CatchExpr, ctx: &mut DesugarCtx) -> Expr {
+    let scrutinee = catch_expr.expr.clone();
+    let fallback = catch_expr.fallback.clone();
+    let match_id = ctx.fresh_id();
+
+    let ok_binding_name = format!("__catch_ok_{}", ctx.temp_counter);
+    ctx.temp_counter += 1;
+    let ok_arm = build_result_ok_arm(&ok_binding_name, ctx);
+
+    let err_arm = if let Some(ref name) = catch_expr.error_binding {
+        let err_pat_id = ctx.fresh_id();
+        let err_binding_id = ctx.fresh_id();
+        let err_pat = Pattern::TupleStruct(TupleStructPat {
+            id: err_pat_id,
+            path: NameRef::unresolved("Err"),
+            fields: vec![Pattern::Ident(IdentPat {
+                id: err_binding_id,
+                name: name.clone(),
+                binding: Some(err_binding_id),
+                span: lexer::Span { lo: 0, hi: 0 },
+            })],
+        });
+        MatchArm {
+            pattern: err_pat,
+            guard: None,
+            body: *fallback,
+        }
+    } else {
+        MatchArm {
+            pattern: Pattern::Wildcard(ctx.fresh_id()),
+            guard: None,
+            body: *fallback,
+        }
+    };
+
+    Expr::Match(MatchExpr {
+        id: match_id,
+        scrutinee,
+        arms: vec![ok_arm, err_arm],
+    })
+}
+
+/// Desugar `expr else fallback` → `match expr { Some(v) => v, None => fallback }`.
+fn desugar_else(else_expr: &ElseExpr, ctx: &mut DesugarCtx) -> Expr {
+    let scrutinee = else_expr.expr.clone();
+    let fallback = else_expr.fallback.clone();
+    let match_id = ctx.fresh_id();
+
+    let some_pat_id = ctx.fresh_id();
+    let some_binding_id = ctx.fresh_id();
+    let some_body_id = ctx.fresh_id();
+    let some_binding_name = format!("__else_some_{}", ctx.temp_counter);
+    ctx.temp_counter += 1;
+
+    let some_pat = Pattern::TupleStruct(TupleStructPat {
+        id: some_pat_id,
+        path: NameRef::unresolved("Some"),
+        fields: vec![Pattern::Ident(IdentPat {
+            id: some_binding_id,
+            name: some_binding_name.clone(),
+            binding: Some(some_binding_id),
+            span: lexer::Span { lo: 0, hi: 0 },
+        })],
+    });
+
+    let some_arm = MatchArm {
+        pattern: some_pat,
+        guard: None,
+        body: Expr::Path(PathExpr {
+            id: some_body_id,
+            name_ref: NameRef::resolved(some_binding_id, &some_binding_name),
+        }),
+    };
+
+    let none_arm = MatchArm {
+        pattern: Pattern::Wildcard(ctx.fresh_id()),
+        guard: None,
+        body: *fallback,
+    };
+
+    Expr::Match(MatchExpr {
+        id: match_id,
+        scrutinee,
+        arms: vec![some_arm, none_arm],
+    })
 }
 
 fn desugar_list_lit(elements: Vec<Expr>, ctx: &mut DesugarCtx) -> Expr {

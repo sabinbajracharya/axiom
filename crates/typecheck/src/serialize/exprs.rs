@@ -38,6 +38,17 @@ pub(super) fn serialize_expr(expr: &Expr, depth: usize, thir: &Thir, out: &mut S
             serialize_expr(&e.expr, depth, thir, out);
             out.push(')');
         }
+        Expr::Catch(e) => {
+            out.push_str(&format!("Catch({}) {}", e.id, type_ann));
+            if let Some(ref name) = e.error_binding {
+                out.push_str(&format!(" |{name}|"));
+            }
+            out.push('(');
+            serialize_expr(&e.expr, depth, thir, out);
+            out.push_str(", ");
+            serialize_expr(&e.fallback, depth, thir, out);
+            out.push(')');
+        }
         Expr::Else(e) => {
             out.push_str(&format!("Else({}) {}", e.id, type_ann));
             out.push('(');

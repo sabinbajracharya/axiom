@@ -58,9 +58,12 @@ pub(super) fn lower_expr(node: &parser::SyntaxNode, ctx: &mut LowerCtx) -> Expr 
         return lower_list_lit_expr(&e, ctx);
     }
     if let Some(e) = ast::TryExpr::cast(node.clone()) {
-        return lower_try_expr(&e, ctx);
+        return lower_try_expr(&e, ctx, node);
     }
     if let Some(e) = ast::CatchExpr::cast(node.clone()) {
+        return lower_catch_expr(&e, ctx);
+    }
+    if let Some(e) = ast::ElseExpr::cast(node.clone()) {
         return lower_else_expr(&e, ctx);
     }
     if let Some(result) = lower_stmt_expr(node, ctx) {
@@ -339,8 +342,19 @@ fn lower_list_lit_expr(e: &ast::ListLitExpr, ctx: &mut LowerCtx) -> Expr {
     Expr::ListLit(ListLitExpr { id, elements })
 }
 
-fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx) -> Expr {
+fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx, node: &parser::SyntaxNode) -> Expr {
     let id = ctx.alloc_id();
+    // Disambiguate: prefix `try expr` (error propagation) vs postfix `expr?`
+    // (Option propagation). The CST TryExpr node is overloaded; scan for the
+    // `try` keyword token. If present → error propagation; absent → `?` Option.
+    let has_try_keyword = node
+        .children()
+        .iter()
+        .any(|c| c.kind() == parser::SyntaxKind::KwTry);
+    let is_option_propagation = !has_try_keyword;
+    if is_option_propagation {
+        return unsupported_expr(ctx, "option propagation (?)", node);
+    }
     let operand = e
         .expr()
         .map(|node| lower_expr(&node, ctx))
@@ -351,7 +365,23 @@ fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx) -> Expr {
     })
 }
 
-fn lower_else_expr(e: &ast::CatchExpr, ctx: &mut LowerCtx) -> Expr {
+fn lower_catch_expr(e: &ast::CatchExpr, ctx: &mut LowerCtx) -> Expr {
+    let id = ctx.alloc_id();
+    let expr = e
+        .expr()
+        .map(|node| lower_expr(&node, ctx))
+        .unwrap_or_else(|| unit_expr(ctx));
+    let handler_node = e.handler();
+    let (fallback, error_binding) = extract_closure_capture(handler_node.as_ref(), ctx);
+    Expr::Catch(CatchExpr {
+        id,
+        expr: Box::new(expr),
+        fallback,
+        error_binding,
+    })
+}
+
+fn lower_else_expr(e: &ast::ElseExpr, ctx: &mut LowerCtx) -> Expr {
     let id = ctx.alloc_id();
     let expr = e
         .expr()
@@ -365,7 +395,45 @@ fn lower_else_expr(e: &ast::CatchExpr, ctx: &mut LowerCtx) -> Expr {
         id,
         expr: Box::new(expr),
         fallback: Box::new(fallback),
+        error_binding: None,
     })
+}
+
+/// If `handler_node` is a single-param closure `|name| body`, return
+/// `(lowered_body, Some(name))`. Otherwise return `(lowered_node, None)`.
+fn extract_closure_capture(
+    handler_node: Option<&parser::SyntaxNode>,
+    ctx: &mut LowerCtx,
+) -> (Box<Expr>, Option<String>) {
+    let Some(node) = handler_node else {
+        return (Box::new(unit_expr(ctx)), None);
+    };
+    let Some(closure) = ast::ClosureExpr::cast(node.clone()) else {
+        let fb = lower_expr(node, ctx);
+        return (Box::new(fb), None);
+    };
+    let Some(pl) = closure.param_list() else {
+        let fb = lower_expr(node, ctx);
+        return (Box::new(fb), None);
+    };
+    let params = pl.params();
+    if params.len() != 1 || params[0].has_type_annotation() {
+        let fb = lower_expr(node, ctx);
+        return (Box::new(fb), None);
+    }
+    let name = params[0]
+        .name()
+        .map(|n| n.text().to_string())
+        .unwrap_or_default();
+    if name.is_empty() {
+        let fb = lower_expr(node, ctx);
+        return (Box::new(fb), None);
+    }
+    let body = closure
+        .body()
+        .map(|b| lower_expr(&b, ctx))
+        .unwrap_or_else(|| unit_expr(ctx));
+    (Box::new(body), Some(name))
 }
 
 fn lower_stmt_expr(node: &parser::SyntaxNode, ctx: &mut LowerCtx) -> Option<Expr> {

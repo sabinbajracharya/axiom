@@ -196,6 +196,7 @@ fn expr_max_id(expr: &resolver::Expr) -> usize {
         }
         resolver::Expr::Try(e) => max = max.max(expr_max_id(&e.expr)),
         resolver::Expr::Else(e) => max = max.max(else_max_id(e, max)),
+        resolver::Expr::Catch(e) => max = max.max(catch_max_id(e, max)),
     }
     max
 }
@@ -213,5 +214,9 @@ fn loop_max_id(kind: &resolver::LoopKind) -> usize {
 }
 
 fn else_max_id(e: &resolver::ElseExpr, cur: usize) -> usize {
+    expr_max_id(&e.expr).max(expr_max_id(&e.fallback)).max(cur)
+}
+
+fn catch_max_id(e: &resolver::CatchExpr, cur: usize) -> usize {
     expr_max_id(&e.expr).max(expr_max_id(&e.fallback)).max(cur)
 }

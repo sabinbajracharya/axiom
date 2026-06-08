@@ -258,6 +258,7 @@ syntax_kinds! {
         TryExpr,
         AssignExpr,
         CatchExpr,
+        ElseExpr,
         ScopeExpr,
         SpawnExpr,
         ListLitExpr,

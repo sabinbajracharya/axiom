@@ -22,6 +22,7 @@ mod helpers;
 mod infer;
 mod methods;
 mod stmt;
+mod ty_resolve;
 mod typeinfo;
 mod unify;
 

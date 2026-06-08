@@ -214,8 +214,14 @@ impl ClosureParam {
     pub fn name_token(&self) -> Option<SyntaxToken> {
         child_token(&self.0, SyntaxKind::Ident)
     }
+    pub fn name(&self) -> Option<SyntaxToken> {
+        self.name_token()
+    }
     pub fn ty(&self) -> Option<SyntaxNode> {
         child_type_node(&self.0)
+    }
+    pub fn has_type_annotation(&self) -> bool {
+        self.ty().is_some()
     }
 }
 

@@ -8,6 +8,7 @@
 //! Name resolution lives in `resolve.rs`.
 
 mod block;
+mod error;
 mod expr;
 mod item;
 mod pattern;
@@ -58,7 +59,6 @@ pub struct Def {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
 pub enum DefKind {
     Fn,
     Struct,

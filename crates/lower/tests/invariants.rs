@@ -94,6 +94,7 @@ fn handles_expr(kind: SyntaxKind) -> bool {
             | SyntaxKind::RangeExpr
             | SyntaxKind::TryExpr
             | SyntaxKind::CatchExpr
+            | SyntaxKind::ElseExpr
             | SyntaxKind::ScopeExpr
             | SyntaxKind::SpawnExpr
             | SyntaxKind::ListLitExpr

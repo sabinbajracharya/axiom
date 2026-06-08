@@ -1,6 +1,7 @@
-# Error Handling Implementation Plan — `try`/`else`/`?`/error sets
+# Error Handling Implementation Plan — `try`/`catch`/`?`/`else`/error sets
 
-> Final design: three keywords, zero overlap, all sugar over `match` on enums.
+> Final design: four keywords, zero overlap, all sugar over `match` on enums.
+> Zig-style separation: `try`/`catch` for Result/error, `?`/`else` for Option/null.
 > Based on thorough research of Zig's error handling semantics and the Axiom compiler
 > architecture.
 
@@ -15,19 +16,20 @@ match xs.first() { ... }       // both branches
 
 // ── Result<T, E> (a.k.a. E!T) ──
 try open(path)                 // Err → return Err (propagate)
-open(path) else default        // Err → default
-open(path) else |e| handle(e)  // Err → handler
+open(path) catch default        // Err → default
+open(path) catch |e| handle(e)  // Err → handler
 match open(path) { ... }       // both branches
 ```
 
 | | Propagate | Default |
 |--|-----------|---------|
-| **Error** `Result<T, E>` | `try` | `else` |
+| **Error** `Result<T, E>` | `try` | `catch` |
 | **Option** `Option<T>` | `?` | `else` |
 
-Three keywords. `try`/`?` unwrap-or-propagate. `else` unwraps-or-falls-back on both.
-`match` for exhaustive handling. Zero overlap, zero new parser keywords needed
-(`else` already exists in `if`/`else`).
+Four keywords. `try`/`catch` for errors, `?`/`else` for options. `match` for
+exhaustive handling. Zero overlap. Like Zig's `try`/`catch` for errors and
+`?` (orelse equivalent) for null — but using `else` instead of `orelse` since
+`else` already exists in the parser.
 
 ## Architecture Summary
 
@@ -36,16 +38,18 @@ Error handling touches every pipeline stage. Here's what exists and what's neede
 ```
              PARSER          LOWER (CST→HIR)     RESOLVER       TYPECHECK         IR/VM
              ======          ================     ========       =========         =====
-error set    ✅ CST parsed   ❌ NotYetSupported   ❌ no match    ❌ no Ty variant  N/A
-error union  ✅ CST parsed   ❌ NotYetSupported   ❌ no match    ❌ no Ty variant  N/A
-try expr     ✅ CST parsed   ❌ UnsupportedExpr   N/A           N/A              N/A
-else expr   ✅ CST parsed   ❌ UnsupportedExpr   N/A           N/A              N/A
+error set    ✅ CST parsed   ✅ HIR type         ✅ resolved     ✅ collected      N/A
+error union  ✅ CST parsed   ✅ HIR type         ✅ resolved     ✅ resolved       N/A
+try expr     ✅ CST parsed   ✅ HIR TryExpr      ✅ resolved     ❌ NotYetSupported N/A
+catch expr   ✅ CST parsed   ✅ HIR CatchExpr    ✅ resolved     ❌ NotYetSupported N/A
+else expr    ✅ CST parsed   ✅ HIR ElseExpr     ✅ resolved     ❌ NotYetSupported N/A
+desugar      N/A             N/A                ✅ try/catch/else → match            N/A
 ```
 
-The parser is the only complete layer. Everything below it needs to be built.
+The parser and desugar layers are complete. Typechecking for try/catch/else is deferred.
 
-Note: The parser CST node `CatchExpr` will be renamed to `ElseExpr` — same shape, better name.
-The `catch` keyword in the lexer remains as a reserved word (may be reclaimed later).
+Note: `CatchExpr` (error default) and `ElseExpr` (option default) are separate CST + HIR nodes.
+The `catch` keyword is a full first-class keyword (not just reserved).
 
 ---
 
@@ -54,30 +58,29 @@ The `catch` keyword in the lexer remains as a reserved word (may be reclaimed la
 > This section preserves the reasoning behind the choices so future work
 > understands what was considered and rejected, not just what was chosen.
 
-### Why `else` instead of `catch` for defaults
+### Why `catch` for errors, `else` for options
 
-`catch` was the obvious first choice — Zig uses it, and we had a `CatchExpr` CST node.
-The problem: `xs.first() catch 0` reads like "catch an error from first" — but `Option`
-isn't an error, it's absence. `else` reads correctly for both cases: "open(path) else
-fallback" and "xs.first() else 0" both feel natural.
-
-We considered copying Zig's `orelse` for Option defaults (with `catch` for errors).
-Rejected: it's a new keyword, and `else` already exists in the parser as part of
-`if`/`else` — zero ambiguity since the parser always knows which context it's in.
-`else` as a postfix operator is lexically unambiguous (no `if` on the expression stack).
+We follow Zig's two-keyword approach: `catch` for Result/error defaults, `else`
+for Option/null defaults. This keeps the semantics explicit — `catch` implies an
+error context, `else` implies absence.
 
 **Alternatives rejected:**
-- `catch` for both → wrong semantics on Option
-- `orelse` for Option, `catch` for Error → new keyword, copying Zig
-- `unwrap_or` method on Option → verbose, inconsistent with `else` on Result
+- `else` for both → conflates two semantically different operations
+- `catch` for both → wrong semantics on Option (absence isn't an error)
+- `orelse` for Option → new keyword, verbose, Zig-specific terminology
+
+`catch` feels natural for errors ("catch the error and use this fallback").
+`else` feels natural for options ("some value, else this default").
+`else` already exists in the parser as part of `if`/`else` — zero ambiguity
+since the parser always knows which context it's in.
 
 ### Why `try` and `?` stay separate
 
-Rust unifies them: `?` works on `Result` and `Option` via the `Try` trait. The spec
-considered this (DESIGN_SPEC.md §15, question 8). We chose to keep them separate
-because:
+Rust unifies them: `?` works on `Result` and `Option` via the `Try` trait. We
+chose to keep them separate because:
 
 1. **They mean different things.** `try open(path)` says "this can fail." `xs.first()?`
+   says "this might be absent." Different semantics deserve different syntax.
    says "this might be absent." Conflating them behind one operator hides a semantic
    distinction the compiler should track — error coercion vs null checking.
 2. **`?` earns its brevity.** `?` is a single character after an expression, used on
@@ -551,25 +554,33 @@ Corpus additions under `corpus/errors/`:
 
 ---
 
-## Phase 5: Desugaring (THIR → THIR)
+## Phase 5: Desugaring (HIR → HIR)
+
+The desugar pass runs after name resolution, before typechecking. Each sugar
+expression is rewritten to core `match` expressions.
 
 ### 5a. `try` desugaring
 
-**File: `crates/resolver/src/desugar/mod.rs`** (or new pass in typecheck/specialize)
+**File: `crates/resolver/src/desugar/mod.rs`**
 
 `try expr` → `match expr { Ok(v) => v, Err(e) => return Err(e) }`
 
-This is a THIR-to-THIR transform that runs after typechecking. The desugared form is what
-gets lowered to IR. This means the IR layer never sees `Try` — it only sees `Match`.
+### 5b. `catch` desugaring
 
-### 5b. `else` desugaring
+`expr catch fallback` → `match expr { Ok(v) => v, Err(_) => fallback }`
 
-`expr else fallback` → `match expr { Ok(v) => v, Err(_) => fallback }` (for Result)
-or `match expr { Some(v) => v, None => fallback }` (for Option).
+`expr catch |e| handler` → `match expr { Ok(v) => v, Err(e) => handler }`
 
-`expr else |e| handler` → `match expr { Ok(v) => v, Err(e) => handler }` (error capture variant).
+The `|e|` capture is extracted from a single-param closure in the lowerer
+and stored as `error_binding` on the `CatchExpr` HIR node.
 
-### 5c. `?` desugaring
+### 5c. `else` desugaring
+
+`expr else fallback` → `match expr { Some(v) => v, None => fallback }`
+
+Option has no error value to capture — the None arm always uses a wildcard.
+
+### 5d. `?` desugaring
 
 `expr?` → `match expr { Some(v) => v, None => return None }`. No new HIR needed —
 lowered directly from the parser's `TryExpr` (postfix form) in Phase 2.
@@ -578,7 +589,10 @@ lowered directly from the parser's `TryExpr` (postfix form) in Phase 2.
 
 | Test | What it proves |
 |------|---------------|
-| `try_desugars_to_match` | After desugaring, THIR contains Match, not Try |
+| `try_desugars_to_match` | After desugaring, HIR contains Match, not Try |
+| `catch_desugars_to_match` | After desugaring, HIR contains Match, not Catch |
+| `else_desugars_to_match` | After desugaring, HIR contains Match, not Else |
+| `option_question_desugars` | `expr?` → match with `None => return None` |
 | `else_desugars_to_match` | After desugaring, THIR contains Match, not Else |
 | `option_question_desugars` | `expr?` → match with `None => return None` |
 

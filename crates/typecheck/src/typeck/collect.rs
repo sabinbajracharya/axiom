@@ -6,7 +6,7 @@ use super::{
     VariantInfo,
 };
 use crate::error::TypeDiagnostic;
-use crate::types::{EnumTy, ErrorSetTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
+use crate::types::{EnumTy, ErrorSetTy, FnTy, InstanceTy, StructTy, Ty};
 use parser::ast::AstNode;
 use resolver::hir_types::{ErrorSetDef, Item};
 use resolver::*;
@@ -513,105 +513,8 @@ impl TypeChecker {
             .collect()
     }
 
-    /// Resolve an `HirTy` (the type syntax in the source) to a `Ty` (the
-    /// type checker's internal representation). Unresolved names → Ty::Error.
-    pub(super) fn resolve_hir_ty(&self, hir_ty: &HirTy) -> Ty {
-        match hir_ty {
-            HirTy::Named(nr) => self.resolve_named_type(nr),
-            HirTy::Unit => Ty::Unit,
-            HirTy::Tuple(elems) => {
-                Ty::Tuple(elems.iter().map(|t| self.resolve_hir_ty(t)).collect())
-            }
-            HirTy::Fn(f) => {
-                let params = f.params.iter().map(|t| self.resolve_hir_ty(t)).collect();
-                let return_type = Box::new(self.resolve_hir_ty(&f.return_type));
-                Ty::Fn(FnTy {
-                    params,
-                    return_type,
-                })
-            }
-            HirTy::TypeParam(tp) => {
-                // Look up in the current type param scope (set by collect_fn_sigs
-                // or check_fn_body).
-                if let Some((index, (_, def_id, _bounds))) = self
-                    .current_type_params
-                    .iter()
-                    .enumerate()
-                    .find(|(_, (name, _, _))| *name == tp.name)
-                {
-                    Ty::TypeParam(TypeParamId {
-                        name: tp.name.clone(),
-                        index,
-                        def_id: *def_id,
-                    })
-                } else {
-                    Ty::Error
-                }
-            }
-            HirTy::Instance(inst) => self.resolve_instance(inst),
-            // A slice `[T]` maps onto the runtime-sized buffer type the
-            // collection library already uses to store homogeneous elements.
-            HirTy::Slice(elem) => Ty::HeapBuffer(Box::new(self.resolve_hir_ty(elem))),
-            HirTy::Error => Ty::Error,
-        }
-    }
-
-    /// Resolve a named type reference (builtins, Self, or env lookup).
-    fn resolve_named_type(&self, nr: &NameRef) -> Ty {
-        let text = match nr {
-            NameRef::Resolved(r) => &r.text,
-            NameRef::Unresolved(u) => &u.text,
-        };
-        match text.as_str() {
-            "Int" => return Ty::Int,
-            "Float" => return Ty::Float,
-            "Bool" => return Ty::Bool,
-            "String" => return Ty::String,
-            "Unit" => return Ty::Unit,
-            "Self" => {
-                if let Some(ref self_ty) = self.current_self_type {
-                    return self_ty.clone();
-                }
-                return Ty::Error;
-            }
-            _ => {}
-        }
-        if let Some(info) = self.env.lookup(text) {
-            match &info.ty {
-                Ty::Struct(s) => Ty::Struct(s.clone()),
-                Ty::Enum(e) => Ty::Enum(e.clone()),
-                other => other.clone(),
-            }
-        } else {
-            Ty::Error
-        }
-    }
-
-    fn resolve_instance(&self, inst: &resolver::InstanceTy) -> Ty {
-        let text = match &inst.name {
-            NameRef::Resolved(r) => &r.text,
-            NameRef::Unresolved(u) => &u.text,
-        };
-        // Builtins don't take type args — resolve to the base type.
-        match text.as_str() {
-            "Int" => return Ty::Int,
-            "Float" => return Ty::Float,
-            "Bool" => return Ty::Bool,
-            "String" => return Ty::String,
-            "Unit" => return Ty::Unit,
-            _ => {}
-        }
-        let args: Vec<Ty> = inst
-            .args
-            .iter()
-            .map(|arg| self.resolve_hir_ty(arg))
-            .collect();
-        Ty::Instance(InstanceTy {
-            name: text.to_string(),
-            def_id: HirId(0), // No generic struct instantiation yet.
-            args,
-        })
-    }
+    // `resolve_hir_ty` / `resolve_named_type` / `resolve_instance` live in
+    // `ty_resolve.rs` (extracted to stay under the 600-line cap).
 }
 
 // Re-export helpers from collect_subscripts module.

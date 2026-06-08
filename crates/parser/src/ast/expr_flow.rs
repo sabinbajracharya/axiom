@@ -326,6 +326,33 @@ impl CatchExpr {
     }
 }
 
+pub struct ElseExpr(SyntaxNode);
+
+impl AstNode for ElseExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::ElseExpr
+    }
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(node.kind()) {
+            Some(Self(node))
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.0
+    }
+}
+
+impl ElseExpr {
+    pub fn expr(&self) -> Option<SyntaxNode> {
+        child_expr_nodes(&self.0).into_iter().next()
+    }
+    pub fn handler(&self) -> Option<SyntaxNode> {
+        child_expr_nodes(&self.0).into_iter().nth(1)
+    }
+}
+
 pub struct ScopeExpr(SyntaxNode);
 
 impl AstNode for ScopeExpr {

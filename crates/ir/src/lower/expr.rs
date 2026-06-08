@@ -50,6 +50,11 @@ pub(super) fn lower_expr(expr: &Expr, ctx: &mut FnLowerCtx) -> Reg {
             // and discard the fallback (error paths not yet wired).
             lower_expr(&e.expr, ctx)
         }
+        Expr::Catch(e) => {
+            // Catch desugars to Match in Phase 5. Until then, lower the expr
+            // and discard the fallback (error paths not yet wired).
+            lower_expr(&e.expr, ctx)
+        }
     }
 }
 

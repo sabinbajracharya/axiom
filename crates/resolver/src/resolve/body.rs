@@ -133,6 +133,10 @@ fn resolve_expr_names(expr: &mut Expr, scope: &mut Scope, diagnostics: &mut Vec<
             resolve_expr_names(&mut e.expr, scope, diagnostics);
             resolve_expr_names(&mut e.fallback, scope, diagnostics);
         }
+        Expr::Catch(e) => {
+            resolve_expr_names(&mut e.expr, scope, diagnostics);
+            resolve_expr_names(&mut e.fallback, scope, diagnostics);
+        }
     }
 }
 
