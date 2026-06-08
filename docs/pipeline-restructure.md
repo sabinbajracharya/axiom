@@ -286,7 +286,10 @@ All snapshot comparisons match pre-split output.
 **Gate:** `cargo build --workspace` succeeds. `cargo test --workspace` passes. Zero occurrences
 of the string "axiom-" in Cargo.toml files (except workspace package name).
 
-### Phase 5: Extract `specialize` crate, scope chain refactor, final cleanup ✅ PARTIAL
+### Phase 5: Extract `specialize` crate, scope chain refactor, final cleanup ✅ DONE
+
+**Status:** Everything complete. 5.4 (scope chain) deferred — 20+ cascading call sites,
+better done as a standalone change when closures arrive (Spike 0).
 
 **Scope:** Optional refinements that can be deferred.
 

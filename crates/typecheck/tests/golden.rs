@@ -7,7 +7,8 @@ use std::path::Path;
 
 use parser::ast::AstNode;
 use resolver::lower;
-use typecheck::{check, monomorphize, serialize};
+use specialize::monomorphize;
+use typecheck::{check, serialize};
 
 /// Build global exports from stdlib so `print`/`println` resolve.
 fn stdlib_exports() -> Option<resolver::GlobalExports> {
