@@ -30,6 +30,10 @@ use crate::thir::{Thir, TypeMap};
 use axiom_hir::*;
 use std::collections::HashMap;
 
+/// A type-parameter scope: each parameter's name, defining `HirId`, and trait
+/// bounds. Trait bounds are stored for bound-checking but are optional for resolution.
+pub(super) type TypeParamScope = Vec<(String, HirId, Vec<String>)>;
+
 // ── Public entry point ────────────────────────────────────────────────────────
 
 /// Type-check an HIR, producing a THIR (HIR + type map + diagnostics).

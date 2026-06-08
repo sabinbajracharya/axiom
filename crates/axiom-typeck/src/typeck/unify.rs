@@ -128,7 +128,7 @@ impl TypeChecker {
     pub(crate) fn unify_instances(
         actual: &Ty,
         expected: &Ty,
-        subst: &mut crate::mono::helpers::Substitution,
+        subst: &mut Substitution,
     ) {
         match (actual, expected) {
             (Ty::Instance(a), Ty::Instance(e)) if a.name == e.name => {
@@ -136,16 +136,18 @@ impl TypeChecker {
                     Self::unify_instances(at, et, subst);
                 }
             }
-            (actual, Ty::TypeParam(tp)) => {
-                if !matches!(actual, Ty::TypeParam(a) if a == tp) {
-                    subst.entry(tp.clone()).or_insert_with(|| actual.clone());
-                }
+            (actual, Ty::TypeParam(tp))
+                if !matches!(actual, Ty::TypeParam(a) if a == tp) =>
+            {
+                subst.entry(tp.clone()).or_insert_with(|| actual.clone());
             }
             _ => {}
         }
     }
 
-    #[cfg(test)]
+}
+
+#[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;

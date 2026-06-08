@@ -298,3 +298,22 @@ fn main() { val b = Box { v: 7 }; val x = b[0] }",
         thir.diagnostics
     );
 }
+
+#[test]
+fn test_subscript_then_method_on_same_type() {
+    // After subscript resolution on a type, a subsequent method call on the
+    // same type must resolve correctly (verifies with_type_params restore).
+    let thir = check_source(
+        "fn main() {
+    val xs: List<Int> = [1, 2]
+    val a = xs[0]
+    xs.push(3)
+    val b = xs[1]
+}",
+    );
+    assert!(
+        thir.diagnostics.is_empty(),
+        "subscript then method: {:?}",
+        thir.diagnostics
+    );
+}

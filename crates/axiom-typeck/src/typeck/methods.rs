@@ -1,16 +1,17 @@
 //! Method call, field access, index, and list literal type inference.
 
-use super::{helpers, TypeChecker};
+use super::{helpers, TypeChecker, TypeParamScope};
 use crate::error::TypeDiagnostic;
 use crate::types::{InstanceTy, Ty, TypeParamId};
 use super::unify::Substitution;
 
 use axiom_hir::*;
 
-/// A type-parameter scope: each parameter's name, defining `HirId`, and trait
-/// bounds — the shape [`TypeChecker::current_type_params`] expects.
-/// Trait bounds are stored for bound-checking but are optional for resolution.
-type TypeParamScope = Vec<(String, HirId, Vec<String>)>;
+/// A resolved method with its type-parameter scope.
+pub(super) struct ResolvedMethod<'a> {
+    fn_def: &'a FnDef,
+    scope: TypeParamScope,
+}
 
 /// Build a TypeParamScope from an ImplInfo's type parameters. Bounds are
 /// omitted — the scope is only used for name/def_id resolution in
@@ -30,86 +31,107 @@ impl TypeChecker {
         let ty = if helpers::is_error(&receiver_ty) {
             Ty::Error
         } else if let Ty::TypeParam(tp) = &receiver_ty {
-            // Calling a trait method on a bounded type parameter (`key.hash()`
-            // where `key: K, K: Hashable`). Resolve it through the parameter's
-            // declared bounds; the concrete impl is dispatched after
-            // monomorphization (IR substitutes the receiver type).
             self.infer_type_param_method(tp, mc, &arg_types)
         } else {
-            let receiver_name = match &receiver_ty {
-                Ty::Struct(s) => Some(s.name.clone()),
-                Ty::Enum(e) => Some(e.name.clone()),
-                Ty::Instance(inst) => Some(inst.name.clone()),
-                Ty::Int => Some("Int".to_string()),
-                Ty::Float => Some("Float".to_string()),
-                Ty::Bool => Some("Bool".to_string()),
-                Ty::String => Some("String".to_string()),
-                _ => None,
-            };
-
-            match receiver_name {
-                Some(name) => {
-                    let method_info = self.find_impl_method(&name, &mc.method, &receiver_ty);
-                    match method_info {
-                        Some((fn_def, impl_subst, scope)) => {
-                            let mut subst = impl_subst;
-                            if let Ty::Instance(inst) = &receiver_ty {
-                                for (i, tp) in fn_def.type_params.iter().enumerate() {
-                                    if let Some(arg) = inst.args.get(i) {
-                                        // Only insert non-identity mappings. An
-                                        // identity mapping (T → T) adds no
-                                        // information and causes false
-                                        // mismatches when unify encounters the
-                                        // same TypeParam already bound.
-                                        if !matches!(arg, Ty::TypeParam(p) if p.name == tp.name && p.def_id == tp.id)
-                                        {
-                                            subst
-                                                .entry(TypeParamId {
-                                                    name: tp.name.clone(),
-                                                    index: i,
-                                                    def_id: tp.id,
-                                                })
-                                                .or_insert_with(|| arg.clone());
-                                        }
-                                    }
-                                }
-                            }
-                            let ret = self.check_method_call(mc, &fn_def, &arg_types, &mut subst, &scope);
-                            // Unification in check_method_call may have bound the
-                            // impl's type parameters to concrete types (e.g. push(1)
-                            // binds T → Int). Flow this back into the receiver's type
-                            // by updating the environment binding when the receiver is
-                            // a named local.
-                            if let Expr::Path(ref path) = *mc.receiver {
-                                if let NameRef::Resolved(ref r) = path.name_ref {
-                                    let updated = Self::substitute(&receiver_ty, &subst);
-                                    self.env.update_type(&r.text, updated);
-                                }
-                            }
-                            ret
-                        }
-                        None => {
-                            self.emit(TypeDiagnostic::UnknownMethod {
-                                method: mc.method.clone(),
-                                ty: receiver_ty.to_string(),
-                                span: self.span_for(mc.id),
-                            });
-                            Ty::Error
-                        }
-                    }
-                }
-                None => {
-                    self.emit(TypeDiagnostic::UnknownMethod {
-                        method: mc.method.clone(),
-                        ty: receiver_ty.to_string(),
-                        span: self.span_for(mc.id),
-                    });
-                    Ty::Error
-                }
-            }
+            self.infer_concrete_method_call(mc, &receiver_ty, &arg_types)
         };
         self.types.insert(mc.id, ty.clone());
         ty
+    }
+
+    fn infer_concrete_method_call(
+        &mut self,
+        mc: &MethodCallExpr,
+        receiver_ty: &Ty,
+        arg_types: &[Ty],
+    ) -> Ty {
+        let receiver_name = match receiver_ty {
+            Ty::Struct(s) => Some(s.name.clone()),
+            Ty::Enum(e) => Some(e.name.clone()),
+            Ty::Instance(inst) => Some(inst.name.clone()),
+            Ty::Int => Some("Int".to_string()),
+            Ty::Float => Some("Float".to_string()),
+            Ty::Bool => Some("Bool".to_string()),
+            Ty::String => Some("String".to_string()),
+            _ => None,
+        };
+
+        match receiver_name {
+            Some(name) => {
+                let method_info = self.find_impl_method(&name, &mc.method, receiver_ty);
+                match method_info {
+                    Some((fn_def, impl_subst, scope)) => {
+                        let mut subst = impl_subst;
+                        self.bind_instance_type_params(&fn_def, receiver_ty, &mut subst);
+                        let resolved = ResolvedMethod {
+                            fn_def: &fn_def,
+                            scope,
+                        };
+                        let ret = self.check_method_call(mc, &resolved, arg_types, &mut subst);
+                        self.flowback_receiver_type(mc, receiver_ty, &subst);
+                        ret
+                    }
+                    None => {
+                        self.emit(TypeDiagnostic::UnknownMethod {
+                            method: mc.method.clone(),
+                            ty: receiver_ty.to_string(),
+                            span: self.span_for(mc.id),
+                        });
+                        Ty::Error
+                    }
+                }
+            }
+            None => {
+                self.emit(TypeDiagnostic::UnknownMethod {
+                    method: mc.method.clone(),
+                    ty: receiver_ty.to_string(),
+                    span: self.span_for(mc.id),
+                });
+                Ty::Error
+            }
+        }
+    }
+
+    /// Bind the type parameters of an instance type (like `List<Int>`) to the
+    /// fn-level type params declared in the method definition.
+    fn bind_instance_type_params(
+        &self,
+        fn_def: &FnDef,
+        receiver_ty: &Ty,
+        subst: &mut Substitution,
+    ) {
+        if let Ty::Instance(inst) = receiver_ty {
+            for (i, tp) in fn_def.type_params.iter().enumerate() {
+                if let Some(arg) = inst.args.get(i) {
+                    if !matches!(arg, Ty::TypeParam(p) if p.name == tp.name && p.def_id == tp.id)
+                    {
+                        subst
+                            .entry(TypeParamId {
+                                name: tp.name.clone(),
+                                index: i,
+                                def_id: tp.id,
+                            })
+                            .or_insert_with(|| arg.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    /// After check_method_call unifies type params, flow the bound types
+    /// back to the receiver variable in the environment.
+    fn flowback_receiver_type(
+        &mut self,
+        mc: &MethodCallExpr,
+        receiver_ty: &Ty,
+        subst: &Substitution,
+    ) {
+        if let Expr::Path(ref path) = *mc.receiver {
+            if let NameRef::Resolved(ref r) = path.name_ref {
+                let updated = Self::substitute(receiver_ty, subst);
+                self.env.update_type(&r.text, updated);
+            }
+        }
     }
 
     /// Resolve a method call on a bounded type parameter — e.g. `key.hash()`
@@ -309,31 +331,11 @@ impl TypeChecker {
     pub(super) fn check_method_call(
         &mut self,
         mc: &MethodCallExpr,
-        fn_def: &FnDef,
+        resolved: &ResolvedMethod<'_>,
         arg_types: &[Ty],
         subst: &mut Substitution,
-        scope: &TypeParamScope,
     ) -> Ty {
-        let (param_types, return_type) = self.with_type_params(scope.clone(), |s| {
-            let params: Vec<Ty> = fn_def
-                .params
-                .iter()
-                .filter(|p| p.name != "self")
-                .map(|p| {
-                    p.ty
-                        .as_ref()
-                        .map(|t| s.resolve_hir_ty(t))
-                        .map(|r| Self::substitute(&r, subst))
-                        .unwrap_or(Ty::Error)
-                })
-                .collect();
-            let ret = fn_def
-                .return_type
-                .as_ref()
-                .map(|t| Self::substitute(&s.resolve_hir_ty(t), subst))
-                .unwrap_or(Ty::Unit);
-            (params, ret)
-        });
+        let (param_types, return_type) = self.resolve_method_signature(resolved, subst);
 
         if param_types.len() != arg_types.len() {
             self.emit(TypeDiagnostic::CallArityMismatch {
@@ -345,12 +347,9 @@ impl TypeChecker {
             return return_type;
         }
 
-        // Generic param types (unbound T) need unification, not simple
-        // equality — the first push binds T, subsequent pushes check against
-        // the bound value (mirrors check_call_args in infer.rs).
         let has_params = param_types
             .iter()
-            .any(|t| Self::contains_type_param(t))
+            .any(Self::contains_type_param)
             || Self::contains_type_param(&return_type);
         if has_params {
             for (arg_ty, param_ty) in arg_types.iter().zip(param_types.iter()) {
@@ -381,6 +380,34 @@ impl TypeChecker {
             }
             return_type
         }
+    }
+
+    fn resolve_method_signature(
+        &mut self,
+        resolved: &ResolvedMethod<'_>,
+        subst: &Substitution,
+    ) -> (Vec<Ty>, Ty) {
+        self.with_type_params(resolved.scope.clone(), |s| {
+            let params: Vec<Ty> = resolved
+                .fn_def
+                .params
+                .iter()
+                .filter(|p| p.name != "self")
+                .map(|p| {
+                    p.ty.as_ref()
+                        .map(|t| s.resolve_hir_ty(t))
+                        .map(|r| Self::substitute(&r, subst))
+                        .unwrap_or(Ty::Error)
+                })
+                .collect();
+            let ret = resolved
+                .fn_def
+                .return_type
+                .as_ref()
+                .map(|t| Self::substitute(&s.resolve_hir_ty(t), subst))
+                .unwrap_or(Ty::Unit);
+            (params, ret)
+        })
     }
 
     pub(super) fn infer_field(&mut self, field: &FieldExpr) -> Ty {
@@ -466,6 +493,33 @@ impl TypeChecker {
         Self::substitute(field_ty, &subst)
     }
 
+    /// Walk the impl table to find a subscript matching `name` with the given
+    /// number of index parameters and setter flag. Returns the resolved
+    /// subscript definition, its substitution, and type-parameter scope.
+    fn find_impl_subscript(
+        &self,
+        name: &str,
+        base_ty: &Ty,
+        num_indices: usize,
+        is_setter: bool,
+    ) -> Option<(SubscriptDef, Substitution, TypeParamScope)> {
+        for info in &self.impl_table {
+            if info.type_name != name {
+                continue;
+            }
+            if let Some(s) = info
+                .subscripts
+                .iter()
+                .find(|s| s.is_setter == is_setter && index_param_count(s) == num_indices)
+            {
+                let subst = self.build_impl_subst(info, base_ty);
+                let scope = impl_type_param_scope(info);
+                return Some((s.clone(), subst, scope));
+            }
+        }
+        None
+    }
+
     pub(super) fn infer_index(&mut self, index: &IndexExpr) -> Ty {
         let base_ty = self.infer_expr(&index.base);
         for idx in &index.indices {
@@ -485,26 +539,9 @@ impl TypeChecker {
 
         // Try subscript lookup first (library-defined indexing).
         if let Some(ref name) = type_name {
-            // Walk the impl table manually instead of calling find_impl_subscript
-            // so the immutable borrow on self ends before we mutate
-            // current_type_params below.
-            let mut sub_found: Option<(SubscriptDef, Substitution, TypeParamScope)> = None;
-            for info in &self.impl_table {
-                if info.type_name != *name {
-                    continue;
-                }
-                if let Some(s) = info
-                    .subscripts
-                    .iter()
-                    .find(|s| !s.is_setter && index_param_count(s) == index.indices.len())
-                {
-                    let subst = self.build_impl_subst(info, &base_ty);
-                    let scope = impl_type_param_scope(info);
-                    sub_found = Some((s.clone(), subst, scope));
-                    break;
-                }
-            }
-            if let Some((sub, subst, scope)) = sub_found {
+            if let Some((sub, subst, scope)) =
+                self.find_impl_subscript(name, &base_ty, index.indices.len(), false)
+            {
                 let ty = self.with_type_params(scope, |s| {
                     sub.return_type
                         .as_ref()
@@ -573,23 +610,8 @@ impl TypeChecker {
         };
 
         // Walk the impl table manually — same reason as infer_index.
-        let mut sub_found: Option<(SubscriptDef, Substitution, TypeParamScope)> = None;
-        for info in &self.impl_table {
-            if info.type_name != name {
-                continue;
-            }
-            if let Some(s) = info
-                .subscripts
-                .iter()
-                .find(|s| s.is_setter && index_param_count(s) == indices.len())
-            {
-                let subst = self.build_impl_subst(info, &base_ty);
-                let scope = impl_type_param_scope(info);
-                sub_found = Some((s.clone(), subst, scope));
-                break;
-            }
-        }
-        let Some((sub_def, subst, scope)) = sub_found else {
+        let Some((sub_def, subst, scope)) = self.find_impl_subscript(&name, &base_ty, indices.len(), true)
+        else {
             self.emit(TypeDiagnostic::NoWritableSubscript {
                 ty: name,
                 span: self.span_for(assign_id),

@@ -103,7 +103,7 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
         axiom_hir::resolve_lang_items(&stdlib_bindings, stdlib_present);
     all_diags.append(&mut lang_diags);
 
-    let mut hir = axiom_hir::Hir {
+    let hir = axiom_hir::Hir {
         items: all_items,
         diagnostics: all_diags,
     };
@@ -188,8 +188,8 @@ fn stmt_max_sub_id(stmt: &axiom_hir::Stmt) -> usize {
         axiom_hir::Stmt::ValStmt(s) => expr_max_id(&s.value),
         axiom_hir::Stmt::VarStmt(s) => expr_max_id(&s.value),
         axiom_hir::Stmt::ExprStmt(s) => expr_max_id(&s.expr),
-        axiom_hir::Stmt::ReturnStmt(s) => s.value.as_ref().map_or(0, |v| expr_max_id(v)),
-        axiom_hir::Stmt::BreakStmt(s) => s.value.as_ref().map_or(0, |v| expr_max_id(v)),
+        axiom_hir::Stmt::ReturnStmt(s) => s.value.as_ref().map_or(0, expr_max_id),
+        axiom_hir::Stmt::BreakStmt(s) => s.value.as_ref().map_or(0, expr_max_id),
         _ => 0,
     }
 }
@@ -236,17 +236,7 @@ fn expr_max_id(expr: &axiom_hir::Expr) -> usize {
                 max = max.max(expr_max_id(&arm.body));
             }
         }
-        axiom_hir::Expr::Loop(e) => match &e.kind {
-            axiom_hir::LoopKind::Infinite(b) => max = max.max(block_max_id(b)),
-            axiom_hir::LoopKind::Conditional { condition, body } => {
-                max = max.max(expr_max_id(condition)).max(block_max_id(body));
-            }
-            axiom_hir::LoopKind::Iterator {
-                iterable, body, ..
-            } => {
-                max = max.max(expr_max_id(iterable)).max(block_max_id(body));
-            }
-        },
+        axiom_hir::Expr::Loop(e) => max = max.max(loop_max_id(&e.kind)),
         axiom_hir::Expr::StructLit(e) => {
             for f in &e.fields {
                 max = max.max(expr_max_id(&f.value));
@@ -262,4 +252,16 @@ fn expr_max_id(expr: &axiom_hir::Expr) -> usize {
         }
     }
     max
+}
+
+fn loop_max_id(kind: &axiom_hir::LoopKind) -> usize {
+    match kind {
+        axiom_hir::LoopKind::Infinite(b) => block_max_id(b),
+        axiom_hir::LoopKind::Conditional { condition, body } => {
+            expr_max_id(condition).max(block_max_id(body))
+        }
+        axiom_hir::LoopKind::Iterator {
+            iterable, body, ..
+        } => expr_max_id(iterable).max(block_max_id(body)),
+    }
 }
