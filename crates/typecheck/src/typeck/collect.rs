@@ -6,8 +6,9 @@ use super::{
     VariantInfo,
 };
 use crate::error::TypeDiagnostic;
-use crate::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
+use crate::types::{EnumTy, ErrorSetTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 use parser::ast::AstNode;
+use resolver::hir_types::{ErrorSetDef, Item};
 use resolver::*;
 use std::collections::HashMap;
 
@@ -22,6 +23,7 @@ impl TypeChecker {
         self.collect_struct_defs();
         self.register_struct_deinit_impls();
         self.collect_enum_defs();
+        self.collect_error_set_defs();
         self.collect_fn_sigs();
         self.collect_trait_defs();
         self.collect_impl_defs();
@@ -173,6 +175,52 @@ impl TypeChecker {
             self.env
                 .define(e.name.clone(), self_ty.clone(), e.id, Mutability::Immutable);
             self.register_enum_variants(&e.name, &variants, &self_ty);
+        }
+    }
+
+    fn collect_error_set_defs(&mut self) {
+        let sets: Vec<ErrorSetDef> = self
+            .hir
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                Item::ErrorSetDef(e) => Some(e.clone()),
+                _ => None,
+            })
+            .collect();
+
+        for e in &sets {
+            let name = e.name.clone();
+            let def_id = resolver::HirId(e.id.0);
+            let mut variant_names = Vec::new();
+
+            for v in &e.variants {
+                let var_name = v.name.clone();
+                let var_def_id = resolver::HirId(v.id.0);
+                variant_names.push(var_name.clone());
+
+                let fn_ty = Ty::Fn(FnTy {
+                    params: vec![],
+                    return_type: Box::new(Ty::ErrorSet(ErrorSetTy {
+                        name: name.clone(),
+                        def_id,
+                        variant_names: vec![],
+                    })),
+                });
+                self.env
+                    .define(var_name, fn_ty, var_def_id, Mutability::Immutable);
+            }
+
+            self.env.define(
+                name.clone(),
+                Ty::ErrorSet(ErrorSetTy {
+                    name: name.clone(),
+                    def_id,
+                    variant_names: variant_names.clone(),
+                }),
+                def_id,
+                Mutability::Immutable,
+            );
         }
     }
 

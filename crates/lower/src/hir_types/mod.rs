@@ -203,6 +203,8 @@ pub enum Expr {
     StructLit(StructLitExpr),
     ListLit(ListLitExpr),
     Assign(AssignExpr),
+    Try(TryExpr),
+    Else(ElseExpr),
 }
 
 impl Expr {
@@ -223,6 +225,8 @@ impl Expr {
             Expr::StructLit(e) => e.id,
             Expr::Assign(e) => e.id,
             Expr::ListLit(e) => e.id,
+            Expr::Try(e) => e.id,
+            Expr::Else(e) => e.id,
         }
     }
 }
@@ -436,6 +440,19 @@ pub struct AssignExpr {
     pub target: AssignTarget,
     pub value: Box<Expr>,
     pub op: AssignOp,
+}
+
+#[derive(Debug, Clone)]
+pub struct TryExpr {
+    pub id: HirId,
+    pub expr: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ElseExpr {
+    pub id: HirId,
+    pub expr: Box<Expr>,
+    pub fallback: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]

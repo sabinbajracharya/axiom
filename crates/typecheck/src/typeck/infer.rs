@@ -39,6 +39,20 @@ impl TypeChecker {
                 });
                 Ty::Error
             }
+            Expr::Try(_) => {
+                self.emit(TypeDiagnostic::NotYetSupported {
+                    feature: "try expression".to_string(),
+                    span: lexer::Span { lo: 0, hi: 0 },
+                });
+                Ty::Error
+            }
+            Expr::Else(_) => {
+                self.emit(TypeDiagnostic::NotYetSupported {
+                    feature: "else expression".to_string(),
+                    span: lexer::Span { lo: 0, hi: 0 },
+                });
+                Ty::Error
+            }
         }
     }
 

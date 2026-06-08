@@ -85,6 +85,7 @@ fn item_max_id(item: &resolver::Item) -> usize {
         resolver::Item::ImplDef(i) => i.id.0,
         resolver::Item::SubscriptDef(s) => s.id.0,
         resolver::Item::UseItem(u) => u.id.0,
+        resolver::Item::ErrorSetDef(e) => e.id.0,
     };
     let body_max = match item {
         resolver::Item::FnDef(f) => block_max_id(&f.body),
@@ -193,6 +194,8 @@ fn expr_max_id(expr: &resolver::Expr) -> usize {
         resolver::Expr::Assign(e) => {
             max = max.max(expr_max_id(&e.value));
         }
+        resolver::Expr::Try(e) => max = max.max(expr_max_id(&e.expr)),
+        resolver::Expr::Else(e) => max = max.max(else_max_id(e, max)),
     }
     max
 }
@@ -207,4 +210,8 @@ fn loop_max_id(kind: &resolver::LoopKind) -> usize {
             expr_max_id(iterable).max(block_max_id(body))
         }
     }
+}
+
+fn else_max_id(e: &resolver::ElseExpr, cur: usize) -> usize {
+    expr_max_id(&e.expr).max(expr_max_id(&e.fallback)).max(cur)
 }

@@ -37,6 +37,7 @@ pub fn fmt_ty(ty: &Ty) -> String {
             format!("{}<{}>", i.name, args.join(", "))
         }
         Ty::HeapBuffer(inner) => format!("HeapBuffer<{}>", fmt_ty(inner)),
+        Ty::ErrorSet(e) => e.name.clone(),
         Ty::Error => "<error>".to_string(),
     }
 }

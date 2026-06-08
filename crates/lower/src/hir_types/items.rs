@@ -1,4 +1,4 @@
-//! HIR item definitions: functions, structs, enums, traits, and impls.
+//! HIR item definitions: functions, structs, enums, traits, impls, and error sets.
 
 use super::{
     Block, CallingConvention, HirId, HirTraitBound, HirTy, HirTypeParam, NameRef, Visibility,
@@ -15,6 +15,7 @@ pub enum Item {
     ImplDef(ImplDef),
     SubscriptDef(SubscriptDef),
     UseItem(UseItem),
+    ErrorSetDef(ErrorSetDef),
 }
 
 #[derive(Debug, Clone)]
@@ -79,6 +80,20 @@ pub struct EnumDef {
     pub visibility: Visibility,
     pub type_params: Vec<HirTypeParam>,
     pub variants: Vec<VariantDef>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ErrorSetDef {
+    pub id: HirId,
+    pub name: String,
+    pub visibility: Visibility,
+    pub variants: Vec<ErrorVariantDef>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ErrorVariantDef {
+    pub id: HirId,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]

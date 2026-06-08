@@ -24,7 +24,8 @@ spiked passes into the IR layer this plan establishes.
 - **Subset:** Int/Bool/Float/Unit/String, `fn` defs & calls, `val`/`var` + `let` bindings,
   arithmetic/comparison/logical ops, `if`/`else`, `loop`, **structs, enums, and exhaustive
   `match`**, and a `print` builtin. Generics, traits, closures, concurrency, error sets →
-  deferred to v1+.
+  deferred to v1+. *(Update: enums, generics, and traits were subsequently pulled forward
+  into v0 and are delivered in the typechecker; only closures + error handling remain v1.)*
 - **Backend strategy:** **one register IR**, then the **IR interpreter first** (reference
   oracle + fastest path to a running program), then **Cranelift second**, parity-checked
   against the interpreter — mirroring Oxy's proven discipline.
@@ -308,5 +309,5 @@ containing `unsafe`, all blocks justified.
 ## Out of scope for v0 (deferred, by design)
 
 Ownership pass / exclusivity checker / Perceus / reuse analysis (**v1** — runs on the M3 IR);
-generics, traits, closures (**v1**); concurrency `scope`/`spawn`, `forge`, LSP (**v2**); `.wasm`
-emit backend + LLVM-tier backend + cycle collector (**v2.x+**).
+closures, error handling (`try`/`catch`/`errdefer`/error sets) (**v1**); concurrency `scope`/`spawn`,
+`forge`, LSP (**v2**); `.wasm` emit backend + LLVM-tier backend + cycle collector (**v2.x+**).

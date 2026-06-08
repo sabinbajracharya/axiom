@@ -94,6 +94,19 @@ fn serialize_item(item: &Item, depth: usize, thir: &Thir, out: &mut String) {
         Item::ImplDef(i) => serialize_impl_def(i, depth, thir, out),
         Item::SubscriptDef(_) => {}
         Item::UseItem(_) => {}
+        Item::ErrorSetDef(e) => {
+            indent(out, depth);
+            out.push_str(&format!(
+                "ErrorSetDef({}) name={} vis={} variants=[\n",
+                e.id, e.name, e.visibility
+            ));
+            for v in &e.variants {
+                indent(out, depth + 1);
+                out.push_str(&format!("ErrorVariant({}) name={}\n", v.id, v.name));
+            }
+            indent(out, depth);
+            out.push_str("]\n");
+        }
     }
 }
 

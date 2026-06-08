@@ -749,11 +749,21 @@ Both delegate runtime semantics to a **shared FFI layer** so they cannot diverge
 
 Each stage is independently shippable and testable. Risk is retired front-to-back.
 
+> **On versioning.** v0, v1, and v2 are **milestone tags**, not semver releases. Axiom
+> has no users outside this repo, so the "current" milestone is always `main` —
+> whatever is merged. We deliver continuously (features land when they're ready,
+> regardless of which milestone originally named them), and when a milestone's
+> remaining work is done we tag it, write up what shipped, and begin the next one.
+> In practice this means features listed under a later milestone often get pulled
+> forward as opportunistic wins — the roadmap is a plan, not a promise of ordering.
+> The only hard boundary: **the memory model (ownership pass + Perceus) is v1's
+> identity and does NOT land before v0 is tagged.**
+
 **Spike 0 — Memory-model prototype (throwaway).** §4.10. Retire the single biggest risk (exclusivity + subscripts + closure capture + minimal Perceus). **Exit gate: Path A confirmed tolerable, or fall back to Path B.** *Nothing permanent is built until this passes.*
 
-**v0 — End-to-end skeleton, NO memory model.** Lex → parse → typecheck → IR → Cranelift, for a value-semantics subset with naive "copy/refcount everything" (no exclusivity, no Perceus optimization). Goal: a `hello.ax` and basic programs run natively. Proves the pipeline. Includes the dual-backend + parity harness early. **Also includes:** user-defined structs, `HeapBuffer<T>` primitive, `Deinit` auto-impl, subscript declarations, generic struct method resolution, and migration of `List<T>`/`Map<K,V>` from compiler built-ins to library types (✅ **done** — `List`/`Map` are real `std::collections` `.ax` code; see `docs/builtin-to-stdlib-migration.md`).
+**v0 — End-to-end skeleton, NO memory model.** Lex → parse → typecheck → IR → Cranelift, for a value-semantics subset with naive "copy/refcount everything" (no exclusivity, no Perceus optimization). Goal: a `hello.ax` and basic programs run natively. Proves the pipeline. Includes the dual-backend + parity harness early. **Delivered:** user-defined structs, `HeapBuffer<T>` primitive, `Deinit` auto-impl, subscript declarations, generic struct method resolution, and migration of `List<T>`/`Map<K,V>` from compiler built-ins to library types (✅ **done** — `List`/`Map` are real `std::collections` `.ax` code; see `docs/builtin-to-stdlib-migration.md`). **Pulled forward from v1:** enums with payloads, traits with default methods + supertraits + impl-completeness checking, generics (type parameters + trait bounds), and `match` exhaustiveness checking (✅ **done** — all live in the typechecker).
 
-**v1 — The memory model.** Fold the spiked ownership pass + Perceus + reuse analysis into the real compiler. Enums, traits, generics (full), `match` exhaustiveness, `val`/`var`, the three conventions, error handling (`try`/`catch`/`errdefer`/error sets). **This is the language's identity landing.** Closures with the spiked capture model. Diagnostics for exclusivity errors held to release-gating quality.
+**v1 — The memory model.** Fold the spiked ownership pass + Perceus + reuse analysis into the real compiler. `val`/`var`, the three calling conventions, error handling (`try`/`catch`/`errdefer`/error sets). **This is the language's identity landing.** Closures with the spiked capture model. Diagnostics for exclusivity errors held to release-gating quality. *(Enums, traits, generics, and `match` exhaustiveness — originally v1 items — were pulled forward into v0 and are already delivered.)*
 
 **v2 — Concurrency + ecosystem.** Green-thread scheduler, `scope`/`spawn`, channels, shared-immutable + move-into-task sharing. `forge` package manager with lockfiles + sandboxed builds + signature verification. LSP feature-complete. `Mutex<T>`/shared-mutable cell. Associated types / richer generics.
 

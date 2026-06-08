@@ -66,6 +66,9 @@ pub(super) fn resolve_item_names(
         Item::UseItem(_) => {
             // Use items are processed separately during import resolution.
         }
+        Item::ErrorSetDef(_) => {
+            // Error sets have no type params and no payload types — nothing to resolve.
+        }
     }
 }
 

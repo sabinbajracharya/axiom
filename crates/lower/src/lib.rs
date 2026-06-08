@@ -57,7 +57,8 @@ fn check_item(item: &Item, diagnosed: &[String], errors: &mut Vec<CoverageError>
         | Item::TraitDef(_)
         | Item::ImplDef(_)
         | Item::SubscriptDef(_)
-        | Item::UseItem(_) => {}
+        | Item::UseItem(_)
+        | Item::ErrorSetDef(_) => {}
     }
 }
 
@@ -148,7 +149,14 @@ fn check_expr(expr: &Expr, diagnosed: &[String], errors: &mut Vec<CoverageError>
             }
         }
         Expr::Lit(_) => {}
+        Expr::Try(t) => check_expr(&t.expr, diagnosed, errors),
+        Expr::Else(e) => check_else(e, diagnosed, errors),
     }
+}
+
+fn check_else(e: &ElseExpr, diagnosed: &[String], errors: &mut Vec<CoverageError>) {
+    check_expr(&e.expr, diagnosed, errors);
+    check_expr(&e.fallback, diagnosed, errors);
 }
 
 fn check_loop(l: &LoopExpr, diagnosed: &[String], errors: &mut Vec<CoverageError>) {

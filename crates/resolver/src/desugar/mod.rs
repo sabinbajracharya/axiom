@@ -62,7 +62,7 @@ fn desugar_item(item: &mut Item, ctx: &mut DesugarCtx) {
                 }
             }
         }
-        Item::StructDef(_) | Item::EnumDef(_) | Item::UseItem(_) => {}
+        Item::StructDef(_) | Item::EnumDef(_) | Item::UseItem(_) | Item::ErrorSetDef(_) => {}
         Item::SubscriptDef(s) => desugar_block(&mut s.body, ctx),
     }
 }
@@ -145,6 +145,13 @@ fn desugar_expr(expr: &mut Expr, ctx: &mut DesugarCtx) {
         Expr::Assign(e) => {
             desugar_assign_target(&mut e.target, ctx);
             desugar_expr(&mut e.value, ctx);
+        }
+        Expr::Try(e) => {
+            desugar_expr(&mut e.expr, ctx);
+        }
+        Expr::Else(e) => {
+            desugar_expr(&mut e.expr, ctx);
+            desugar_expr(&mut e.fallback, ctx);
         }
     }
 }

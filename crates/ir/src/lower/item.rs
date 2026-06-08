@@ -62,6 +62,11 @@ pub(super) fn lower_item(item: &Item, ctx: &mut LowerCtx) {
             lower_inherited_defaults(impl_def, ctx, &type_name);
         }
         Item::StructDef(_) | Item::TraitDef(_) | Item::SubscriptDef(_) | Item::UseItem(_) => {}
+        Item::ErrorSetDef(_) => {
+            // Error sets have no runtime representation beyond enum-like tags.
+            // Their variants are registered as constructor functions by the
+            // typecheck collect pass.
+        }
     }
 }
 

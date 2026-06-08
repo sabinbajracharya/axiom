@@ -143,8 +143,14 @@ fn count_sub_expr_kind(expr: &Expr, f: fn(&Expr) -> bool, count: &mut usize) {
             }
         }
         Expr::Assign(e) => {
-            count_one(&e.value, f, count);
             count_sub_expr_kind(&e.value, f, count);
+        }
+        Expr::Try(e) => {
+            count_sub_expr_kind(&e.expr, f, count);
+        }
+        Expr::Else(e) => {
+            count_sub_expr_kind(&e.expr, f, count);
+            count_sub_expr_kind(&e.fallback, f, count);
         }
         Expr::ListLit(e) => count_slice_exprs(&e.elements, f, count),
     }

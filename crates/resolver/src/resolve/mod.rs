@@ -21,7 +21,7 @@ use std::collections::{HashMap, HashSet};
 pub type GlobalExports = HashMap<String, HashMap<String, (DefId, DefKind, Visibility)>>;
 
 /// Build a global export map from multiple modules' definitions.
-/// Only includes `pub` items of kind Fn, Struct, Enum, Trait, or Variant.
+/// Only includes `pub` items of kind Fn, Struct, Enum, Trait, Variant, or ErrorSet.
 pub fn build_global_exports(modules: &[(String, Vec<Def>)]) -> GlobalExports {
     let mut exports: GlobalExports = HashMap::new();
     for (module_name, defs) in modules {
@@ -29,7 +29,13 @@ pub fn build_global_exports(modules: &[(String, Vec<Def>)]) -> GlobalExports {
         for def in defs {
             if !matches!(
                 def.kind,
-                DefKind::Fn | DefKind::Struct | DefKind::Enum | DefKind::Trait | DefKind::Variant
+                DefKind::Fn
+                    | DefKind::Struct
+                    | DefKind::Enum
+                    | DefKind::Trait
+                    | DefKind::Variant
+                    | DefKind::ErrorSet
+                    | DefKind::ErrorVariant
             ) {
                 continue;
             }
@@ -148,7 +154,13 @@ fn build_top_level(
     for def in defs {
         if matches!(
             def.kind,
-            DefKind::Fn | DefKind::Struct | DefKind::Enum | DefKind::Trait | DefKind::Variant
+            DefKind::Fn
+                | DefKind::Struct
+                | DefKind::Enum
+                | DefKind::Trait
+                | DefKind::Variant
+                | DefKind::ErrorSet
+                | DefKind::ErrorVariant
         ) {
             if let Some((prev_def_id, _)) = top_level.get(&def.name) {
                 let prev_span = defs

@@ -108,6 +108,12 @@ fn collect_item_ids(item: &resolver::Item, ids: &mut Vec<(HirId, String)>) {
         resolver::Item::UseItem(u) => {
             ids.push((u.id, "UseItem".to_string()));
         }
+        resolver::Item::ErrorSetDef(e) => {
+            ids.push((e.id, "ErrorSetDef".to_string()));
+            for variant in &e.variants {
+                ids.push((variant.id, "ErrorVariantDef".to_string()));
+            }
+        }
     }
 }
 
@@ -181,6 +187,8 @@ fn expr_kind_name(expr: &resolver::Expr) -> &'static str {
         resolver::Expr::StructLit(_) => "StructLit",
         resolver::Expr::Assign(_) => "Assign",
         resolver::Expr::ListLit(_) => "ListLit",
+        resolver::Expr::Try(_) => "Try",
+        resolver::Expr::Else(_) => "Else",
     }
 }
 
@@ -231,6 +239,11 @@ fn collect_expr_children(expr: &resolver::Expr, ids: &mut Vec<(HirId, String)>) 
             l.elements
                 .iter()
                 .for_each(|elem| collect_expr_ids(elem, ids));
+        }
+        resolver::Expr::Try(t) => collect_expr_ids(&t.expr, ids),
+        resolver::Expr::Else(e) => {
+            collect_expr_ids(&e.expr, ids);
+            collect_expr_ids(&e.fallback, ids);
         }
     }
 }

@@ -41,6 +41,7 @@ fn check_item_ids(item: &lower::Item, seen: &mut HashSet<lower::HirId>) -> bool 
         lower::Item::ImplDef(i) => i.id,
         lower::Item::SubscriptDef(s) => s.id,
         lower::Item::UseItem(u) => u.id,
+        lower::Item::ErrorSetDef(e) => e.id,
     };
     if !seen.insert(id) {
         return false;
@@ -91,6 +92,14 @@ fn check_item_ids(item: &lower::Item, seen: &mut HashSet<lower::HirId>) -> bool 
             check_block_ids(&s.body, seen)
         }
         lower::Item::UseItem(_) => true,
+        lower::Item::ErrorSetDef(e) => {
+            for v in &e.variants {
+                if !seen.insert(v.id) {
+                    return false;
+                }
+            }
+            true
+        }
     }
 }
 
@@ -298,6 +307,8 @@ fn check_expr_ids(expr: &lower::Expr, seen: &mut HashSet<lower::HirId>) -> bool 
         }
         lower::Expr::Assign(a) => check_expr_ids(&a.value, seen),
         lower::Expr::ListLit(l) => check_expr_slice(&l.elements, seen),
+        lower::Expr::Try(t) => check_expr_ids(&t.expr, seen),
+        lower::Expr::Else(e) => check_expr_ids(&e.expr, seen) && check_expr_ids(&e.fallback, seen),
     }
 }
 

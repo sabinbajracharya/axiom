@@ -70,6 +70,8 @@ pub enum DefKind {
     TypeParam,
     Local,
     Builtin,
+    ErrorSet,
+    ErrorVariant,
 }
 
 impl LowerCtx {

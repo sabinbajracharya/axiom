@@ -57,6 +57,12 @@ pub(super) fn lower_expr(node: &parser::SyntaxNode, ctx: &mut LowerCtx) -> Expr 
     if let Some(e) = ast::ListLitExpr::cast(node.clone()) {
         return lower_list_lit_expr(&e, ctx);
     }
+    if let Some(e) = ast::TryExpr::cast(node.clone()) {
+        return lower_try_expr(&e, ctx);
+    }
+    if let Some(e) = ast::CatchExpr::cast(node.clone()) {
+        return lower_else_expr(&e, ctx);
+    }
     if let Some(result) = lower_stmt_expr(node, ctx) {
         return result;
     }
@@ -331,6 +337,35 @@ fn lower_list_lit_expr(e: &ast::ListLitExpr, ctx: &mut LowerCtx) -> Expr {
         .map(|elem| lower_expr(&elem, ctx))
         .collect();
     Expr::ListLit(ListLitExpr { id, elements })
+}
+
+fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx) -> Expr {
+    let id = ctx.alloc_id();
+    let operand = e
+        .expr()
+        .map(|node| lower_expr(&node, ctx))
+        .unwrap_or_else(|| unit_expr(ctx));
+    Expr::Try(TryExpr {
+        id,
+        expr: Box::new(operand),
+    })
+}
+
+fn lower_else_expr(e: &ast::CatchExpr, ctx: &mut LowerCtx) -> Expr {
+    let id = ctx.alloc_id();
+    let expr = e
+        .expr()
+        .map(|node| lower_expr(&node, ctx))
+        .unwrap_or_else(|| unit_expr(ctx));
+    let fallback = e
+        .handler()
+        .map(|node| lower_expr(&node, ctx))
+        .unwrap_or_else(|| unit_expr(ctx));
+    Expr::Else(ElseExpr {
+        id,
+        expr: Box::new(expr),
+        fallback: Box::new(fallback),
+    })
 }
 
 fn lower_stmt_expr(node: &parser::SyntaxNode, ctx: &mut LowerCtx) -> Option<Expr> {

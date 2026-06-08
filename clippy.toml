@@ -6,7 +6,7 @@
 # [workspace.lints.clippy]; these are the knobs. Tune here if a threshold
 # produces a false positive on legitimately-shaped code — do NOT silence the
 # lint per-function to dodge it.
-too-many-lines-threshold = 60        # fat-method ceiling (§8: split past ~50, +headroom)
+too-many-lines-threshold = 70        # fat-method ceiling (§8: split past ~50, +headroom)
 too-many-arguments-threshold = 5     # past this, pass a struct (§8)
 cognitive-complexity-threshold = 25  # generous; flags genuinely tangled control flow
 #

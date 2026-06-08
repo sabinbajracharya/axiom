@@ -19,6 +19,8 @@ pub(super) fn lower_item(node: parser::SyntaxNode, ctx: &mut LowerCtx) -> Option
         Some(Item::TraitDef(lower_trait_def(&trait_def, ctx)))
     } else if let Some(impl_block) = ast::ImplBlock::cast(node.clone()) {
         Some(Item::ImplDef(lower_impl_block(&impl_block, ctx)))
+    } else if let Some(error_set) = ast::ErrorSetDef::cast(node.clone()) {
+        Some(Item::ErrorSetDef(lower_error_set_def(&error_set, ctx)))
     } else if let Some(use_decl) = ast::UseDecl::cast(node) {
         Some(Item::UseItem(lower_use_decl(&use_decl, ctx)))
     } else {
@@ -335,6 +337,52 @@ fn lower_enum_def(e: &ast::EnumDef, ctx: &mut LowerCtx) -> EnumDef {
         name: ename,
         visibility,
         type_params,
+        variants,
+    }
+}
+
+fn lower_error_set_def(e: &ast::ErrorSetDef, ctx: &mut LowerCtx) -> ErrorSetDef {
+    let id = ctx.alloc_id();
+    let name = e.name().map(|n| name_text(&n)).unwrap_or_default();
+    let visibility = if e.visibility().is_some() {
+        Visibility::Public
+    } else {
+        Visibility::Private
+    };
+    let variants = e
+        .variant_list()
+        .map(|vl| vl.variants())
+        .unwrap_or_default()
+        .into_iter()
+        .map(|v| {
+            let vid = ctx.alloc_id();
+            let vname = token_text(v.name_token());
+            ctx.defs.push(Def {
+                name: vname.clone(),
+                def_id: vid,
+                kind: DefKind::ErrorVariant,
+                visibility,
+                span: ctx.span_of(v.syntax()),
+            });
+            ErrorVariantDef {
+                id: vid,
+                name: vname,
+            }
+        })
+        .collect();
+
+    ctx.defs.push(Def {
+        name: name.clone(),
+        def_id: id,
+        kind: DefKind::ErrorSet,
+        visibility,
+        span: ctx.span_of(e.syntax()),
+    });
+
+    ErrorSetDef {
+        id,
+        name,
+        visibility,
         variants,
     }
 }

@@ -34,6 +34,7 @@ fn serialize_item(item: &Item, depth: usize, out: &mut String) {
         Item::ImplDef(i) => serialize_impl_def(i, depth, out),
         Item::SubscriptDef(s) => serialize_subscript_def(s, depth, out),
         Item::UseItem(u) => serialize_use_item(u, depth, out),
+        Item::ErrorSetDef(e) => serialize_error_set_def(e, depth, out),
     }
 }
 
@@ -248,6 +249,20 @@ fn serialize_enum_def(e: &EnumDef, depth: usize, out: &mut String) {
     out.push_str("]\n");
 }
 
+fn serialize_error_set_def(e: &ErrorSetDef, depth: usize, out: &mut String) {
+    indent(out, depth);
+    out.push_str(&format!(
+        "ErrorSetDef({}) name={} vis={} variants=[\n",
+        e.id, e.name, e.visibility
+    ));
+    for v in &e.variants {
+        indent(out, depth + 1);
+        out.push_str(&format!("ErrorVariant({}) name={}\n", v.id, v.name));
+    }
+    indent(out, depth);
+    out.push_str("]\n");
+}
+
 // ── Statements ─────────────────────────────────────────────────────────────────
 
 fn serialize_stmt(stmt: &Stmt, depth: usize, out: &mut String) {
@@ -329,6 +344,8 @@ fn serialize_expr(expr: &Expr, depth: usize, out: &mut String) {
         Expr::StructLit(e) => serialize_struct_lit_expr(e, depth, out),
         Expr::Assign(e) => serialize_assign_expr(e, depth, out),
         Expr::ListLit(e) => serialize_list_lit_expr(e, depth, out),
+        Expr::Try(e) => serialize_try_expr(e, depth, out),
+        Expr::Else(e) => serialize_else_expr(e, depth, out),
     }
 }
 
@@ -481,6 +498,20 @@ fn serialize_assign_expr(e: &AssignExpr, depth: usize, out: &mut String) {
     serialize_assign_target(&e.target, depth, out);
     out.push_str(&format!(" {} ", e.op));
     serialize_expr(&e.value, depth, out);
+}
+
+fn serialize_try_expr(e: &TryExpr, depth: usize, out: &mut String) {
+    out.push_str(&format!("Try({})(", e.id));
+    serialize_expr(&e.expr, depth, out);
+    out.push(')');
+}
+
+fn serialize_else_expr(e: &ElseExpr, depth: usize, out: &mut String) {
+    out.push_str(&format!("Else({})(", e.id));
+    serialize_expr(&e.expr, depth, out);
+    out.push_str(", ");
+    serialize_expr(&e.fallback, depth, out);
+    out.push(')');
 }
 
 fn serialize_block(block: &Block, depth: usize, out: &mut String) {

@@ -38,7 +38,18 @@ pub enum Ty {
     /// Used by collection library types (List<T>, Map<K,V>) to store data.
     /// The inner `Ty` is the element type.
     HeapBuffer(Box<Ty>),
+    /// A named error set: `error IO { NotFound, WriteError }`.
+    ErrorSet(ErrorSetTy),
     Error,
+}
+
+/// A user-defined error set type, identified by name, DefId, and its variant names.
+/// Error sets are unit-only (no data payloads) — each variant is a nullary constructor.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ErrorSetTy {
+    pub name: String,
+    pub def_id: DefId,
+    pub variant_names: Vec<String>,
 }
 
 /// A user-defined struct type, identified by name and DefId.
@@ -123,6 +134,7 @@ impl fmt::Display for Ty {
                 write!(f, ">")
             }
             Ty::HeapBuffer(inner) => write!(f, "HeapBuffer<{}>", inner),
+            Ty::ErrorSet(e) => write!(f, "{}", e.name),
             Ty::Error => write!(f, "///error///"),
         }
     }
@@ -159,6 +171,7 @@ pub fn label(ty: &Ty) -> &'static str {
         Ty::TypeParam(_) => "TypeParam",
         Ty::Instance(_) => "Instance",
         Ty::HeapBuffer(_) => "HeapBuffer",
+        Ty::ErrorSet(_) => "ErrorSet",
         Ty::Error => "Error",
     }
 }

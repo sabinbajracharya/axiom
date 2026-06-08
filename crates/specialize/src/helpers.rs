@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use typecheck::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
+use typecheck::types::{EnumTy, ErrorSetTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 
 pub type Substitution = HashMap<TypeParamId, Ty>;
 
@@ -75,6 +75,7 @@ pub fn substitute(ty: &Ty, subst: &Substitution) -> Ty {
         Ty::HeapBuffer(inner) => Ty::HeapBuffer(Box::new(substitute(inner, subst))),
         Ty::Struct(_)
         | Ty::Enum(_)
+        | Ty::ErrorSet(_)
         | Ty::Int
         | Ty::Float
         | Ty::Bool
@@ -122,6 +123,7 @@ pub fn type_arg_name(ty: &Ty) -> String {
             format!("{name}_{}", arg_names.join("_"))
         }
         Ty::HeapBuffer(inner) => format!("HeapBuffer_{}", type_arg_name(inner)),
+        Ty::ErrorSet(ErrorSetTy { name, .. }) => name.clone(),
         Ty::Error => "Error".to_string(),
     }
 }
