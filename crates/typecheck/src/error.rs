@@ -435,4 +435,49 @@ mod tests {
         assert!(rendered.contains(": "));
         assert!(rendered.contains("type mismatch"));
     }
+
+    // ── Unified Diagnostic tests ────────────────────────────────────────
+
+    #[test]
+    fn test_diagnostic_kind_hir_delegates() {
+        let hir_diag = resolver::HirDiagnostic::UnresolvedName {
+            name: "x".to_string(),
+            span: Span { lo: 0, hi: 0 },
+        };
+        let diag = Diagnostic::Hir(hir_diag);
+        assert_eq!(diag.kind(), "unresolved_name");
+    }
+
+    #[test]
+    fn test_diagnostic_kind_type_delegates() {
+        let type_diag = TypeDiagnostic::TypeMismatch {
+            expected: "Int".to_string(),
+            found: "Bool".to_string(),
+            span: Span { lo: 0, hi: 0 },
+        };
+        let diag = Diagnostic::Type(type_diag);
+        assert_eq!(diag.kind(), "type_mismatch");
+    }
+
+    #[test]
+    fn test_diagnostic_render_delegates() {
+        let source = "fn main() { val x = 1 }";
+        let diag = Diagnostic::Hir(resolver::HirDiagnostic::UnresolvedName {
+            name: "x".to_string(),
+            span: Span { lo: 10, hi: 11 },
+        });
+        let rendered = diag.render(source);
+        assert!(rendered.contains("unresolved name"));
+        assert!(rendered.contains(": "));
+    }
+
+    #[test]
+    fn test_diagnostic_span_delegates() {
+        let span = Span { lo: 5, hi: 10 };
+        let diag = Diagnostic::Type(TypeDiagnostic::UndefinedType {
+            name: "Foo".to_string(),
+            span,
+        });
+        assert_eq!(diag.span(), span);
+    }
 }

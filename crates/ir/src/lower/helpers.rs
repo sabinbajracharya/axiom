@@ -179,14 +179,14 @@ impl<'a> FnLowerCtx<'a> {
     /// Get the current loop's head label.
     /// Safety: only called when loop_stack is non-empty (guaranteed by lower_loop).
     pub fn current_loop_head(&self) -> &String {
-        // The stack is always non-empty when this is called during loop lowering.
-        // We avoid `expect` which is banned by clippy.
-        let last = self.loop_stack.last();
         // SAFETY: called only from lower_loop body where push_loop was called first.
-        // This is an intentional invariant — if violated, the compiler will produce
-        // incorrect code anyway, so a panic here is acceptable.
-        #[allow(clippy::unwrap_used)]
-        &last.unwrap().0
+        // The stack is guaranteed non-empty at this point.
+        #[allow(clippy::expect_used)]
+        &self
+            .loop_stack
+            .last()
+            .expect("loop_stack is always non-empty when lowering loop body")
+            .0
     }
 
     /// Resolve a function call to its (possibly mangled) name.

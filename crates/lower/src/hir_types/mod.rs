@@ -100,6 +100,12 @@ impl NameRef {
 // ── Top-level HIR ─────────────────────────────────────────────────────────────
 
 /// The complete output of HIR lowering + name resolution.
+///
+/// **Note:** `diagnostics` is a pipeline-internal field used during lowering
+/// and resolution. It is drained by `check_with_lang_items` before the `Thir`
+/// is constructed. Consumers of `Thir` should use `thir.diagnostics` (the
+/// unified `Diagnostic` vector), not `thir.hir.diagnostics`. See
+/// `docs/pipeline-restructure.md` §2a.
 #[derive(Debug, Clone)]
 pub struct Hir {
     pub items: Vec<Item>,

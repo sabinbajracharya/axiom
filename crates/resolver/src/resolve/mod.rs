@@ -10,7 +10,7 @@
 mod body;
 mod item;
 
-use crate::hir::*;
+use crate::hir_types::*;
 use crate::lowering::{Def, DefKind};
 use crate::HirDiagnostic;
 use lexer::Span;

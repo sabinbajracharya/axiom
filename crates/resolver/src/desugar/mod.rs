@@ -8,7 +8,7 @@
 //! and `Block` nodes. After this pass, typeck and IR lowering see only core
 //! constructs; there are no per-sugar special-cases downstream.
 
-use crate::hir::*;
+use crate::hir_types::*;
 use crate::lang::LangItems;
 
 struct DesugarCtx<'a> {

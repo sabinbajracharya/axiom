@@ -7,7 +7,7 @@
 // Re-export lower crate's modules so that `crate::hir`, `crate::error`,
 // `crate::lowering`, `crate::serialize` paths work in this crate's source.
 pub use lower::error;
-pub use lower::hir_types as hir;
+pub use lower::hir_types;
 pub use lower::lowering;
 pub use lower::serialize;
 

@@ -1,7 +1,7 @@
 //! Item-level name resolution: functions, structs, enums, traits, impls.
 
 use super::{resolve_name_ref, Scope};
-use crate::hir::*;
+use crate::hir_types::*;
 use crate::lowering::DefKind;
 use crate::HirDiagnostic;
 use std::collections::HashMap;

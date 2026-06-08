@@ -41,8 +41,13 @@ pub use types::{EnumTy, FnTy, StructTy, Ty, TypeParamId};
 
 /// Bare type-check — the deliberate, **labeled** no-stdlib mode: the user source
 /// as one module with NO stdlib loaded. Parses + lowers + resolves + type-checks
-/// in one call for compiler-isolation unit tests. See
-/// `docs/stdlib-loading-unification.md` §3.
+/// in one call for compiler-isolation unit tests. Uses `resolver::lower()`
+/// directly, NOT `driver::check_modules`. See `driver::check_source` for the
+/// multi-module-aware version.
+///
+/// A divergence guard test (`test_check_source_bare_vs_driver_agree`) in the
+/// driver crate verifies these two paths produce equivalent results.
+/// See `docs/stdlib-loading-unification.md` §3.
 pub fn check_source(source: &str) -> Thir {
     use parser::ast::AstNode;
     let result = parser::parse(source);

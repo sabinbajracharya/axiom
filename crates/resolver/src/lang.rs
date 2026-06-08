@@ -61,7 +61,7 @@ pub fn subscript_set_fn(type_name: &str) -> String {
 // `HirId(0)` that list-literal typing used to fabricate (§3.2).
 
 use crate::error::HirDiagnostic;
-use crate::hir::{HirId, Item};
+use crate::hir_types::{HirId, Item};
 use lexer::Span;
 
 /// The `@lang("…")` key for the list type backing `[a, b, c]`.

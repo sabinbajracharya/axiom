@@ -5,7 +5,7 @@
 //! See `docs/intrinsic-and-stdlib-identity.md` §2b–2d.
 
 use crate::error::HirDiagnostic;
-use crate::hir::{HirId, Item};
+use crate::hir_types::{HirId, Item};
 use lexer::Span;
 
 // ── Intrinsic keys ────────────────────────────────────────────────────────────

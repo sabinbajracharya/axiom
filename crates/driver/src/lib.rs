@@ -53,7 +53,6 @@ pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
         }
         validate_module_annotations(
             &items,
-            name,
             is_stdlib_module(name),
             &mut stdlib_bindings,
             &mut diagnostics,
@@ -96,7 +95,6 @@ fn is_stdlib_module(name: &str) -> bool {
 /// Accumulates lang-item bindings for later registry consistency checks.
 fn validate_module_annotations(
     items: &[resolver::Item],
-    _module_name: &str,
     is_stdlib: bool,
     stdlib_bindings: &mut Vec<resolver::LangBinding>,
     diagnostics: &mut Vec<resolver::HirDiagnostic>,
