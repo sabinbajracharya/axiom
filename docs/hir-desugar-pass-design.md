@@ -158,9 +158,12 @@ Key design decisions:
   identifier; all `Path` references to it point at the `VarStmt.id` as their
   `DefId`. This means the desugared HIR is fully name-resolved (no lazy
   re-resolution needed).
-- **`Call::qualifier` is `None`** — the lang-item function is referenced by
-  `DefId` via `NameRef::resolved`, no string path needed. The `callee` text
-  field is the function name (for diagnostics).
+- **`Call::qualifier` is `Some(LIST)`** — the associated-function call in HIR
+  requires a qualifier so typeck's `try_assoc_fn_call` can route through the
+  impl table. The `DefId` on `NameRef::resolved` carries the function identity,
+  but the qualifier tells typeck *which type* to look up methods on (the
+  original design doc said `None`, but that was aspirational — typeck needs the
+  qualifier). The value comes from `lang::LIST`, the single source of truth.
 - **`MethodCall::method` is `"push"`** — it stays a plain string (not a lang
   item) because `push` is not a special compiler method — it's just the method
   the desugar calls. Typeck resolves it against the receiver type normally.

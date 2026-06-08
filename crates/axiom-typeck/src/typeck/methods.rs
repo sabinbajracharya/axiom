@@ -9,7 +9,18 @@ use axiom_hir::*;
 
 /// A type-parameter scope: each parameter's name, defining `HirId`, and trait
 /// bounds — the shape [`TypeChecker::current_type_params`] expects.
+/// Trait bounds are stored for bound-checking but are optional for resolution.
 type TypeParamScope = Vec<(String, HirId, Vec<String>)>;
+
+/// Build a TypeParamScope from an ImplInfo's type parameters. Bounds are
+/// omitted — the scope is only used for name/def_id resolution in
+/// `resolve_hir_ty`; bound checking is handled separately by the typeck.
+fn impl_type_param_scope(info: &super::ImplInfo) -> TypeParamScope {
+    info.type_params
+        .iter()
+        .map(|(name, def_id)| (name.clone(), *def_id, Vec::new()))
+        .collect()
+}
 
 impl TypeChecker {
     pub(super) fn infer_method_call(&mut self, mc: &MethodCallExpr) -> Ty {
@@ -236,11 +247,7 @@ impl TypeChecker {
             if info.trait_name.is_none() && info.type_name == type_name {
                 if let Some(m) = info.methods.iter().find(|m| m.name == method_name) {
                     let subst = self.build_impl_subst(info, receiver_ty);
-                    let scope: TypeParamScope = info
-                        .type_params
-                        .iter()
-                        .map(|(name, def_id)| (name.clone(), *def_id, Vec::new()))
-                        .collect();
+                    let scope = impl_type_param_scope(info);
                     return Some((m.clone(), subst, scope));
                 }
             }
@@ -249,56 +256,8 @@ impl TypeChecker {
             if info.trait_name.is_some() && info.type_name == type_name {
                 if let Some(m) = info.methods.iter().find(|m| m.name == method_name) {
                     let subst = self.build_impl_subst(info, receiver_ty);
-                    let scope: TypeParamScope = info
-                        .type_params
-                        .iter()
-                        .map(|(name, def_id)| (name.clone(), *def_id, Vec::new()))
-                        .collect();
+                    let scope = impl_type_param_scope(info);
                     return Some((m.clone(), subst, scope));
-                }
-            }
-        }
-        None
-    }
-
-    /// Find the **read** subscript for the given type and index-param count.
-    fn find_impl_subscript(
-        &self,
-        type_name: &str,
-        receiver_ty: &Ty,
-        index_count: usize,
-    ) -> Option<(&SubscriptDef, Substitution)> {
-        for info in &self.impl_table {
-            if info.type_name == type_name {
-                if let Some(sub) = info
-                    .subscripts
-                    .iter()
-                    .find(|s| !s.is_setter && index_param_count(s) == index_count)
-                {
-                    let subst = self.build_impl_subst(info, receiver_ty);
-                    return Some((sub, subst));
-                }
-            }
-        }
-        None
-    }
-
-    /// Find the **write** subscript for the given type and index-param count.
-    fn find_impl_write_subscript(
-        &self,
-        type_name: &str,
-        receiver_ty: &Ty,
-        index_count: usize,
-    ) -> Option<(&SubscriptDef, Substitution)> {
-        for info in &self.impl_table {
-            if info.type_name == type_name {
-                if let Some(sub) = info
-                    .subscripts
-                    .iter()
-                    .find(|s| s.is_setter && index_param_count(s) == index_count)
-                {
-                    let subst = self.build_impl_subst(info, receiver_ty);
-                    return Some((sub, subst));
                 }
             }
         }
@@ -538,9 +497,28 @@ impl TypeChecker {
 
         // Try subscript lookup first (library-defined indexing).
         if let Some(ref name) = type_name {
-            if let Some((sub, subst)) =
-                self.find_impl_subscript(name, &base_ty, index.indices.len())
-            {
+            // Walk the impl table manually instead of calling find_impl_subscript
+            // so the immutable borrow on self ends before we mutate
+            // current_type_params below.
+            let mut sub_found: Option<(SubscriptDef, Substitution, TypeParamScope)> = None;
+            for info in &self.impl_table {
+                if info.type_name != *name {
+                    continue;
+                }
+                if let Some(s) = info
+                    .subscripts
+                    .iter()
+                    .find(|s| !s.is_setter && index_param_count(s) == index.indices.len())
+                {
+                    let subst = self.build_impl_subst(info, &base_ty);
+                    let scope = impl_type_param_scope(info);
+                    sub_found = Some((s.clone(), subst, scope));
+                    break;
+                }
+            }
+            if let Some((sub, subst, scope)) = sub_found {
+                let saved_type_params =
+                    std::mem::replace(&mut self.current_type_params, scope);
                 let ty = sub
                     .return_type
                     .as_ref()
@@ -549,6 +527,7 @@ impl TypeChecker {
                         Self::substitute(&resolved, &subst)
                     })
                     .unwrap_or(Ty::Unit);
+                self.current_type_params = saved_type_params;
                 self.types.insert(index.id, ty.clone());
                 return ty;
             }
@@ -607,8 +586,24 @@ impl TypeChecker {
             return;
         };
 
-        let Some((sub, subst)) = self.find_impl_write_subscript(&name, &base_ty, indices.len())
-        else {
+        // Walk the impl table manually — same reason as infer_index.
+        let mut sub_found: Option<(SubscriptDef, Substitution, TypeParamScope)> = None;
+        for info in &self.impl_table {
+            if info.type_name != name {
+                continue;
+            }
+            if let Some(s) = info
+                .subscripts
+                .iter()
+                .find(|s| s.is_setter && index_param_count(s) == indices.len())
+            {
+                let subst = self.build_impl_subst(info, &base_ty);
+                let scope = impl_type_param_scope(info);
+                sub_found = Some((s.clone(), subst, scope));
+                break;
+            }
+        }
+        let Some((sub_def, subst, scope)) = sub_found else {
             self.emit(TypeDiagnostic::NoWritableSubscript {
                 ty: name,
                 span: self.span_for(assign_id),
@@ -616,9 +611,9 @@ impl TypeChecker {
             return;
         };
 
-        // The last setter parameter is the assigned value; check the value type
-        // against it (after substituting the impl's type parameters).
-        if let Some(value_param) = sub.params.last() {
+        let saved_type_params =
+            std::mem::replace(&mut self.current_type_params, scope);
+        if let Some(value_param) = sub_def.params.last() {
             if let Some(param_ty) = &value_param.ty {
                 let expected = Self::substitute(&self.resolve_hir_ty(param_ty), &subst);
                 if !helpers::is_error(value_ty)
@@ -633,6 +628,7 @@ impl TypeChecker {
                 }
             }
         }
+        self.current_type_params = saved_type_params;
     }
 }
 

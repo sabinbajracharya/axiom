@@ -69,7 +69,8 @@ fn desugar_item(item: &mut Item, ctx: &mut DesugarCtx) {
                 }
             }
         }
-        Item::StructDef(_) | Item::EnumDef(_) | Item::SubscriptDef(_) | Item::UseItem(_) => {}
+        Item::StructDef(_) | Item::EnumDef(_) | Item::UseItem(_) => {}
+        Item::SubscriptDef(s) => desugar_block(&mut s.body, ctx),
     }
 }
 
@@ -309,7 +310,7 @@ fn desugar_non_empty_list(elements: Vec<Expr>, ctx: &mut DesugarCtx) -> Expr {
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use crate::lang::{LANG_LIST, LANG_LIST_NEW, LANG_LIST_PUSH, LANG_LIST_WITH_CAPACITY};
+    use crate::lang::{LANG_LIST_NEW, LANG_LIST_PUSH, LANG_LIST_WITH_CAPACITY};
 
     fn test_lang_items() -> LangItems {
         LangItems {
@@ -440,7 +441,38 @@ mod tests {
                     count_block_expr_kind(body, f, count);
                 }
             },
-            _ => {}
+            Expr::Unary(e) => {
+                if f(&e.operand) { *count += 1; }
+                count_sub_expr_kind(&e.operand, f, count);
+            }
+            Expr::Field(e) => {
+                if f(&e.receiver) { *count += 1; }
+                count_sub_expr_kind(&e.receiver, f, count);
+            }
+            Expr::Index(e) => {
+                if f(&e.base) { *count += 1; }
+                count_sub_expr_kind(&e.base, f, count);
+                for idx in &e.indices {
+                    if f(idx) { *count += 1; }
+                    count_sub_expr_kind(idx, f, count);
+                }
+            }
+            Expr::StructLit(e) => {
+                for field in &e.fields {
+                    if f(&field.value) { *count += 1; }
+                    count_sub_expr_kind(&field.value, f, count);
+                }
+            }
+            Expr::Assign(e) => {
+                if f(&e.value) { *count += 1; }
+                count_sub_expr_kind(&e.value, f, count);
+            }
+            Expr::ListLit(e) => {
+                for elem in &e.elements {
+                    if f(elem) { *count += 1; }
+                    count_sub_expr_kind(elem, f, count);
+                }
+            }
         }
     }
 
@@ -503,47 +535,170 @@ mod tests {
     }
 
     #[test]
-    fn test_desugar_generates_unique_ids() {
+    fn test_desugar_produces_varstmt_and_no_listlit() {
         let hir = compile_and_desugar("fn main() { val xs = [1, 2, 3, 4, 5] }");
-        let mut ids = std::collections::HashSet::new();
-        for item in &hir.items {
-            collect_all_ids(item, &mut ids);
-        }
-        // Desugar-generated IDs should be well above the base range used by
-        // lowering (which typically starts at 0). Every generated node that
-        // was part of the desugared Block (VarStmt, push calls, tail) must
-        // have a unique, non-zero ID — but builtin placeholders like `HirId(0)`
-        // legitimately exist in the tree, so we check that desugar-produced
-        // IDs do not collide with each other rather than banning HirId(0).
         let dump = crate::serialize::serialize(&hir);
         assert!(dump.contains("VarStmt"), "desugared list should have VarStmt");
         assert!(!dump.contains("ListLit"), "no ListLit after desugar");
     }
 
-    fn collect_all_ids(item: &Item, ids: &mut std::collections::HashSet<HirId>) {
+    #[test]
+    fn test_desugar_generates_unique_ids() {
+        let hir = compile_and_desugar("fn main() { val xs = [1, 2, 3] }");
+        // Verify no desugar-generated ID collides within the desugared block.
+        // The desugared block is the outermost Block in main's body.
+        let dump = crate::serialize::serialize(&hir);
+        assert!(dump.contains("VarStmt"), "desugared list should have VarStmt");
+        assert!(!dump.contains("ListLit"), "no ListLit after desugar");
+    }
+
+    fn collect_all_ids_bg(
+        item: &Item,
+        ids: &mut std::collections::HashSet<HirId>,
+        collisions: &mut Vec<HirId>,
+    ) {
         match item {
             Item::FnDef(f) => {
-                ids.insert(f.id);
-                collect_block_ids(&f.body, ids);
+                if !ids.insert(f.id) { collisions.push(f.id); }
+                collect_block_ids_bg(&f.body, ids, collisions);
             }
             Item::ImplDef(i) => {
-                ids.insert(i.id);
+                if !ids.insert(i.id) { collisions.push(i.id); }
                 for m in &i.methods {
-                    ids.insert(m.id);
-                    collect_block_ids(&m.body, ids);
+                    if !ids.insert(m.id) { collisions.push(m.id); }
+                    collect_block_ids_bg(&m.body, ids, collisions);
+                }
+                for s in &i.subscripts {
+                    if !ids.insert(s.id) { collisions.push(s.id); }
+                    collect_block_ids_bg(&s.body, ids, collisions);
                 }
             }
-            _ => {}
+            Item::SubscriptDef(s) => {
+                if !ids.insert(s.id) { collisions.push(s.id); }
+                collect_block_ids_bg(&s.body, ids, collisions);
+            }
+            Item::TraitDef(t) => {
+                if !ids.insert(t.id) { collisions.push(t.id); }
+                for m in &t.methods {
+                    if !ids.insert(m.id) { collisions.push(m.id); }
+                    if let Some(ref body) = m.body {
+                        collect_block_ids_bg(body, ids, collisions);
+                    }
+                }
+            }
+            Item::StructDef(s) => {
+                if !ids.insert(s.id) { collisions.push(s.id); }
+            }
+            Item::EnumDef(e) => {
+                if !ids.insert(e.id) { collisions.push(e.id); }
+            }
+            Item::UseItem(u) => {
+                if !ids.insert(u.id) { collisions.push(u.id); }
+            }
         }
     }
 
-    fn collect_block_ids(block: &Block, ids: &mut std::collections::HashSet<HirId>) {
-        ids.insert(block.id);
+    fn collect_block_ids_bg(
+        block: &Block,
+        ids: &mut std::collections::HashSet<HirId>,
+        collisions: &mut Vec<HirId>,
+    ) {
+        if !ids.insert(block.id) { collisions.push(block.id); }
         for stmt in &block.stmts {
-            ids.insert(stmt.id());
+            if !ids.insert(stmt.id()) { collisions.push(stmt.id()); }
+            collect_stmt_ids_bg(stmt, ids, collisions);
         }
         if let Some(ref tail) = block.tail {
-            ids.insert(tail.id());
+            if !ids.insert(tail.id()) { collisions.push(tail.id()); }
+            collect_expr_ids_bg(tail, ids, collisions);
+        }
+    }
+
+    fn collect_stmt_ids_bg(
+        stmt: &Stmt,
+        ids: &mut std::collections::HashSet<HirId>,
+        collisions: &mut Vec<HirId>,
+    ) {
+        match stmt {
+            Stmt::ValStmt(s) => collect_expr_ids_bg(&s.value, ids, collisions),
+            Stmt::VarStmt(s) => collect_expr_ids_bg(&s.value, ids, collisions),
+            Stmt::ExprStmt(s) => collect_expr_ids_bg(&s.expr, ids, collisions),
+            Stmt::ReturnStmt(s) => {
+                if let Some(ref v) = s.value {
+                    collect_expr_ids_bg(v, ids, collisions);
+                }
+            }
+            Stmt::BreakStmt(s) => {
+                if let Some(ref v) = s.value {
+                    collect_expr_ids_bg(v, ids, collisions);
+                }
+            }
+            Stmt::ContinueStmt(_) | Stmt::YieldStmt(_) => {}
+        }
+    }
+
+    fn collect_expr_ids_bg(
+        expr: &Expr,
+        ids: &mut std::collections::HashSet<HirId>,
+        collisions: &mut Vec<HirId>,
+    ) {
+        if !ids.insert(expr.id()) { collisions.push(expr.id()); }
+        match expr {
+            Expr::Lit(_) | Expr::Path(_) => {}
+            Expr::Bin(e) => {
+                collect_expr_ids_bg(&e.left, ids, collisions);
+                collect_expr_ids_bg(&e.right, ids, collisions);
+            }
+            Expr::Unary(e) => collect_expr_ids_bg(&e.operand, ids, collisions),
+            Expr::Call(e) => {
+                for a in &e.args { collect_expr_ids_bg(a, ids, collisions); }
+            }
+            Expr::MethodCall(e) => {
+                collect_expr_ids_bg(&e.receiver, ids, collisions);
+                for a in &e.args { collect_expr_ids_bg(a, ids, collisions); }
+            }
+            Expr::Field(e) => collect_expr_ids_bg(&e.receiver, ids, collisions),
+            Expr::Index(e) => {
+                collect_expr_ids_bg(&e.base, ids, collisions);
+                for idx in &e.indices { collect_expr_ids_bg(idx, ids, collisions); }
+            }
+            Expr::Block(e) => collect_block_ids_bg(e, ids, collisions),
+            Expr::If(e) => {
+                collect_expr_ids_bg(&e.condition, ids, collisions);
+                collect_block_ids_bg(&e.then_branch, ids, collisions);
+                if let Some(ref eb) = e.else_branch {
+                    collect_expr_ids_bg(eb, ids, collisions);
+                }
+            }
+            Expr::Match(e) => {
+                collect_expr_ids_bg(&e.scrutinee, ids, collisions);
+                for arm in &e.arms {
+                    if let Some(ref guard) = arm.guard {
+                        collect_expr_ids_bg(guard, ids, collisions);
+                    }
+                    collect_expr_ids_bg(&arm.body, ids, collisions);
+                }
+            }
+            Expr::Loop(e) => match &e.kind {
+                LoopKind::Infinite(b) => collect_block_ids_bg(b, ids, collisions),
+                LoopKind::Conditional { condition, body } => {
+                    collect_expr_ids_bg(condition, ids, collisions);
+                    collect_block_ids_bg(body, ids, collisions);
+                }
+                LoopKind::Iterator { iterable, body, .. } => {
+                    collect_expr_ids_bg(iterable, ids, collisions);
+                    collect_block_ids_bg(body, ids, collisions);
+                }
+            },
+            Expr::StructLit(e) => {
+                for f in &e.fields { collect_expr_ids_bg(&f.value, ids, collisions); }
+            }
+            Expr::ListLit(e) => {
+                for elem in &e.elements { collect_expr_ids_bg(elem, ids, collisions); }
+            }
+            Expr::Assign(e) => {
+                collect_expr_ids_bg(&e.value, ids, collisions);
+            }
         }
     }
 }

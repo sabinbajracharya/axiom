@@ -232,6 +232,7 @@ impl TypeEnv {
                 return;
             }
         }
+        debug_assert!(false, "update_type called for unknown binding: {name}");
     }
 }
 
