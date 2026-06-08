@@ -21,7 +21,7 @@ fn ir_source(source: &str) -> String {
     let root = parser::ast::SourceFile::cast(result.tree).unwrap();
     let hir = resolver::lower(&root, source, None);
     let thir = typecheck::check(hir);
-    let mono = typecheck::monomorphize(&thir);
+    let mono = specialize::monomorphize(&thir);
     let ir = ir::lower(&thir, &mono);
     ir::serialize(&ir)
 }

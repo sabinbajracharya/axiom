@@ -2,7 +2,7 @@
 fn run_output(source: &str) -> String {
     let thir = driver::check_modules(&stdlib::with_main(source));
     assert!(thir.diagnostics.is_empty(), "diags: {:?}", thir.diagnostics);
-    let mono = typecheck::monomorphize(&thir);
+    let mono = specialize::monomorphize(&thir);
     let ir = ir::lower(&thir, &mono);
     let mut vm = vm::Vm::new(ir);
     vm.set_tracing(true);

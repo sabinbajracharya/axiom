@@ -13,14 +13,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use resolver::{
-    build_global_exports, resolve_with_globals,
-};
-use lower::{
-    lower_structural, serialize, Hir, HirDiagnostic, Item,
-};
+use lower::{lower_structural, serialize, Hir, HirDiagnostic, Item};
 use parser::ast::AstNode;
 use parser::parse;
+use resolver::{build_global_exports, resolve_with_globals};
 
 fn modules_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/modules")

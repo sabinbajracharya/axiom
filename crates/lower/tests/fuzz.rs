@@ -9,10 +9,10 @@
 // Integration tests legitimately panic on failure. RUST_CONVENTIONS §3.4.
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use resolver::lower;
 use lower::serialize;
 use parser::ast::{AstNode, SourceFile};
 use parser::parse;
+use resolver::lower;
 
 use std::collections::HashSet;
 

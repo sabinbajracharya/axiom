@@ -12,6 +12,7 @@ members = [
     "crates/vm",
     "crates/modules",
     "crates/driver",
+    "crates/specialize",
 ]
 # EVERY crate MUST opt into the lint policy below by adding to its Cargo.toml:
 #

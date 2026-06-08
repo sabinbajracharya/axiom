@@ -19,7 +19,7 @@ fn mono(source: &str) -> typecheck::MonoResult {
         "unexpected diagnostics: {:?}",
         thir.diagnostics
     );
-    typecheck::monomorphize(&thir)
+    specialize::monomorphize(&thir)
 }
 
 // ── Basic monomorphization ────────────────────────────────────────────────────

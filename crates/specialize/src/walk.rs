@@ -5,7 +5,8 @@
 
 use resolver::{Block, Expr, LoopKind, Stmt};
 
-use super::{Monomorphizer, Substitution};
+use crate::helpers::Substitution;
+use crate::mono::Monomorphizer;
 
 impl<'a> Monomorphizer<'a> {
     // ── Plain walk ─────────────────────────────────────────────────────────

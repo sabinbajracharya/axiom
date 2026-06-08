@@ -8,10 +8,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use resolver::lower;
 use lower::serialize;
 use parser::ast::{AstNode, SourceFile};
 use parser::parse;
+use resolver::lower;
 
 fn fixtures_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")

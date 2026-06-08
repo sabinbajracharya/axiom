@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use crate::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
+use typecheck::types::{EnumTy, FnTy, InstanceTy, StructTy, Ty, TypeParamId};
 
 pub type Substitution = HashMap<TypeParamId, Ty>;
 

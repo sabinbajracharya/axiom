@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use crate::ir::Ir;
-use typecheck::mono::MonoResult;
+use specialize::MonoResult;
 use typecheck::Thir;
 
 pub(super) mod assign;

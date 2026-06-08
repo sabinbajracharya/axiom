@@ -19,7 +19,7 @@ fn main() {
     };
     let hir = resolver::lower(&root, source, None);
     let thir = typecheck::check(hir);
-    let mono = typecheck::monomorphize(&thir);
+    let mono = specialize::monomorphize(&thir);
     let ir = ir::lower(&thir, &mono);
     println!("{}", ir::serialize(&ir));
 }

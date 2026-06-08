@@ -13,7 +13,7 @@ fn lower_fixture(source: &str) -> ir::Ir {
     let root = parser::ast::SourceFile::cast(result.tree).unwrap();
     let hir = resolver::lower(&root, source, None);
     let thir = typecheck::check(hir);
-    let mono = typecheck::monomorphize(&thir);
+    let mono = specialize::monomorphize(&thir);
     ir::lower(&thir, &mono)
 }
 

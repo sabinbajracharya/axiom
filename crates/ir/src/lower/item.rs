@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use super::helpers::FnLowerCtx;
 use crate::ir::{GenericOrigin, IrFunction, IrParam};
 use resolver::{FnDef, Item};
-use typecheck::mono::helpers::Substitution;
+use specialize::helpers::Substitution;
 use typecheck::{Ty, TypeParamId};
 
 use super::LowerCtx;

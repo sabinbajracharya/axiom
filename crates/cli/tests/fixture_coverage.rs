@@ -95,7 +95,15 @@ fn collect_stems(dir: &Path) -> BTreeSet<String> {
 /// Each entry excludes a feature from all stages except its home stage(s).
 fn default_exclusions() -> BTreeSet<(String, String)> {
     let mut set = BTreeSet::new();
-    let all_stages = ["lexer", "parser", "lower", "typecheck", "ir", "vm", "corpus"];
+    let all_stages = [
+        "lexer",
+        "parser",
+        "lower",
+        "typecheck",
+        "ir",
+        "vm",
+        "corpus",
+    ];
 
     // Helper: exclude feature from all stages except those in `home`.
     let mut only_in = |feature: &str, home: &[&str]| {

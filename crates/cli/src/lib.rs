@@ -173,7 +173,7 @@ fn run_run(path: &Path) -> ExitCode {
         Some(t) => t,
         None => return ExitCode::from(EXIT_DIAGNOSTICS),
     };
-    let mono = typecheck::monomorphize(&thir);
+    let mono = specialize::monomorphize(&thir);
     let ir = ir::lower(&thir, &mono);
     let mut vm = vm::Vm::new(ir);
     match vm.run() {
@@ -198,7 +198,7 @@ fn run_run_dir(path: &Path) -> ExitCode {
     }
 
     // Monomorphize, lower to IR, and execute.
-    let mono = typecheck::monomorphize(&thir);
+    let mono = specialize::monomorphize(&thir);
     let ir = ir::lower(&thir, &mono);
     let mut vm = vm::Vm::new(ir);
     match vm.run() {

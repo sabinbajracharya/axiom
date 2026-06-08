@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::ir::{IrBlock, IrFunction, IrInstr, Reg, Terminator};
 use resolver::{Expr, HirId, Item, Pattern};
-use typecheck::mono::helpers::Substitution;
+use specialize::helpers::Substitution;
 use typecheck::{Ty, TypeMap};
 
 /// Lookup table for monomorphized function variants.
@@ -153,7 +153,7 @@ impl<'a> FnLowerCtx<'a> {
     pub fn receiver_type(&self, id: HirId) -> Option<Ty> {
         let ty = self.types.get(&id)?.clone();
         Some(match self.subst {
-            Some(subst) => typecheck::mono::helpers::substitute(&ty, subst),
+            Some(subst) => specialize::helpers::substitute(&ty, subst),
             None => ty,
         })
     }
@@ -215,7 +215,7 @@ impl<'a> FnLowerCtx<'a> {
             .filter_map(|a| thir.get(&a.id()).cloned())
             .map(|t| {
                 if let Some(subst) = self.subst {
-                    typecheck::mono::helpers::substitute(&t, subst)
+                    specialize::helpers::substitute(&t, subst)
                 } else {
                     t
                 }

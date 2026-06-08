@@ -16,6 +16,7 @@ path = "src/main.rs"
 driver = { path = "../driver" }
 lower = { path = "../lower" }
 resolver = { path = "../resolver" }
+specialize = { path = "../specialize" }
 ir = { path = "../ir" }
 modules = { path = "../modules" }
 parser = { path = "../parser" }

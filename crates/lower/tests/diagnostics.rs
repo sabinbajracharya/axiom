@@ -11,10 +11,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use resolver::lower;
 use lower::HirDiagnostic;
 use parser::ast::{AstNode, SourceFile};
 use parser::parse;
+use resolver::lower;
 
 fn errors_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/errors")

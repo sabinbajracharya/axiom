@@ -18,6 +18,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 driver = { path = "../driver" }
 modules = { path = "../modules" }
+specialize = { path = "../specialize" }
 stdlib = { path = "../stdlib" }
 
 [[example]]

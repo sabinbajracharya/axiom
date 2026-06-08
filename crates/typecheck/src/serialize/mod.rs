@@ -9,7 +9,7 @@
 mod exprs;
 mod helpers;
 
-use crate::mono::MonoResult;
+use crate::mono_types::{MonoInstance, MonoResult};
 use crate::thir::Thir;
 use helpers::{fmt_hir_ty, fmt_type_params, indent};
 use resolver::*;
@@ -41,7 +41,7 @@ pub fn serialize(thir: &Thir, mono: Option<&MonoResult>) -> String {
     }
 }
 
-fn serialize_mono_instance(inst: &crate::mono::MonoInstance, thir: &Thir, out: &mut String) {
+fn serialize_mono_instance(inst: &MonoInstance, thir: &Thir, out: &mut String) {
     let type_args = inst
         .type_args
         .iter()

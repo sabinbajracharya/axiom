@@ -11,44 +11,15 @@
 //! mangled name, concrete parameter types, and concrete return type.  Body
 //! cloning / IR lowering happens downstream (when the IR crate exists).
 
-pub mod helpers;
-mod walk;
-
-#[cfg(test)]
-mod tests;
-
 use std::collections::{HashMap, VecDeque};
 
 use resolver::{FnDef, HirId, Item};
 
-use crate::thir::Thir;
-use crate::types::{Ty, TypeParamId};
+use typecheck::thir::Thir;
+use typecheck::types::{Ty, TypeParamId};
 
-// ── Public types ──────────────────────────────────────────────────────────────
-
-/// The output of monomorphization.
-#[derive(Debug, Clone)]
-pub struct MonoResult {
-    /// All monomorphized function instances, in discovery order.
-    pub instances: Vec<MonoInstance>,
-}
-
-/// A single monomorphized function instance.
-#[derive(Debug, Clone)]
-pub struct MonoInstance {
-    /// Mangled name: `original__Type1_Type2` (e.g., `id__Int`).
-    pub name: String,
-    /// Original function name (e.g., `id`).
-    pub original_name: String,
-    /// Concrete type arguments (e.g., `[Ty::Int]`).
-    pub type_args: Vec<Ty>,
-    /// HirId of the original generic FnDef.
-    pub original_id: HirId,
-    /// Concrete parameter types after substitution.
-    pub param_types: Vec<Ty>,
-    /// Concrete return type after substitution.
-    pub return_type: Ty,
-}
+// ── Public types (re-exported from typecheck) ───────────────────────────────
+pub use typecheck::mono_types::{MonoInstance, MonoResult};
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -73,7 +44,7 @@ type Substitution = HashMap<TypeParamId, Ty>;
 /// (Float) and cannot implement `Eq`/`Hash`.
 type InstanceKey = (HirId, String);
 
-struct Monomorphizer<'a> {
+pub(crate) struct Monomorphizer<'a> {
     thir: &'a Thir,
     instances: HashMap<InstanceKey, MonoInstance>,
     /// Worklist stores `(fn_id, concrete_type_args)`.  The Vec<Ty> is only
@@ -177,7 +148,11 @@ impl<'a> Monomorphizer<'a> {
         let param_types = self
             .fn_param_tys
             .get(&fn_id)
-            .map(|pts| pts.iter().map(|t| helpers::substitute(t, &subst)).collect())
+            .map(|pts| {
+                pts.iter()
+                    .map(|t| crate::helpers::substitute(t, &subst))
+                    .collect()
+            })
             .unwrap_or_default();
 
         let return_type = self
@@ -185,13 +160,13 @@ impl<'a> Monomorphizer<'a> {
             .types
             .get(&fn_id)
             .and_then(|ty| match ty {
-                Ty::Fn(fnty) => Some(helpers::substitute(&fnty.return_type, &subst)),
+                Ty::Fn(fnty) => Some(crate::helpers::substitute(&fnty.return_type, &subst)),
                 _ => None,
             })
             .unwrap_or(Ty::Unit);
 
         let original_name = self.fn_names.get(&fn_id).cloned().unwrap_or_default();
-        let name = helpers::mangle_name(&original_name, type_args);
+        let name = crate::helpers::mangle_name(&original_name, type_args);
 
         self.instances.insert(
             key,
@@ -235,11 +210,15 @@ impl<'a> Monomorphizer<'a> {
 
     // ── Call site analysis ─────────────────────────────────────────────────
 
-    fn visit_call(&mut self, call: &resolver::CallExpr) {
+    pub(crate) fn visit_call(&mut self, call: &resolver::CallExpr) {
         self.visit_call_inner(call);
     }
 
-    fn visit_call_with_subst(&mut self, call: &resolver::CallExpr, _subst: &Substitution) {
+    pub(crate) fn visit_call_with_subst(
+        &mut self,
+        call: &resolver::CallExpr,
+        _subst: &Substitution,
+    ) {
         self.visit_call_inner(call);
     }
 
@@ -253,7 +232,7 @@ impl<'a> Monomorphizer<'a> {
             Some(pts) if !pts.is_empty() => pts.clone(),
             _ => return,
         };
-        if !helpers::contains_type_param_tys(&param_tys) {
+        if !crate::helpers::contains_type_param_tys(&param_tys) {
             return;
         }
 
@@ -261,7 +240,7 @@ impl<'a> Monomorphizer<'a> {
             .args
             .iter()
             .filter_map(|a| self.thir.types.get(&a.id()).cloned())
-            .map(|t| helpers::substitute(&t, &self.current_subst))
+            .map(|t| crate::helpers::substitute(&t, &self.current_subst))
             .collect();
 
         if arg_tys.len() != param_tys.len() {
@@ -270,7 +249,7 @@ impl<'a> Monomorphizer<'a> {
 
         let mut subst = Substitution::new();
         for (arg_ty, param_ty) in arg_tys.iter().zip(param_tys.iter()) {
-            helpers::unify(arg_ty, param_ty, &mut subst);
+            crate::helpers::unify(arg_ty, param_ty, &mut subst);
         }
 
         let type_args = self.extract_type_args(callee_id, &subst);
@@ -305,7 +284,7 @@ impl<'a> Monomorphizer<'a> {
 
     /// Build the dedup key from a fn id and concrete type args.
     fn make_key(&self, fn_id: HirId, type_args: &[Ty]) -> InstanceKey {
-        let suffix = helpers::type_args_suffix(type_args);
+        let suffix = crate::helpers::type_args_suffix(type_args);
         (fn_id, suffix)
     }
 }

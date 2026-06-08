@@ -11,6 +11,7 @@ workspace = true
 [dependencies]
 lower = { path = "../lower" }
 resolver = { path = "../resolver" }
+specialize = { path = "../specialize" }
 typecheck = { path = "../typecheck" }
 lexer = { path = "../lexer" }
 thiserror = { workspace = true }

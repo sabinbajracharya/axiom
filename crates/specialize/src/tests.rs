@@ -3,7 +3,7 @@
 use resolver::HirId;
 
 use super::helpers::*;
-use crate::types::{FnTy, StructTy, Ty, TypeParamId};
+use typecheck::types::{FnTy, StructTy, Ty, TypeParamId};
 
 fn tp(name: &str, index: usize, def_id: usize) -> TypeParamId {
     TypeParamId {

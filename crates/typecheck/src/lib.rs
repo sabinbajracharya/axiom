@@ -25,15 +25,15 @@
 mod coverage;
 mod error;
 pub mod exhaustiveness;
-pub mod mono;
+pub mod mono_types;
 mod serialize;
-mod thir;
+pub mod thir;
 mod typeck;
-mod types;
+pub mod types;
 
 pub use coverage::{check_all, TypeckCoverageError};
 pub use error::{Diagnostic, TypeDiagnostic};
-pub use mono::{monomorphize, MonoInstance, MonoResult};
+pub use mono_types::{MonoInstance, MonoResult};
 pub use serialize::serialize;
 pub use thir::{Thir, TypeMap};
 pub use typeck::{check, check_with_lang_items};

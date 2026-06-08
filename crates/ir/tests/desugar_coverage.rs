@@ -92,7 +92,7 @@ fn desugared_main_ir(source: &str) -> String {
         "driver program did not compile cleanly: {:?}",
         thir.diagnostics
     );
-    let mono = typecheck::monomorphize(&thir);
+    let mono = specialize::monomorphize(&thir);
     let ir = ir::lower(&thir, &mono);
     let full = ir::serialize(&ir);
     extract_fn(&full, "main")
