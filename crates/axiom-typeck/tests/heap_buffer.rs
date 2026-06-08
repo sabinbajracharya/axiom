@@ -13,7 +13,7 @@
 use axiom_typeck::Thir;
 
 fn check_source(source: &str) -> Thir {
-    axiom_typeck::check_modules(&axiom_stdlib::with_main(source))
+    axiom_driver::check_modules(&axiom_stdlib::with_main(source))
 }
 
 fn has_type_error(thir: &Thir) -> bool {

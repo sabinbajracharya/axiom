@@ -12,6 +12,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 name = "axiom-cli"
 version = "0.0.0"
 dependencies = [
+ "axiom-driver",
  "axiom-hir",
  "axiom-ir",
  "axiom-modules",
@@ -19,6 +20,18 @@ dependencies = [
  "axiom-stdlib",
  "axiom-typeck",
  "axiom-vm",
+ "thiserror",
+]
+
+[[package]]
+name = "axiom-driver"
+version = "0.0.0"
+dependencies = [
+ "axiom-hir",
+ "axiom-lexer",
+ "axiom-parser",
+ "axiom-stdlib",
+ "axiom-typeck",
  "thiserror",
 ]
 
@@ -36,6 +49,7 @@ dependencies = [
 name = "axiom-ir"
 version = "0.0.0"
 dependencies = [
+ "axiom-driver",
  "axiom-hir",
  "axiom-lexer",
  "axiom-parser",
@@ -80,6 +94,7 @@ dependencies = [
 name = "axiom-typeck"
 version = "0.0.0"
 dependencies = [
+ "axiom-driver",
  "axiom-hir",
  "axiom-lexer",
  "axiom-modules",
@@ -92,6 +107,7 @@ dependencies = [
 name = "axiom-vm"
 version = "0.1.0"
 dependencies = [
+ "axiom-driver",
  "axiom-hir",
  "axiom-ir",
  "axiom-parser",

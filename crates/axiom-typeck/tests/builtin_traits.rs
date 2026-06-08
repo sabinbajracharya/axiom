@@ -6,7 +6,7 @@
 //! and Deinit covers all types.
 
 fn check_source(source: &str) -> axiom_typeck::Thir {
-    axiom_typeck::check_modules(&axiom_stdlib::with_main(source))
+    axiom_driver::check_modules(&axiom_stdlib::with_main(source))
 }
 
 // ── Deinit bound ────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@
 #![allow(clippy::unwrap_used)]
 
 fn check_source_with_stdlib(src: &str) -> axiom_typeck::Thir {
-    axiom_typeck::check_modules(&axiom_stdlib::with_main(src))
+    axiom_driver::check_modules(&axiom_stdlib::with_main(src))
 }
 
 fn type_diags(src: &str) -> Vec<String> {

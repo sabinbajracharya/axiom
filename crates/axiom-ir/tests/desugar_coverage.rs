@@ -86,7 +86,7 @@ fn goldens_dir() -> PathBuf {
 /// the `main` function — the sugar's desugared output, with `List::…` calls
 /// resolved against the real stdlib definitions.
 fn desugared_main_ir(source: &str) -> String {
-    let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
+    let thir = axiom_driver::check_modules(&axiom_stdlib::with_main(source));
     assert!(
         thir.diagnostics.is_empty(),
         "driver program did not compile cleanly: {:?}",

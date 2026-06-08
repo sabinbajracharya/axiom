@@ -7,7 +7,7 @@
 /// Run a program through the full pipeline and return the concatenated output
 /// the VM emitted (the `output` trace events).
 fn run_output(source: &str) -> String {
-    let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
+    let thir = axiom_driver::check_modules(&axiom_stdlib::with_main(source));
     assert!(
         thir.diagnostics.is_empty(),
         "unexpected type diagnostics: {:?}",

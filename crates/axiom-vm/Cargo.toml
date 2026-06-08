@@ -11,6 +11,7 @@ axiom-typeck = { path = "../axiom-typeck" }
 thiserror.workspace = true
 
 [dev-dependencies]
+axiom-driver = { path = "../driver" }
 axiom-parser = { path = "../axiom-parser" }
 axiom-stdlib = { path = "../axiom-stdlib" }
 

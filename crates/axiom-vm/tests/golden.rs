@@ -20,7 +20,7 @@ fn run_with_trace(source: &str) -> String {
     // unified pipeline (the same path single-file `forge run` uses). `print`/
     // `println` resolve to the real `stdlib/std/io.ax` functions — there are no
     // print/println VM builtins. See `docs/stdlib-loading-unification.md`.
-    let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
+    let thir = axiom_driver::check_modules(&axiom_stdlib::with_main(source));
     // Execution fixtures must type-check cleanly. This guard is what surfaces
     // bugs like passing a non-`String` to the `String`-only `print` — previously
     // such diagnostics were silently ignored here. See

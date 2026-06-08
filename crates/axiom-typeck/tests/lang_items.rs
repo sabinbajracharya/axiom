@@ -12,7 +12,7 @@ use axiom_hir::HirDiagnostic;
 use axiom_typeck::Thir;
 
 fn compile(source: &str) -> Thir {
-    axiom_typeck::check_modules(&axiom_stdlib::with_main(source))
+    axiom_driver::check_modules(&axiom_stdlib::with_main(source))
 }
 
 fn lang_diagnostics(thir: &Thir) -> Vec<&axiom_hir::HirDiagnostic> {

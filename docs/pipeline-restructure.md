@@ -200,7 +200,7 @@ at the end of each phase.
 **Gate:** All tests pass. `thir.hir.diagnostics` no longer exists — verified by grep.
 `thir.diagnostics` is the single source.
 
-### Phase 2: Extract `driver` crate
+### Phase 2: Extract `driver` crate ✅ DONE
 
 **Scope:** New crate `driver`. `axiom-typeck` loses parser/stdlib deps.
 
@@ -210,7 +210,7 @@ at the end of each phase.
    `axiom-typeck/src/lib.rs` → `driver/src/lib.rs`.
 3. `axiom-typeck` retains: `check`, `check_with_lang_items`, `serialize`, `check_all`,
    `monomorphize`, `Thir`, `Ty`, `TypeMap`, `Diagnostic`.
-4. Remove `axiom-parser` and `axiom-stdlib` from `axiom-typeck` Cargo.toml.
+4. Remove `axiom-stdlib` from `axiom-typeck` Cargo.toml. `axiom-parser` remains (used by prelude IO parsing in collect.rs).
 5. Update all 37+ call sites from `axiom_typeck::check_modules` → `driver::check_modules`.
 6. Update `axiom-cli` Cargo.toml to depend on `driver` (and remove direct `axiom-typeck` dep if
    it only used it for `check_modules`).
@@ -222,8 +222,8 @@ at the end of each phase.
 `driver → axiom-typeck` and `axiom-ir (dev) → driver`. No cycle — `axiom-ir` is not a dependency
 of `driver`. But `axiom-ir`'s Cargo.toml dev-deps section grows by one entry.
 
-**Gate:** `cargo tree -p axiom-typeck` shows no `axiom-parser` or `axiom-stdlib` in the
-dependency graph. All tests pass.
+**Gate:** `cargo tree -p axiom-typeck` shows no `axiom-stdlib` in the regular
+dependency graph. `axiom-parser` remains (needed for prelude IO). All tests pass.
 
 ### Phase 3: Split `axiom-hir` into `lower` + `resolver`
 

@@ -1,5 +1,5 @@
 [package]
-name = "axiom-ir"
+name = "axiom-driver"
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
@@ -10,15 +10,8 @@ workspace = true
 
 [dependencies]
 axiom-hir = { path = "../axiom-hir" }
-axiom-typeck = { path = "../axiom-typeck" }
 axiom-lexer = { path = "../axiom-lexer" }
-thiserror = { workspace = true }
-
-[dev-dependencies]
-axiom-driver = { path = "../driver" }
 axiom-parser = { path = "../axiom-parser" }
 axiom-stdlib = { path = "../axiom-stdlib" }
-
-[[example]]
-name = "ir"
-path = "examples/ir.rs"
+axiom-typeck = { path = "../axiom-typeck" }
+thiserror = { workspace = true }

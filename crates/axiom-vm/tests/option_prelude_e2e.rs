@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 fn run_output(source: &str) -> String {
-    let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
+    let thir = axiom_driver::check_modules(&axiom_stdlib::with_main(source));
     assert!(thir.diagnostics.is_empty(), "diags: {:?}", thir.diagnostics);
     let mono = axiom_typeck::monomorphize(&thir);
     let ir = axiom_ir::lower(&thir, &mono);

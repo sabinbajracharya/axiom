@@ -55,7 +55,7 @@ pub fn collect_intrinsic_bindings(items: &[Item]) -> Vec<IntrinsicBinding> {
 
 /// Validate intrinsic bindings against the known key list and module identity.
 /// Returns diagnostics for bindings with unknown keys. The `@intrinsic` outside
-/// stdlib check is done in `axiom_typeck::check_modules` using
+/// stdlib check is done in `axiom_driver::check_modules` using
 /// `axm_stdlib::is_stdlib_module`.
 pub fn validate_intrinsic_bindings(bindings: &[IntrinsicBinding]) -> Vec<HirDiagnostic> {
     let mut diags = Vec::new();

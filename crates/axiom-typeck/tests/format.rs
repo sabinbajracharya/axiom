@@ -8,7 +8,7 @@
 use axiom_typeck::serialize;
 
 fn check_source_with_stdlib(src: &str) -> axiom_typeck::Thir {
-    axiom_typeck::check_modules(&axiom_stdlib::with_main(src))
+    axiom_driver::check_modules(&axiom_stdlib::with_main(src))
 }
 
 fn diags(src: &str) -> Vec<String> {

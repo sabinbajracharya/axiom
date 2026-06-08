@@ -10,6 +10,7 @@ members = [
     "crates/axiom-cli",
     "crates/axiom-vm",
     "crates/axiom-modules",
+    "crates/driver",
 ]
 # Add crates here as they are created, e.g. members = ["crates/axiom-core"].
 #

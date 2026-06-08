@@ -10,7 +10,7 @@
 use axiom_typeck::{serialize, Thir};
 
 fn check_source(source: &str) -> Thir {
-    axiom_typeck::check_modules(&axiom_stdlib::with_main(source))
+    axiom_driver::check_modules(&axiom_stdlib::with_main(source))
 }
 
 fn dump(thir: &Thir) -> String {

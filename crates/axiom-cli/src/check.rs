@@ -59,7 +59,7 @@ pub fn compile_source(source: &str, with_stdlib: bool) -> CompileResult {
     } else {
         vec![("", source)]
     };
-    let thir = axiom_typeck::check_modules(&modules);
+    let thir = axiom_driver::check_modules(&modules);
 
     // Render all diagnostics (HIR + type) against the user source.
     for diag in &thir.diagnostics {

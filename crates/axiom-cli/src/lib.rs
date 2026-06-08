@@ -121,7 +121,7 @@ fn compile_dir(search_dir: &Path) -> Result<axiom_typeck::Thir, ExitCode> {
     for (name, source) in &user_modules {
         modules.push((name, source));
     }
-    Ok(axiom_typeck::check_modules(&modules))
+    Ok(axiom_driver::check_modules(&modules))
 }
 
 /// Print all diagnostics from a compiled `Thir`. Returns true if any were emitted.

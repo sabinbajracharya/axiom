@@ -11,7 +11,7 @@
 
 /// Run `source` and return only what the program actually printed.
 fn run_program(source: &str) -> String {
-    let thir = axiom_typeck::check_modules(&axiom_stdlib::with_main(source));
+    let thir = axiom_driver::check_modules(&axiom_stdlib::with_main(source));
     assert!(
         thir.diagnostics.is_empty(),
         "type diagnostics: {:?}",

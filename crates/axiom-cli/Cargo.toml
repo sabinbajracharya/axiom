@@ -13,6 +13,7 @@ name = "axiom"
 path = "src/main.rs"
 
 [dependencies]
+axiom-driver = { path = "../driver" }
 axiom-hir = { path = "../axiom-hir" }
 axiom-ir = { path = "../axiom-ir" }
 axiom-modules = { path = "../axiom-modules" }

@@ -3,22 +3,23 @@
 //!
 //! Built test-first against [`docs/typeck-testing.md`](../../docs/typeck-testing.md).
 //!
-//! The type checker consumes an HIR (from `axiom-hir`) and produces a THIR
-//! (Typed HIR) — the same tree, annotated with a `TypeMap` side table and
-//! type-check diagnostics.
+//! The type checker consumes a resolved HIR (from `axiom-hir`) and produces a
+//! THIR (Typed HIR) — the same tree, annotated with a `TypeMap` side table and
+//! unified diagnostics. Multi-module orchestration lives in `axiom-driver`; this
+//! crate is a pure type-checking pass.
 //!
 //! ```
 //! use axiom_parser::parse;
 //! use axiom_parser::ast::AstNode;
 //! use axiom_hir::lower;
-//! use axiom_typeck::{check, serialize};
+//! use axiom_typeck::check;
 //!
-//! let result = parse("fn main() { val x = 1 + 2 }");
+//! let source = "fn main() { val x = 1 + 2 }";
+//! let result = parse(source);
 //! let root = axiom_parser::ast::SourceFile::cast(result.tree).unwrap();
-//! let hir = lower(&root, "fn main() { val x = 1 + 2 }", None);
+//! let hir = lower(&root, source, None);
 //! let thir = check(hir);
-//! let dump = serialize(&thir, None);
-//! assert!(dump.contains("Bin"));
+//! assert!(thir.types.values().any(|t| matches!(t, axiom_typeck::Ty::Int)));
 //! ```
 
 mod coverage;
@@ -38,127 +39,26 @@ pub use thir::{Thir, TypeMap};
 pub use typeck::{check, check_with_lang_items};
 pub use types::{EnumTy, FnTy, StructTy, Ty, TypeParamId};
 
-/// Compile a set of `(module_name, source)` modules together into one `Thir`.
-///
-/// This is the **single multi-module pipeline**: structural lowering (with linear
-/// DefIds across modules) → cross-module export building → name resolution →
-/// type-checking the combined HIR. Single-file, project, and stdlib-backed test
-/// compilation all funnel through here — they differ only in *which* modules they
-/// pass. See `docs/stdlib-loading-unification.md`.
-pub fn check_modules(modules: &[(&str, &str)]) -> Thir {
-    use axiom_parser::ast::AstNode;
-
-    type Lowered = (
-        String,
-        Vec<axiom_hir::Item>,
-        Vec<axiom_hir::Def>,
-        Vec<axiom_hir::HirDiagnostic>,
-    );
-
-    let mut lowered: Vec<Lowered> = Vec::new();
-    let mut next_id = 0usize;
-    for (name, source) in modules {
-        let result = axiom_parser::parse(source);
-        let Some(root) = axiom_parser::ast::SourceFile::cast(result.tree) else {
-            continue;
-        };
-        let (items, defs, diags, nid) = axiom_hir::lower_structural(&root, source, next_id);
-        next_id = nid;
-        lowered.push(((*name).to_string(), items, defs, diags));
-    }
-
-    let export_input: Vec<(String, Vec<axiom_hir::Def>)> = lowered
-        .iter()
-        .map(|(name, _, defs, _)| (name.clone(), defs.clone()))
-        .collect();
-    let exports = axiom_hir::build_global_exports(&export_input);
-
-    let mut all_items: Vec<axiom_hir::Item> = Vec::new();
-    let mut all_diags: Vec<axiom_hir::HirDiagnostic> = Vec::new();
-    let mut stdlib_bindings: Vec<axiom_hir::LangBinding> = Vec::new();
-    let mut stdlib_present = false;
-    for (name, items, defs, diags) in &mut lowered {
-        let mut items = std::mem::take(items);
-        let mut diagnostics = std::mem::take(diags);
-        axiom_hir::resolve_with_globals(&mut items, defs, &mut diagnostics, &exports, name);
-        if is_stdlib_module(name) {
-            stdlib_present = true;
-        }
-        validate_module_annotations(
-            &items,
-            name,
-            is_stdlib_module(name),
-            &mut stdlib_bindings,
-            &mut diagnostics,
-        );
-        all_diags.append(&mut diagnostics);
-        all_items.append(&mut items);
-    }
-
-    let (lang_items, mut lang_diags) =
-        axiom_hir::resolve_lang_items(&stdlib_bindings, stdlib_present);
-    all_diags.append(&mut lang_diags);
-
-    let hir = axiom_hir::Hir {
-        items: all_items,
-        diagnostics: all_diags,
-    };
-    check_with_lang_items(hir, lang_items)
-}
-
-/// Whether a module path belongs to the embedded standard library. Delegates to
-/// `axiom_stdlib::is_stdlib_module` which checks the build-time verified set of
-/// known stdlib module paths. See `docs/intrinsic-and-stdlib-identity.md` §2a.
-fn is_stdlib_module(name: &str) -> bool {
-    axiom_stdlib::is_stdlib_module(name)
-}
-
-/// Validate `@lang` and `@intrinsic` annotations for one lowered module.
-/// Stdlib modules may use both; non-stdlib modules may use neither.
-/// Accumulates lang-item bindings for later registry consistency checks.
-fn validate_module_annotations(
-    items: &[axiom_hir::Item],
-    _module_name: &str,
-    is_stdlib: bool,
-    stdlib_bindings: &mut Vec<axiom_hir::LangBinding>,
-    diagnostics: &mut Vec<axiom_hir::HirDiagnostic>,
-) {
-    // ── @lang ────────────────────────────────────────────────────────────
-    let lang_bindings = axiom_hir::collect_lang_bindings(items);
-    if is_stdlib {
-        stdlib_bindings.extend(lang_bindings);
-    } else {
-        for b in lang_bindings {
-            diagnostics.push(axiom_hir::HirDiagnostic::LangItemOutsideStdlib {
-                key: b.key,
-                span: axiom_lexer::Span { lo: 0, hi: 0 },
-            });
-        }
-    }
-
-    // ── @intrinsic ───────────────────────────────────────────────────────
-    let intrinsic_bindings = axiom_hir::collect_intrinsic_bindings(items);
-    if is_stdlib {
-        diagnostics.append(&mut axiom_hir::validate_intrinsic_bindings(
-            &intrinsic_bindings,
-        ));
-    } else {
-        for b in intrinsic_bindings {
-            diagnostics.push(axiom_hir::HirDiagnostic::IntrinsicOutsideStdlib {
-                key: b.key.clone(),
-                span: axiom_lexer::Span { lo: 0, hi: 0 },
-            });
-        }
-    }
-}
-
 /// Bare type-check — the deliberate, **labeled** no-stdlib mode: the user source
-/// as one module with NO stdlib loaded. For compiler-isolation unit tests and the
-/// floor built-ins that legitimately stay. It is the *same* `check_modules`
-/// pipeline with an empty stdlib input (module name `""`), not a separate path —
-/// so it cannot diverge. See `docs/stdlib-loading-unification.md` §3.
+/// as one module with NO stdlib loaded. Parses + lowers + resolves + type-checks
+/// in one call for compiler-isolation unit tests. See
+/// `docs/stdlib-loading-unification.md` §3.
 pub fn check_source(source: &str) -> Thir {
-    check_modules(&[("", source)])
+    use axiom_parser::ast::AstNode;
+    let result = axiom_parser::parse(source);
+    let root = axiom_parser::ast::SourceFile::cast(result.tree);
+    let Some(root) = root else {
+        return Thir {
+            hir: axiom_hir::Hir {
+                items: Vec::new(),
+                diagnostics: Vec::new(),
+            },
+            types: TypeMap::new(),
+            diagnostics: Vec::new(),
+        };
+    };
+    let hir = axiom_hir::lower(&root, source, None);
+    check(hir)
 }
 
 /// Find the highest `HirId` in an HIR, so the desugar pass can seed its fresh-ID
