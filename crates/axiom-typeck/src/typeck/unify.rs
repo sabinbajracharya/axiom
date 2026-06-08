@@ -119,9 +119,33 @@ impl TypeChecker {
             _ => false,
         }
     }
-}
 
-#[cfg(test)]
+    /// Unify two `Instance` types by matching type arguments positionally.
+    /// `actual` is the concrete type (e.g., `List<Int>`), `expected` may contain
+    /// `TypeParam` placeholders (e.g., `List<T>`). Records `T → Int` in `subst`.
+    /// Skips identity mappings (`T → T`) to avoid false mismatches when the
+    /// same TypeParamId appears on both sides.
+    pub(crate) fn unify_instances(
+        actual: &Ty,
+        expected: &Ty,
+        subst: &mut crate::mono::helpers::Substitution,
+    ) {
+        match (actual, expected) {
+            (Ty::Instance(a), Ty::Instance(e)) if a.name == e.name => {
+                for (at, et) in a.args.iter().zip(e.args.iter()) {
+                    Self::unify_instances(at, et, subst);
+                }
+            }
+            (actual, Ty::TypeParam(tp)) => {
+                if !matches!(actual, Ty::TypeParam(a) if a == tp) {
+                    subst.entry(tp.clone()).or_insert_with(|| actual.clone());
+                }
+            }
+            _ => {}
+        }
+    }
+
+    #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;

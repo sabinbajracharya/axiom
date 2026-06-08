@@ -254,6 +254,16 @@ impl TypeChecker {
         }
     }
 
+    /// Temporarily set `current_type_params` to `scope`, run `f`, and restore.
+    /// Used wherever the typeck resolves generic type parameters from an impl's
+    /// scope (method calls, subscript resolution, associated functions).
+    fn with_type_params<T>(&mut self, scope: TypeParamScope, f: impl FnOnce(&mut Self) -> T) -> T {
+        let saved = std::mem::replace(&mut self.current_type_params, scope);
+        let result = f(self);
+        self.current_type_params = saved;
+        result
+    }
+
     fn check_pass(&mut self) {
         self.check_trait_defaults();
         // Clone required: check_fn_body borrows self mutably while iterating.

@@ -179,30 +179,27 @@ impl TypeChecker {
         let method_name = helpers::call_name(&call.callee);
         let (type_params, fn_def) = self.assoc_fn_def(&type_name, &method_name)?;
 
-        // Resolve the signature in the impl's own type-param scope so a return
-        // type like `List<T>` comes back keyed by the impl's parameter.
-        let saved = std::mem::replace(&mut self.current_type_params, type_params);
-        let params: Vec<Ty> = fn_def
-            .params
-            .iter()
-            .map(|p| {
-                p.ty.as_ref()
-                    .map(|t| self.resolve_hir_ty(t))
-                    .unwrap_or(Ty::Error)
-            })
-            .collect();
-        let return_type = fn_def
-            .return_type
-            .as_ref()
-            .map(|t| self.resolve_hir_ty(t))
-            .unwrap_or(Ty::Unit);
-        self.current_type_params = saved;
-
-        let fn_ty = crate::types::FnTy {
-            params,
-            return_type: Box::new(return_type),
-        };
-        Some(self.check_call_args(call, &fn_ty, arg_types))
+        self.with_type_params(type_params, |s| {
+            let params: Vec<Ty> = fn_def
+                .params
+                .iter()
+                .map(|p| {
+                    p.ty.as_ref()
+                        .map(|t| s.resolve_hir_ty(t))
+                        .unwrap_or(Ty::Error)
+                })
+                .collect();
+            let return_type = fn_def
+                .return_type
+                .as_ref()
+                .map(|t| s.resolve_hir_ty(t))
+                .unwrap_or(Ty::Unit);
+            let fn_ty = crate::types::FnTy {
+                params,
+                return_type: Box::new(return_type),
+            };
+            Some(s.check_call_args(call, &fn_ty, arg_types))
+        })
     }
 
     /// Find an inherent associated function (a method with no `self` parameter)
@@ -243,25 +240,19 @@ impl TypeChecker {
         method_name: &str,
         receiver_ty: &Ty,
     ) -> Option<(FnDef, Substitution, TypeParamScope)> {
-        for info in &self.impl_table {
-            if info.trait_name.is_none() && info.type_name == type_name {
-                if let Some(m) = info.methods.iter().find(|m| m.name == method_name) {
-                    let subst = self.build_impl_subst(info, receiver_ty);
-                    let scope = impl_type_param_scope(info);
-                    return Some((m.clone(), subst, scope));
-                }
-            }
-        }
-        for info in &self.impl_table {
-            if info.trait_name.is_some() && info.type_name == type_name {
-                if let Some(m) = info.methods.iter().find(|m| m.name == method_name) {
-                    let subst = self.build_impl_subst(info, receiver_ty);
-                    let scope = impl_type_param_scope(info);
-                    return Some((m.clone(), subst, scope));
-                }
-            }
-        }
-        None
+        self.impl_table
+            .iter()
+            .filter(|info| info.type_name == type_name)
+            .find_map(|info| {
+                info.methods
+                    .iter()
+                    .find(|m| m.name == method_name)
+                    .map(|m| {
+                        let subst = self.build_impl_subst(info, receiver_ty);
+                        let scope = impl_type_param_scope(info);
+                        (m.clone(), subst, scope)
+                    })
+            })
     }
 
     /// Build a type-parameter substitution by unifying an impl's self type
@@ -274,7 +265,7 @@ impl TypeChecker {
         let pattern = self.build_impl_self_pattern(info);
         let mut subst = Substitution::new();
         // Unify receiver against pattern: extract TypeParam → concrete mappings.
-        unify_instances(receiver_ty, &pattern, &mut subst);
+        Self::unify_instances(receiver_ty, &pattern, &mut subst);
         subst
     }
 
@@ -323,29 +314,26 @@ impl TypeChecker {
         subst: &mut Substitution,
         scope: &TypeParamScope,
     ) -> Ty {
-        let saved = std::mem::replace(&mut self.current_type_params, scope.clone());
-        let param_types: Vec<Ty> = fn_def
-            .params
-            .iter()
-            .filter(|p| p.name != "self")
-            .map(|p| {
-                let resolved = p
-                    .ty
-                    .as_ref()
-                    .map(|t| self.resolve_hir_ty(t))
-                    .unwrap_or(Ty::Error);
-                Self::substitute(&resolved, subst)
-            })
-            .collect();
-        let return_type = fn_def
-            .return_type
-            .as_ref()
-            .map(|t| {
-                let resolved = self.resolve_hir_ty(t);
-                Self::substitute(&resolved, subst)
-            })
-            .unwrap_or(Ty::Unit);
-        self.current_type_params = saved;
+        let (param_types, return_type) = self.with_type_params(scope.clone(), |s| {
+            let params: Vec<Ty> = fn_def
+                .params
+                .iter()
+                .filter(|p| p.name != "self")
+                .map(|p| {
+                    p.ty
+                        .as_ref()
+                        .map(|t| s.resolve_hir_ty(t))
+                        .map(|r| Self::substitute(&r, subst))
+                        .unwrap_or(Ty::Error)
+                })
+                .collect();
+            let ret = fn_def
+                .return_type
+                .as_ref()
+                .map(|t| Self::substitute(&s.resolve_hir_ty(t), subst))
+                .unwrap_or(Ty::Unit);
+            (params, ret)
+        });
 
         if param_types.len() != arg_types.len() {
             self.emit(TypeDiagnostic::CallArityMismatch {
@@ -517,17 +505,15 @@ impl TypeChecker {
                 }
             }
             if let Some((sub, subst, scope)) = sub_found {
-                let saved_type_params =
-                    std::mem::replace(&mut self.current_type_params, scope);
-                let ty = sub
-                    .return_type
-                    .as_ref()
-                    .map(|t| {
-                        let resolved = self.resolve_hir_ty(t);
-                        Self::substitute(&resolved, &subst)
-                    })
-                    .unwrap_or(Ty::Unit);
-                self.current_type_params = saved_type_params;
+                let ty = self.with_type_params(scope, |s| {
+                    sub.return_type
+                        .as_ref()
+                        .map(|t| {
+                            let resolved = s.resolve_hir_ty(t);
+                            Self::substitute(&resolved, &subst)
+                        })
+                        .unwrap_or(Ty::Unit)
+                });
                 self.types.insert(index.id, ty.clone());
                 return ty;
             }
@@ -611,46 +597,24 @@ impl TypeChecker {
             return;
         };
 
-        let saved_type_params =
-            std::mem::replace(&mut self.current_type_params, scope);
-        if let Some(value_param) = sub_def.params.last() {
-            if let Some(param_ty) = &value_param.ty {
-                let expected = Self::substitute(&self.resolve_hir_ty(param_ty), &subst);
-                if !helpers::is_error(value_ty)
-                    && !helpers::is_error(&expected)
-                    && *value_ty != expected
-                {
-                    self.emit(TypeDiagnostic::TypeMismatch {
-                        expected: expected.to_string(),
-                        found: value_ty.to_string(),
-                        span: self.span_for(assign_id),
-                    });
+        self.with_type_params(scope, |s| {
+            if let Some(value_param) = sub_def.params.last() {
+                if let Some(param_ty) = &value_param.ty {
+                    let expected =
+                        Self::substitute(&s.resolve_hir_ty(param_ty), &subst);
+                    if !helpers::is_error(value_ty)
+                        && !helpers::is_error(&expected)
+                        && *value_ty != expected
+                    {
+                        s.emit(TypeDiagnostic::TypeMismatch {
+                            expected: expected.to_string(),
+                            found: value_ty.to_string(),
+                            span: s.span_for(assign_id),
+                        });
+                    }
                 }
             }
-        }
-        self.current_type_params = saved_type_params;
-    }
-}
-
-/// Unify two `Instance` types by matching type arguments positionally.
-/// `actual` is the concrete type (e.g., `List<Int>`), `expected` may contain
-/// `TypeParam` placeholders (e.g., `List<T>`). Records `T → Int` in `subst`.
-fn unify_instances(actual: &Ty, expected: &Ty, subst: &mut Substitution) {
-    match (actual, expected) {
-        (Ty::Instance(a), Ty::Instance(e)) if a.name == e.name => {
-            for (at, et) in a.args.iter().zip(e.args.iter()) {
-                unify_instances(at, et, subst);
-            }
-        }
-        (actual, Ty::TypeParam(tp)) => {
-            // Skip identity mappings (T → T) — they add no information and
-            // cause false mismatches when `check_method_call` later calls
-            // `unify` and finds the same TypeParam bound to itself.
-            if !matches!(actual, Ty::TypeParam(a) if a == tp) {
-                subst.entry(tp.clone()).or_insert_with(|| actual.clone());
-            }
-        }
-        _ => {}
+        });
     }
 }
 
