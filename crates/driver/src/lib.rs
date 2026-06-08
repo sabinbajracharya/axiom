@@ -65,10 +65,12 @@ pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
     let (lang_items, mut lang_diags) = hir::resolve_lang_items(&stdlib_bindings, stdlib_present);
     all_diags.append(&mut lang_diags);
 
-    let hir = hir::Hir {
+    let mut hir = hir::Hir {
         items: all_items,
         diagnostics: all_diags,
     };
+    let max_id = typecheck::hir_max_id(&hir);
+    hir::desugar::desugar(&mut hir, &lang_items, max_id + 1);
     typecheck::check_with_lang_items(hir, lang_items)
 }
 

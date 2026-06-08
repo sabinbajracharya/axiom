@@ -6,7 +6,7 @@
 //! ```
 //! use parser::parse;
 //! use parser::ast::AstNode;
-//! use lowering::lower_structural;
+//! use lower::lower_structural;
 //!
 //! let result = parse("fn main() { val x = 1 }");
 //! let root = parser::ast::SourceFile::cast(result.tree).unwrap();

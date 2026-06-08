@@ -257,7 +257,7 @@ Delete the façade in a follow-up once all consumers have migrated.
 **Gate:** `cargo tree` shows `axiom-hir` depends only on `lower` + `resolver` (re-export only).
 All snapshot comparisons match pre-split output.
 
-### Phase 4: Rename crates
+### Phase 4: Rename crates ✅ DONE
 
 **Scope:** Mechanical rename. No code changes except string literals and Cargo.toml `[package] name`.
 

@@ -13,8 +13,8 @@ pub use lower::serialize;
 
 // Re-export commonly-used types at crate level.
 pub use lower::{
-    Block, CallingConvention, Def, DefKind, Expr, FnDef, Hir, HirDiagnostic, HirId, Item, NameRef,
-    Stmt, lower_structural,
+    lower_structural, Block, CallingConvention, Def, DefKind, Expr, FnDef, Hir, HirDiagnostic,
+    HirId, Item, NameRef, Stmt,
 };
 
 pub mod desugar;

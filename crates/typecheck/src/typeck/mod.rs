@@ -40,21 +40,15 @@ pub(super) type TypeParamScope = Vec<(String, HirId, Vec<String>)>;
 /// The HIR is consumed (moved) — the THIR owns it.
 /// Never panics on user-reachable input. Returns a Thir even if
 /// type errors exist; diagnostics are in `thir.diagnostics`.
-pub fn check(hir: Hir) -> Thir {
+pub fn check(mut hir: Hir) -> Thir {
+    let max_id = crate::hir_max_id(&hir);
+    hir::desugar::desugar(&mut hir, &hir::LangItems::default(), max_id + 1);
     check_with_lang_items(hir, hir::LangItems::default())
 }
 
-/// Type-check with a resolved lang-item registry. The multi-module driver
-/// (`check_modules`) builds the registry from the stdlib and passes it here so
-/// list-literal types resolve to the real `List` def; the bare `check` keeps an
-/// empty registry for compiler-isolation tests.
-///
-/// The desugar pass runs here so that both `check` (bare/no-stdlib) and
-/// `check_modules` (stdlib-backed) paths go through it — `ListLit` never
-/// reaches the type checker.
+/// Type-check with a resolved lang-item registry. The caller (driver or bare
+/// `check`) is responsible for desugaring the HIR before calling this function.
 pub fn check_with_lang_items(mut hir: Hir, lang_items: hir::LangItems) -> Thir {
-    let max_id = crate::hir_max_id(&hir);
-    hir::desugar::desugar(&mut hir, &lang_items, max_id + 1);
     let hir_diagnostics: Vec<Diagnostic> = hir.diagnostics.drain(..).map(Diagnostic::Hir).collect();
     let mut checker = TypeChecker::new(hir, lang_items);
     checker.collect_pass();

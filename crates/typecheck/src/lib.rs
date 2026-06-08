@@ -63,7 +63,7 @@ pub fn check_source(source: &str) -> Thir {
 
 /// Find the highest `HirId` in an HIR, so the desugar pass can seed its fresh-ID
 /// counter. Returns 0 for an empty HIR.
-pub(crate) fn hir_max_id(hir: &hir::Hir) -> usize {
+pub fn hir_max_id(hir: &hir::Hir) -> usize {
     let mut max = 0;
     for item in &hir.items {
         max = max.max(item_max_id(item));

@@ -95,7 +95,7 @@ fn collect_stems(dir: &Path) -> BTreeSet<String> {
 /// Each entry excludes a feature from all stages except its home stage(s).
 fn default_exclusions() -> BTreeSet<(String, String)> {
     let mut set = BTreeSet::new();
-    let all_stages = ["lexer", "parser", "hir", "typeck", "ir", "vm", "corpus"];
+    let all_stages = ["lexer", "parser", "hir", "typecheck", "ir", "vm", "corpus"];
 
     // Helper: exclude feature from all stages except those in `home`.
     let mut only_in = |feature: &str, home: &[&str]| {
@@ -142,11 +142,11 @@ fn default_exclusions() -> BTreeSet<(String, String)> {
         "simple_struct",
         "type_mismatch",
     ] {
-        only_in(feature, &["typeck"]);
+        only_in(feature, &["typecheck"]);
     }
 
     // ── HIR + Typeck only ──
-    only_in("struct_field_access", &["hir", "typeck"]);
+    only_in("struct_field_access", &["hir", "typecheck"]);
     only_in("struct_literal", &["hir"]);
 
     // ── Parser + HIR only (supertrait syntax; typeck registration covered by
