@@ -2,7 +2,7 @@
 
 The **embedded standard library** — the single source of truth for stdlib source.
 
-`build.rs` walks `stdlib/` at compile time and bakes every `.ax` module into the crate as
+`build.rs` walks `source/` at compile time and bakes every `.ax` module into the crate as
 `(module_path, source)` pairs (module path derived from the relative file path exactly as
 `modules::discover` does: `core/platform.ax` → `core::platform`). The compiler carries
 its own stdlib *inside* the binary — no hardcoded file list to drift, no runtime disk
@@ -20,10 +20,12 @@ compile pipeline. It does not depend on `typecheck`, so the type checker stays
 stdlib-agnostic and there is no dependency cycle.
 
 ## Files
-- `build.rs` — walks `stdlib/`, emits `$OUT_DIR/stdlib_manifest.rs` (the `STDLIB` table) and
+- `build.rs` — walks `source/`, emits `$OUT_DIR/stdlib_manifest.rs` (the `STDLIB` table) and
   `cargo:rerun-if-changed` for every `.ax` file.
 - `src/lib.rs` — re-exports `STDLIB` via `modules()`; holds the **drift guard** test
   (`test_embedded_matches_disk`) asserting the embedded set equals `discover_library`'s view
   of disk.
+- `source/` — the Axiom stdlib sources, organised as `core/` and `std/` following the
+  module path convention.
 
 See `docs/stdlib-loading-unification.md` for the why and the full design.

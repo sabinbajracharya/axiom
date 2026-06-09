@@ -624,11 +624,11 @@ Glob imports (`use foo::*`) are **discouraged/lint-warned** (singular idiom: exp
 ## 11. Standard Library (surface)
 
 Layered to keep the core small (singular idiom + small budget). **The physical
-`stdlib/` tree mirrors the module path** (one file = one module, §10.1): `stdlib/core/
-string.ax` → `core::string`, `stdlib/std/collections/list.ax` → `std::collections::list`.
+`source/` tree inside the `axiom-stdlib` crate mirrors the module path** (one file = one module, §10.1): `source/core/
+string.ax` → `core::string`, `source/std/collections/list.ax` → `std::collections::list`.
 
 > **Loading [Decided].** The stdlib is **embedded into the compiler at build time** (the
-> `axiom-stdlib` crate's `build.rs` walks `stdlib/` — single source of truth, drift-guarded,
+> `axiom-stdlib` crate's `build.rs` walks `source/` — single source of truth, drift-guarded,
 > no runtime disk dependency) and **every** compilation path — single file, project dir, and
 > tests — compiles the user modules + stdlib through one pipeline,
 > `axiom_typeck::check_modules`. A single deliberate *bare* mode (`check_source`, no stdlib)
