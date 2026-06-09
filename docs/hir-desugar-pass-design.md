@@ -73,12 +73,17 @@ parse → lower HIR → resolve names → resolve lang items
 
 ### 2.1 Location
 
-A new module `axiom-hir/src/desugar.rs`. Public entry point:
+Extracted into its own crate: `crates/desugar/`. Public entry points:
 
 ```rust
-/// Rewrite every sugar expression in `hir` into its core form, using resolved
-/// lang-item IDs. After this pass, no `Expr::ListLit` remains in the tree.
-pub fn desugar(hir: &mut Hir, lang_items: &LangItems) -> DesugarResult;
+// Pre-typecheck: catch, else, ListLit → match (type-independent)
+pub fn pre_typecheck(ctx: &mut DesugarCtx<'_>) -> Result<(), DesugarError>;
+
+// Post-typecheck: ? → match (type-dependent, uses TypeMap)
+pub fn post_typecheck(
+    ctx: &mut QuestionDesugarCtx<'_>,
+    function_bodies: &mut IntMap<HirId, ExprId>,
+) -> Result<(), DesugarError>;
 ```
 
 `DesugarResult` carries the new highest `HirId` allocated (so the caller knows

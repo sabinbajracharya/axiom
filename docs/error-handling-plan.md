@@ -577,7 +577,7 @@ The desugar pass has two phases:
 
 ### 5a. `?` desugaring (post-typecheck)
 
-**File: `crates/typecheck/src/typecheck/question_desugar.rs`**
+**File: `crates/desugar/src/post_typecheck.rs`**
 
 `expr?` → `match expr { Ok(v) => v, Err(e) => return Err(e) }` (for Result)
 or `match expr { Some(v) => v, None => return None }` (for Option).
