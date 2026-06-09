@@ -145,11 +145,12 @@ memory model — the language's load-bearing bet — has passed its de-risking s
 | Lex | [`crates/lexer`](crates/lexer) — source → lossless, tiling token stream | ✅ Done (snapshot + invariant + fuzz tested) |
 | Parse | [`crates/parser`](crates/parser) — tokens → lossless CST (rust-analyzer-shaped green/red tree) | ✅ Done; total recovery, recovery-set-aware |
 | Structural HIR lowering | [`crates/lower`](crates/lower) — CST → ID-keyed HIR (names unresolved) | ✅ Done (M1); golden + diagnostic snapshot tested |
-| Name resolution | [`crates/resolver`](crates/resolver) — resolve names, `@lang` items, desugar pass | ✅ Done (M1); scope-chain resolution + diagnostics |
+| Name resolution | [`crates/resolver`](crates/resolver) — resolve names, `@lang` items | ✅ Done (M1); scope-chain resolution + diagnostics |
+| Desugaring | [`crates/desugar`](crates/desugar) — pre-typecheck (catch, else, ListLit) + post-typecheck (`?`) | ✅ Done; 36 tests, invariant + idempotency + coverage tested |
 | Type checking (THIR) | [`crates/typecheck`](crates/typecheck) — HIR → THIR via bidirectional type checker | ✅ Done (M2); golden + diagnostic + invariant tested |
 | Generics + traits | [`crates/typecheck`](crates/typecheck) — unification, inference, trait checking, default-method dispatch | ✅ Done; wired through IR → VM |
 | Monomorphization | [`crates/specialize`](crates/specialize) — discover generic instantiations, produce `MonoInstance` records | ✅ Done |
-| Pipeline orchestration | [`crates/driver`](crates/driver) — single multi-module pipeline (parse→lower→resolve→validate→typecheck) | ✅ Done |
+| Pipeline orchestration | [`crates/driver`](crates/driver) — single multi-module pipeline (parse→lower→resolve→desugar→typecheck) | ✅ Done |
 | IR generation | [`crates/ir`](crates/ir) — THIR → register IR (basic blocks, SSA-lite registers) | ✅ Done (M3); golden traces + invariants |
 | Register-IR interpreter | [`crates/vm`](crates/vm) — executes IR: structs, enums, match, control flow, calls, generics, traits, collections | ✅ Done; snapshot + e2e + invariant tested |
 | Standard library | `crates/stdlib/source/` embedded via [`crates/stdlib`](crates/stdlib); multi-file loading in [`crates/modules`](crates/modules) — core traits, `Option<T>`, `List<T>`, `Map<K,V>`, `print`/`format`, all in `.ax` | ✅ Running on the VM |
@@ -189,14 +190,15 @@ the language identity arrives.
 │   ├── lexer/            # Stage 1: lossless, total tokenizer
 │   ├── parser/           # Stage 2: lossless CST + error recovery
 │   ├── lower/            # Stage 3: CST → ID-keyed HIR (structural, names unresolved)
-│   ├── resolver/         # Stage 3b: name resolution + @lang/@intrinsic + desugar pass
+│   ├── resolver/         # Stage 3b: name resolution + @lang/@intrinsic
+│   ├── desugar/          # Stage 3c: HIR desugaring (catch, else, ListLit, ?)
 │   ├── typecheck/        # Stage 4: HIR → THIR (bidirectional type checker, generics, traits)
 │   ├── specialize/       # Monomorphization: generic instantiation discovery
 │   ├── ir/               # Stage 5: THIR → register IR (basic blocks, SSA-lite regs)
 │   ├── vm/               # Stage 6: register-IR interpreter
 │   ├── modules/          # Multi-file module discovery + graph construction
 │   ├── stdlib/           # Embeds source/*.ax into the compiler (build.rs)
-│   ├── driver/           # Pipeline orchestrator (parse→lower→resolve→validate→typecheck)
+│   ├── driver/           # Pipeline orchestrator (parse→lower→resolve→desugar→typecheck)
 │   └── cli/              # Compiler driver (`axiom check` / `run` / `build`)
 ├── docs/
 │   ├── lexer-testing.md    # Test/debug tooling spec for the lexer
@@ -210,7 +212,11 @@ the language identity arrives.
 │   ├── collection-type-design.md  # List/Map design on the heap-buffer primitive
 │   ├── modules-design.md   # Multi-file modules + the embedded stdlib
 │   ├── spike-0-findings.md # Memory-model spike result + Path A/B decision
-│   └── v0-roadmap.md       # v0 milestone plan (M1–M5) — plus more design notes
+│   ├── v0-roadmap.md       # v0 milestone plan (M1–M5) — plus more design notes
+│   ├── desugar-crate-extraction.md  # Desugar crate extraction design + 8-phase plan
+│   ├── error-handling-redesign.md   # Error handling: design + pipeline
+│   ├── error-handling-plan.md       # Error handling: implementation plan
+│   └── hir-desugar-pass-design.md   # HIR desugar pass architecture
 ├── showcase/            # Feature-tour demo programs
 ├── corpus/              # End-to-end .ax programs run as integration tests
 └── scripts/             # check.sh and friends (the PostToolUse enforcement hook)
@@ -221,7 +227,7 @@ start there when diving into a stage.
 
 ### Test harness
 
-Snapshot, invariant, fuzz, and golden tests across all 12 crates. Each pipeline stage has its own testing spec
+Snapshot, invariant, fuzz, and golden tests across all 13 crates. Each pipeline stage has its own testing spec
 (`docs/*-testing.md`) with a 6-layer test stack:
 
 1. **Unit tests** — Rust-side logic in `#[cfg(test)]` modules
