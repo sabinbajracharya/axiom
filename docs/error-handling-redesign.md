@@ -32,9 +32,9 @@ return type, not in the operator.
 | Propagate (Result) | `try expr` | `expr?` |
 | Propagate (Option) | `expr?` | `expr?` (same) |
 | Default (Result) | `expr catch handler` | `expr catch handler` (same) |
-| Default (Option) | `expr else fallback` | `expr else fallback` (same) |
+| Default (Option) | `expr else fallback` | `expr ?? fallback` |
 
-Three constructs. `?` is the universal propagation operator. `catch` and `else`
+Three constructs. `?` is the universal propagation operator. `catch` and `??`
 remain type-specific because handling an error is genuinely different from
 handling absence. But propagation is always the same operation: "I don't want
 to handle this here."
@@ -96,8 +96,8 @@ simpler, more predictable, and easier to test.
 ```
 // ── Option<T> ──
 xs.first()?                    // None → return None (propagate)
-xs.first() else 0              // None → 0 (default)
-xs.first() else compute()      // None → compute() (lazy default)
+xs.first() ?? 0                // None → 0 (default)
+xs.first() ?? compute()        // None → compute() (lazy default)
 match xs.first() { ... }       // both branches
 
 // ── Result<T, E> (a.k.a. E!T) ──
@@ -110,10 +110,10 @@ match open(path) { ... }       // both branches
 | | Propagate | Default/Handle |
 |--|-----------|----------------|
 | **Error** `Result<T,E>` | `?` | `catch` |
-| **Option** `Option<T>` | `?` | `else` |
+| **Option** `Option<T>` | `?` | `??` |
 
 Three constructs. `?` for propagation (type-determined). `catch` for error
-handling. `else` for absence handling. `match` for exhaustive branching.
+handling. `??` for absence handling. `match` for exhaustive branching.
 
 ---
 
