@@ -202,3 +202,52 @@ fn main() -> Int { add(1, 2) }",
         thir.diagnostics
     );
 }
+
+// ── Impl-level bounds ────────────────────────────────────────────────────────
+
+#[test]
+fn test_impl_bound_satisfied() {
+    let thir = check_source(
+        "trait MyBound {}
+struct Foo {}
+struct Wrapper<T> { val: T }
+impl MyBound for Foo {}
+impl<T: MyBound> Wrapper<T> {
+    fn get(self) { }
+}
+fn main() { val w: Wrapper<Foo> = todo(); w.get() }",
+    );
+    let unsatisfied: Vec<_> = thir
+        .diagnostics
+        .iter()
+        .filter(|d| d.kind() == "unsatisfied_bound")
+        .collect();
+    assert!(
+        unsatisfied.is_empty(),
+        "expected no unsatisfied_bound, got: {:?}",
+        thir.diagnostics
+    );
+}
+
+#[test]
+fn test_impl_bound_unsatisfied() {
+    let thir = check_source(
+        "trait MyBound {}
+struct Bar {}
+struct Wrapper<T> { val: T }
+impl<T: MyBound> Wrapper<T> {
+    fn get(self) { }
+}
+fn main() { val w: Wrapper<Bar> = todo(); w.get() }",
+    );
+    let unsatisfied: Vec<_> = thir
+        .diagnostics
+        .iter()
+        .filter(|d| d.kind() == "unsatisfied_bound")
+        .collect();
+    assert!(
+        !unsatisfied.is_empty(),
+        "expected unsatisfied_bound for Bar: MyBound, got: {:?}",
+        thir.diagnostics
+    );
+}

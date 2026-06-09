@@ -364,7 +364,7 @@ impl TypeChecker {
 
         let has_params = param_types.iter().any(Self::contains_type_param)
             || Self::contains_type_param(&return_type);
-        if has_params {
+        let ty = if has_params {
             for (arg_ty, param_ty) in arg_types.iter().zip(param_types.iter()) {
                 if !helpers::is_error(arg_ty) && !helpers::is_error(param_ty) {
                     if let Err(found) = self.unify(arg_ty, param_ty, subst) {
@@ -376,7 +376,6 @@ impl TypeChecker {
                     }
                 }
             }
-            self.check_type_bounds(subst, self.span_for(mc.id));
             Self::substitute(&return_type, subst)
         } else {
             for (arg_ty, param_ty) in arg_types.iter().zip(param_types.iter()) {
@@ -390,7 +389,12 @@ impl TypeChecker {
                 }
             }
             return_type
-        }
+        };
+        // Check impl-level bounds even when the method signature is fully
+        // concrete — the substitution may carry type params from the impl
+        // that have trait bounds (e.g. `impl<T: MyBound> Wrapper<T>`).
+        self.check_type_bounds(subst, self.span_for(mc.id));
+        ty
     }
 
     fn resolve_method_signature(
