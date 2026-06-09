@@ -52,7 +52,7 @@ impl TypeChecker {
                 } else {
                     else_type
                 }
-            } else if then_type == else_type {
+            } else if self.unifies_either_way(&then_type, &else_type) {
                 then_type
             } else {
                 self.emit(TypeDiagnostic::IfBranchMismatch {
@@ -134,7 +134,7 @@ impl TypeChecker {
             for (i, arm_ty) in non_diverging.iter().enumerate().skip(1) {
                 if !helpers::is_error(arm_ty)
                     && !helpers::is_error(first_type)
-                    && *arm_ty != first_type
+                    && !self.unifies_either_way(arm_ty, first_type)
                 {
                     self.emit(TypeDiagnostic::MatchArmTypeMismatch {
                         expected: first_type.to_string(),

@@ -162,3 +162,52 @@ fn generic_fn_type_param_in_thir() {
     // The THIR dump should contain the type parameter T.
     assert!(dump.contains('T'), "expected T in THIR dump:\n{dump}");
 }
+
+// ── Match/if branch unification of generic return types ────────────────────
+//
+// When a generic enum constructor is called in one branch and the other
+// branch produces the same enum directly (e.g. `Some(x)` vs `None`), the
+// resulting types carry different `TypeParamId` def_ids — the first is
+// bound to the function's scope, the second retains the enum's own.
+// PartialEq sees them as different, but unify should accept them.
+
+#[test]
+fn generic_if_branches_unify_enum() {
+    let thir = check_source(
+        "enum Wrapper<T> { Has(T), Empty }
+fn test<T>(x: T) -> Wrapper<T> {
+    if true {
+        Has(x)
+    } else {
+        Empty
+    }
+}",
+    );
+    assert!(
+        thir.diagnostics.is_empty(),
+        "expected no diagnostics, got: {:?}",
+        thir.diagnostics
+    );
+}
+
+#[test]
+fn generic_match_arms_unify_enum() {
+    let thir = check_source(
+        "enum Wrapper<T> { Has(T), Empty }
+fn test<T>(x: Wrapper<T>) -> Wrapper<T> {
+    match x {
+        Has(v) => Has(v),
+        Empty => Empty,
+    }
+}",
+    );
+    let has_mismatch = thir
+        .diagnostics
+        .iter()
+        .any(|d| d.kind() == "match_arm_type_mismatch");
+    assert!(
+        !has_mismatch,
+        "expected no match_arm_type_mismatch, got: {:?}",
+        thir.diagnostics
+    );
+}

@@ -103,7 +103,7 @@ impl TypeChecker {
     /// by [`check_expr`] to accept a value whose type carries still-open type
     /// parameters against an expected type (and vice versa). Each direction uses
     /// a fresh substitution — this is a compatibility test, not a binding step.
-    fn unifies_either_way(&self, a: &Ty, b: &Ty) -> bool {
+    pub(super) fn unifies_either_way(&self, a: &Ty, b: &Ty) -> bool {
         self.unify(a, b, &mut Substitution::new()).is_ok()
             || self.unify(b, a, &mut Substitution::new()).is_ok()
     }
