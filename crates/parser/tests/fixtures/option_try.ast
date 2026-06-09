@@ -53,7 +53,7 @@ SourceFile @ 0..84
               Ident @ 53..57 "head"
         Whitespace @ 57..58 " "
         Eq @ 58..59 "="
-        TryExpr @ 59..71
+        QuestionExpr @ 59..71
           MethodCallExpr @ 59..70
             PathExpr @ 59..62
               Path @ 59..62
@@ -68,7 +68,7 @@ SourceFile @ 0..84
               RParen @ 69..70 ")"
           Question @ 70..71 "?"
       ExprStmt @ 71..81
-        TryExpr @ 71..81
+        QuestionExpr @ 71..81
           PathExpr @ 71..80
             Path @ 71..80
               PathSegment @ 71..80

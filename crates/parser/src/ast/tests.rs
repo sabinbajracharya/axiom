@@ -74,6 +74,7 @@ fn can_cast_expr(kind: SyntaxKind) -> bool {
         || CastExpr::can_cast(kind)
         || RangeExpr::can_cast(kind)
         || TryExpr::can_cast(kind)
+        || QuestionExpr::can_cast(kind)
         || AssignExpr::can_cast(kind)
         || CatchExpr::can_cast(kind)
         || ElseExpr::can_cast(kind)

@@ -159,13 +159,12 @@ fn postfix(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
     lhs
 }
 
-/// `expr?` — postfix `None`-propagation on `Option` (§6.5). Shares the `TryExpr`
-/// node with prefix `try` (both are propagation); the token position
-/// distinguishes them.
+/// `expr?` — postfix `None`-propagation on `Option` (§6.5). Distinct from prefix
+/// `try expr` (which produces `TryExpr`); the node kind differentiates them.
 fn question(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     p.bump(); // ?
-    m.complete(p, K::TryExpr)
+    m.complete(p, K::QuestionExpr)
 }
 
 fn primary(p: &mut Parser) -> Option<CompletedMarker> {

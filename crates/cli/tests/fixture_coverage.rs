@@ -137,6 +137,7 @@ fn default_exclusions() -> BTreeSet<(String, String)> {
         "modules_use",
         "nested_generics",
         "option_try",
+        "catch_else",
     ] {
         only_in(feature, &["parser"]);
     }

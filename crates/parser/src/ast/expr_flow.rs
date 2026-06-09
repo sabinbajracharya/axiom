@@ -252,6 +252,39 @@ impl TryExpr {
     pub fn expr(&self) -> Option<SyntaxNode> {
         child_expr_node(&self.0)
     }
+
+    /// `true` if this is a prefix `try expr` (error propagation), `false` means
+    /// it was produced before the `TryExpr`/`QuestionExpr` split and should be
+    /// migrated.
+    pub fn is_prefix(&self) -> bool {
+        child_token(&self.0, SyntaxKind::KwTry).is_some()
+    }
+}
+
+/// `expr?` — postfix Option-propagation (§6.5). Distinct from `TryExpr`
+/// (prefix `try expr`, error propagation) since the node-kind split.
+pub struct QuestionExpr(SyntaxNode);
+
+impl AstNode for QuestionExpr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        kind == SyntaxKind::QuestionExpr
+    }
+    fn cast(node: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(node.kind()) {
+            Some(Self(node))
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.0
+    }
+}
+
+impl QuestionExpr {
+    pub fn expr(&self) -> Option<SyntaxNode> {
+        child_expr_node(&self.0)
+    }
 }
 
 pub struct AssignExpr(SyntaxNode);

@@ -256,6 +256,7 @@ syntax_kinds! {
         CastExpr,
         RangeExpr,
         TryExpr,
+        QuestionExpr,
         AssignExpr,
         CatchExpr,
         ElseExpr,
