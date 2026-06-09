@@ -12,8 +12,8 @@
 ```
 // ── Option<T> ──
 xs.first()?                    // None → return None (propagate)
-xs.first() ?? 0                // None → 0 (default)
-xs.first() ?? compute()        // None → compute() (lazy default)
+xs.first() else 0              // None → 0 (default)
+xs.first() else compute()      // None → compute() (lazy default)
 match xs.first() { ... }       // both branches
 
 // ── Result<T, E> (a.k.a. E!T) ──
@@ -26,13 +26,12 @@ match open(path) { ... }       // both branches
 | | Propagate | Default |
 |--|-----------|---------|
 | **Error** `Result<T, E>` | `?` | `catch` |
-| **Option** `Option<T>` | `?` | `??` |
+| **Option** `Option<T>` | `?` | `else` |
 
 Three constructs. `?` for propagation (type-determined — Option or Result).
-`catch` for error defaults, `??` for option defaults. `match` for
+`catch` for error defaults, `else` for option defaults. `match` for
 exhaustive handling. Zero overlap. `try` has been removed — `?` is the
-universal propagation operator. `??` is industry-standard (C#, Swift, Kotlin,
-TypeScript, PHP) — concise, visually connected to optionals.
+universal propagation operator.
 
 ## Architecture Summary
 
@@ -65,26 +64,21 @@ The `catch` keyword is a full first-class keyword (not just reserved).
 > This section preserves the reasoning behind the choices so future work
 > understands what was considered and rejected, not just what was chosen.
 
-### Why `catch` for errors, `??` for options
+### Why `catch` for errors, `else` for options
 
-We use `catch` for Result/error defaults and `??` for Option/null defaults.
-This keeps the semantics explicit — `catch` implies an error context, `??`
-implies absence with a default value.
-
-**Why `??` instead of `else`:**
-- Industry-standard: `??` exists in C#, Swift, Kotlin, TypeScript, PHP
-- More concise (2 chars vs 4)
-- Visually connected to optionals (`expr?.field ?? fallback`)
-- No ambiguity with if/else branches
-- `else` remains reserved for if/else control flow
+We follow Zig's two-keyword approach: `catch` for Result/error defaults, `else`
+for Option/null defaults. This keeps the semantics explicit — `catch` implies an
+error context, `else` implies absence.
 
 **Alternatives rejected:**
-- `else` for options → visually ambiguous with if/else, less concise
+- `else` for both → conflates two semantically different operations
 - `catch` for both → wrong semantics on Option (absence isn't an error)
-- `orelse` for Option → verbose, Zig-specific terminology
+- `orelse` for Option → new keyword, verbose, Zig-specific terminology
 
 `catch` feels natural for errors ("catch the error and use this fallback").
-`??` feels natural for options ("this value, or else that default").
+`else` feels natural for options ("some value, else this default").
+`else` already exists in the parser as part of `if`/`else` — zero ambiguity
+since the parser always knows which context it's in.
 
 ### Why `?` unifies Result and Option propagation
 
@@ -159,17 +153,17 @@ small and lets `Result` live in the stdlib where it can be extended with combina
 1. **Error sets are unit-only** (no data payloads). Zig's design is battle-tested and keeps
    the implementation simple.
 
-2. **`?`/`catch`/`??` desugar to `match` on enums**. `Result<T, E>` and `Option<T>` are
+2. **`?`/`catch`/`else` desugar to `match` on enums**. `Result<T, E>` and `Option<T>` are
    user-defined generic enums. `expr?` → `match expr { Ok(v) => v, Err(e) => return Err(e) }`
    (or `Some(v) => v, None => return None` for Option — determined by typecheck).
    `expr catch fallback` → `match expr { Ok(v) => v, Err(_) => fallback }`.
    `expr catch |e| handler` → `match expr { Ok(v) => v, Err(e) => handler }`.
-   `expr ?? fallback` → `match expr { Some(v) => v, None => fallback }`.
+   `expr else fallback` → `match expr { Some(v) => v, None => fallback }`.
    No new IR ops needed.
 
-3. **`catch` is error-only; `??` is Option-only.** No overlap — the singular-idiom rule.
-   `catch` says "the operation can fail." `??` says "the value might be absent."
-   Using `catch` on an `Option` or `??` on a `Result` is a type error.
+3. **`catch` is error-only; `else` is Option-only.** No overlap — the singular-idiom rule.
+   `catch` says "the operation can fail." `else` says "the value might be absent."
+   Using `catch` on an `Option` or `else` on a `Result` is a type error.
 
 4. **`?` is the universal propagation operator.** Works on both `Result` and `Option`.
    The typechecker determines the match arms (`Ok/Err` vs `Some/None`).

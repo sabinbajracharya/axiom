@@ -476,12 +476,12 @@ fn boot() {
 
 ### 6.5 Option ergonomics [Decided]
 ```rust
-val head = xs.first()?              // None → return None (propagate)
-val head = xs.first() ?? 0          // None → 0 (default)
-val head = xs.first() ?? compute()  // None → compute() (lazy default)
+val head = xs.first()?         // None → return None (propagate)
+val head = xs.first() else 0   // None → 0 (default)
+val head = xs.first() else compute()  // None → compute() (lazy default)
 ```
 - `?` postfix on `Option` in an `Option`-returning context propagates `None` (parallel to `?` on `Result` for errors). `?` is the universal propagation operator — works identically on both `Option` and `Result`.
-- `expr ?? fallback` — evaluates the fallback expression if the LHS is `None`. `??` is for **Option** types only, just as `catch` is for **Result/error** types only. The `??` operator is established across C#, Swift, Kotlin, TypeScript, and PHP — concise (2 chars), visually connected to optionals, and immediately recognizable to developers.
+- `expr else fallback` — evaluates the fallback expression if the LHS is `None`. `else` is for **Option** types only, just as `catch` is for **Result/error** types only. This mirrors Zig's `catch` for errors and `orelse` for null, using `else` instead of `orelse` since `else` already exists in the language.
 - No implicit truthiness; `Option` is consumed by `match` or combinators (`map`, `unwrap_or`, ...).
 
 ---
@@ -793,7 +793,6 @@ Honest list. Each is tagged with whether it may remain open (isolated behind a b
 | 6 | `Int` overflow: checked / wrapping / `Result` (§2.6) | May stay open — leaning checked-debug + explicit wrapping methods; isolated |
 | 7 | String interpolation vs `format` only (§2.5/§11) | **✅ Resolved — `format` chosen.** `string::format` is implemented as the one variadic intrinsic (§11); interpolation stays rejected (singular idiom forbids both). Width/precision specs and user-type `Display` dispatch remain to be added. |
 | 8 | Unify `try` (Result) and `?` (Option) into one mechanism? (§6.5) | **✅ Resolved — `?` chosen.** `try` removed; `?` is the universal propagation operator. Three keywords (`?`/`catch`/`else`) instead of four. See [`docs/error-handling-redesign.md`](docs/error-handling-redesign.md). |
-| 8b | Change `else` to `??` for optional defaults? (§6.5) | **Proposed — `??` chosen.** Industry-standard (`??` in C#, Swift, Kotlin, TypeScript, PHP), concise, visually connected to optionals. Rename `else` → `??` in v1. `else` remains reserved for if/else branches. |
 | 9 | Exact Perceus elision rate on real code (§4.5) | Empirical — measure in v1, don't promise a number |
 | 10 | Algebraic effects ever? (§9.5) | Rejected for v1; post-2.0 research track if user-schedulers needed |
 | 11 | **`errdefer`** (§6.4) — needed despite `Deinit`? | **Deferred from v1** — `Deinit` handles cleanup; `catch`/`else` handle side-effects. Revisit only if evidence of pervasive explicit-cleanup-on-error patterns. |
@@ -838,7 +837,7 @@ arm         = pattern ( "if" expr )? "=>" expr ;
 loop_expr   = "loop" ( "if" expr | ident "in" expr )? block ;
 question_expr = postfix "?" ;
 catch_expr  = expr "catch" ( "|" ident "|" expr | expr ) ;
-default_expr = expr "??" expr ;        (* optional default: None → fallback *)
+else_expr   = expr "else" expr ;
 closure     = "|" params? "|" ( "->" type )? ( expr | block ) ;
 
 type        = path generics_args? | "(" ")" | error_union ;
@@ -881,7 +880,7 @@ fn main() {
         stats.add(inout stats, n)   // (illustrative: method form is stats.add(n))
     }
 
-    val m = stats.mean() ?? 0.0
+    val m = stats.mean() else 0.0
     println(string::format("mean = {}", m))
     }
 }
