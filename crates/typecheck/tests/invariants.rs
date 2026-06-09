@@ -97,10 +97,11 @@ fn test_every_error_type_has_diagnostic_kind() {
         "trait_not_found",
         "type_not_found_for_impl",
         "unsatisfied_bound",
+        "orphan_impl",
     ];
     assert_eq!(
         diagnostic_kinds.len(),
-        26,
+        27,
         "diagnostic kinds count changed — update this test"
     );
 }

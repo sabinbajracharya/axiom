@@ -246,6 +246,13 @@ pub enum TypeDiagnostic {
 
     #[error("`?` can only be used in functions that return `Option<T>` or `E!T`")]
     TryInNonErrorFn { span: Span },
+
+    #[error("cannot implement foreign trait `{trait_name}` for foreign type `{type_name}` — orphan rule: impls must be in the same module as the trait or the type")]
+    OrphanImpl {
+        trait_name: String,
+        type_name: String,
+        span: Span,
+    },
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -282,7 +289,8 @@ impl TypeDiagnostic {
             | TypeDiagnostic::DuplicateSubscript { span, .. }
             | TypeDiagnostic::UnsatisfiedBound { span, .. }
             | TypeDiagnostic::ErrorSetSupersetCoercion { span, .. }
-            | TypeDiagnostic::TryInNonErrorFn { span, .. } => *span,
+            | TypeDiagnostic::TryInNonErrorFn { span, .. }
+            | TypeDiagnostic::OrphanImpl { span, .. } => *span,
         }
     }
 
@@ -330,6 +338,7 @@ impl TypeDiagnostic {
             TypeDiagnostic::UnsatisfiedBound { .. } => "unsatisfied_bound",
             TypeDiagnostic::ErrorSetSupersetCoercion { .. } => "error_set_superset_coercion",
             TypeDiagnostic::TryInNonErrorFn { .. } => "try_in_non_error_fn",
+            TypeDiagnostic::OrphanImpl { .. } => "orphan_impl",
         }
     }
 }

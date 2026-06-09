@@ -61,6 +61,14 @@ pub(super) fn name_text(nr: &NameRef) -> String {
     }
 }
 
+/// Extract the DefId from a resolved `NameRef`, or `None` if unresolved.
+pub(super) fn name_def_id(nr: &NameRef) -> Option<DefId> {
+    match nr {
+        NameRef::Resolved(r) => Some(r.def_id),
+        NameRef::Unresolved(_) => None,
+    }
+}
+
 /// Whether `name` is a builtin primitive type.
 pub(super) fn is_builtin_type_name(name: &str) -> bool {
     matches!(name, "Int" | "Float" | "Bool" | "String" | "Unit")

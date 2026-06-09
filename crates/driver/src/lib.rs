@@ -24,12 +24,17 @@ pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
 
     let mut lowered: Vec<Lowered> = Vec::new();
     let mut next_id = 0usize;
+    let mut def_origins: Vec<(usize, usize, String)> = Vec::new();
     for (name, source) in modules {
         let result = parser::parse(source);
         let Some(root) = parser::ast::SourceFile::cast(result.tree) else {
             continue;
         };
+        let start = next_id;
         let (items, defs, diags, nid) = resolver::lower_structural(&root, source, next_id);
+        if nid > start {
+            def_origins.push((start, nid, (*name).to_string()));
+        }
         next_id = nid;
         lowered.push(((*name).to_string(), items, defs, diags));
     }
@@ -71,7 +76,7 @@ pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
     };
     let max_id = typecheck::hir_max_id(&hir);
     let _next_id = desugar::pre_typecheck(&mut hir, &lang_items, max_id + 1);
-    let mut thir = typecheck::check_with_lang_items(hir, lang_items);
+    let mut thir = typecheck::check_with_lang_items(hir, lang_items, def_origins);
     let max_id = typecheck::hir_max_id(&thir.hir);
     desugar::post_typecheck(&mut thir.hir, &thir.types, max_id + 1);
     thir

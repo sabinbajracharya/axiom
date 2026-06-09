@@ -45,16 +45,20 @@ pub(super) type TypeParamScope = Vec<(String, HirId, Vec<String>)>;
 /// Never panics on user-reachable input. Returns a Thir even if
 /// type errors exist; diagnostics are in `thir.diagnostics`.
 pub fn check(hir: Hir) -> Thir {
-    check_with_lang_items(hir, resolver::LangItems::default())
+    check_with_lang_items(hir, resolver::LangItems::default(), Vec::new())
 }
 
 /// Type-check with a resolved lang-item registry. The caller (driver or bare
 /// `check`) is responsible for desugaring catch/else/ListLit before calling this
 /// function. The `?` desugaring must be done by the caller after typecheck
 /// (needs inferred types).
-pub fn check_with_lang_items(mut hir: Hir, lang_items: resolver::LangItems) -> Thir {
+pub fn check_with_lang_items(
+    mut hir: Hir,
+    lang_items: resolver::LangItems,
+    def_origins: Vec<(usize, usize, String)>,
+) -> Thir {
     let hir_diagnostics: Vec<Diagnostic> = hir.diagnostics.drain(..).map(Diagnostic::Hir).collect();
-    let mut checker = TypeChecker::new(hir, lang_items);
+    let mut checker = TypeChecker::new(hir, lang_items, def_origins);
     checker.collect_pass();
     checker.check_pass();
     Thir {
@@ -106,6 +110,10 @@ struct TypeChecker {
     /// `Some(es)` when the function returns `E!T` (error union), `None` otherwise.
     /// Used for error set coercion checks on `return` statements.
     current_fn_error_set: Option<ErrorSetTy>,
+    /// DefId → module mapping: for each module, the (start_id, end_id, module_name)
+    /// range covering the DefIds allocated during its lowering. Used by the orphan
+    /// rule to determine which module a trait or type definition comes from.
+    def_origins: Vec<(usize, usize, String)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -248,7 +256,11 @@ impl TypeEnv {
 }
 
 impl TypeChecker {
-    fn new(hir: Hir, lang_items: resolver::LangItems) -> Self {
+    fn new(
+        hir: Hir,
+        lang_items: resolver::LangItems,
+        def_origins: Vec<(usize, usize, String)>,
+    ) -> Self {
         TypeChecker {
             hir,
             types: TypeMap::new(),
@@ -263,6 +275,7 @@ impl TypeChecker {
             type_param_bounds: HashMap::new(),
             lang_items,
             current_fn_error_set: None,
+            def_origins,
         }
     }
 
@@ -274,6 +287,21 @@ impl TypeChecker {
         let result = f(self);
         self.current_type_params = saved;
         result
+    }
+
+    /// Return the module name that owns `def_id`, or `None` if `def_origins`
+    /// is empty (bare/no-stdlib mode) or the DefId doesn't fall into any range.
+    fn module_of(&self, def_id: DefId) -> Option<&str> {
+        if self.def_origins.is_empty() {
+            return None;
+        }
+        let raw = def_id.0;
+        for (start, end, name) in &self.def_origins {
+            if raw >= *start && raw < *end {
+                return Some(name.as_str());
+            }
+        }
+        None
     }
 
     fn check_pass(&mut self) {

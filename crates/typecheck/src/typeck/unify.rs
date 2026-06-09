@@ -162,6 +162,7 @@ mod tests {
                 diagnostics: vec![],
             },
             resolver::LangItems::default(),
+            Vec::new(),
         );
         let mut subst = Substitution::new();
         // unify Int with T → T = Int
@@ -184,6 +185,7 @@ mod tests {
                 diagnostics: vec![],
             },
             resolver::LangItems::default(),
+            Vec::new(),
         );
         let mut subst = Substitution::new();
         assert!(checker.unify(&Ty::Int, &tp("T", 0), &mut subst).is_ok());
@@ -199,6 +201,7 @@ mod tests {
                 diagnostics: vec![],
             },
             resolver::LangItems::default(),
+            Vec::new(),
         );
         let mut subst = Substitution::new();
         assert!(checker.unify(&Ty::Int, &Ty::Int, &mut subst).is_ok());

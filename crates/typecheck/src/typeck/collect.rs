@@ -409,6 +409,15 @@ impl TypeChecker {
                     }
                 }
 
+                // Orphan rule (§3.5): a trait impl is allowed only if the impl
+                // block lives in the same module as the trait, or the same
+                // module as the type. Skip when `def_origins` is empty (bare
+                // mode, everything is in one source file), and skip impls that
+                // live inside a stdlib module (the stdlib is a coherent unit).
+                if let Some(ref tn) = trait_name {
+                    self.check_orphan_rule(tn, &type_name_text, impl_def);
+                }
+
                 // Completeness check: every required trait method must be provided.
                 if let Some(ref tn) = trait_name {
                     self.check_impl_completeness(tn, &type_name_text, impl_def);
@@ -476,6 +485,41 @@ impl TypeChecker {
         }
     }
 
+    /// Enforce the orphan rule (§3.5): a trait impl must live in the same module
+    /// as the trait, or the same module as the type. Skipped when `def_origins`
+    /// is empty (bare mode) or when the impl lives in a stdlib module.
+    fn check_orphan_rule(&mut self, trait_name: &str, type_name: &str, impl_def: &ImplDef) {
+        if self.def_origins.is_empty() {
+            return;
+        }
+        let trait_def_id = impl_def
+            .trait_name
+            .as_ref()
+            .and_then(name_def_id);
+        let type_def_id = name_def_id(&impl_def.type_name);
+        let Some(impl_mod) = self.module_of(impl_def.id) else {
+            return;
+        };
+        // The user module has an empty name; stdlib modules are non-empty.
+        if !impl_mod.is_empty() {
+            return;
+        }
+        let trait_ok = trait_def_id
+            .and_then(|id| self.module_of(id))
+            .is_some_and(|m| m == impl_mod);
+        // Builtins (Int, Float, …) have no DefId → no module ownership check.
+        let type_ok = type_def_id
+            .and_then(|id| self.module_of(id))
+            .is_some_and(|m| m == impl_mod);
+        if !trait_ok && !type_ok {
+            self.emit(TypeDiagnostic::OrphanImpl {
+                trait_name: trait_name.to_string(),
+                type_name: type_name.to_string(),
+                span: self.span_for(impl_def.id),
+            });
+        }
+    }
+
     /// Synthesize `FnDef`s for a trait's default-bodied methods that an impl
     /// does not override. These are added to the impl's dispatch table so a
     /// call to a default method on a concrete receiver resolves like any other
@@ -519,5 +563,5 @@ impl TypeChecker {
 
 // Re-export helpers from collect_subscripts module.
 pub(super) use super::collect_subscripts::{
-    check_duplicate_subscripts, is_builtin_type_name, name_text,
+    check_duplicate_subscripts, is_builtin_type_name, name_def_id, name_text,
 };

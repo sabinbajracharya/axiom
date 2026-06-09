@@ -157,7 +157,7 @@ mod tests {
         let result = parser::parse(source);
         let root = parser::ast::SourceFile::cast(result.tree).unwrap();
         let hir = lower(&root, source, None);
-        TypeChecker::new(hir, resolver::LangItems::default())
+        TypeChecker::new(hir, resolver::LangItems::default(), Vec::new())
     }
 
     #[test]
