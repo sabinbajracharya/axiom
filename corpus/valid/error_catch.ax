@@ -1,0 +1,11 @@
+fn succeed() -> Result<Int, String> {
+    Ok(42)
+}
+fn fail() -> Result<Int, String> {
+    Err("failed")
+}
+
+fn main() {
+    val x = succeed() catch 0
+    val y = fail() catch 0
+}

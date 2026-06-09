@@ -1,0 +1,10 @@
+fn might_fail() -> Option<Int> {
+    Some(42)
+}
+
+fn wrapper() -> Option<Int> {
+    val x = might_fail()?
+    Some(x)
+}
+
+fn main() {}

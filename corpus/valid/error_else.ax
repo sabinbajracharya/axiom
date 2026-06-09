@@ -1,4 +1,11 @@
+fn succeed() -> Option<Int> {
+    Some(42)
+}
+fn fail() -> Option<Int> {
+    None
+}
+
 fn main() {
-    val x: Option<Int> = Some(10)
-    val y: Option<Int> = None
+    val x = succeed() else 0
+    val y = fail() else 0
 }

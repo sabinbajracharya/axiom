@@ -93,6 +93,16 @@ impl TypeChecker {
             })
             .collect();
 
+        // Arms whose body unconditionally returns diverge — they don't
+        // contribute to the match expression's result type. Filter them
+        // out before comparing arm types.
+        let non_diverging: Vec<&Ty> = arm_types
+            .iter()
+            .zip(&match_expr.arms)
+            .filter(|(_, arm)| !is_diverging_expr(&arm.body))
+            .map(|(ty, _)| ty)
+            .collect();
+
         if !helpers::is_error(&scrutinee_ty) {
             let all_variants: Vec<String> = match &scrutinee_ty {
                 Ty::Enum(enum_ty) => self
@@ -116,15 +126,15 @@ impl TypeChecker {
             }
         }
 
-        let ty = if arm_types.is_empty() {
+        let ty = if non_diverging.is_empty() {
             Ty::Unit
         } else {
-            let first_type = &arm_types[0];
+            let first_type = non_diverging[0];
             let mut mismatch = false;
-            for (i, arm_ty) in arm_types.iter().enumerate().skip(1) {
+            for (i, arm_ty) in non_diverging.iter().enumerate().skip(1) {
                 if !helpers::is_error(arm_ty)
                     && !helpers::is_error(first_type)
-                    && *arm_ty != *first_type
+                    && *arm_ty != first_type
                 {
                     self.emit(TypeDiagnostic::MatchArmTypeMismatch {
                         expected: first_type.to_string(),
@@ -539,4 +549,39 @@ impl TypeChecker {
         self.types.insert(assign.id, ty.clone());
         ty
     }
+}
+
+/// Returns `true` if `expr` unconditionally diverges (e.g. contains a
+/// `return` with no fall-through path). Diverging expressions don't
+/// contribute to the result type of `match` or `if` expressions.
+fn is_diverging_expr(expr: &Expr) -> bool {
+    match expr {
+        Expr::Block(b) => {
+            b.tail.is_none()
+                && b.stmts
+                    .last()
+                    .is_some_and(|stmt| matches!(stmt, Stmt::ReturnStmt(_)))
+        }
+        Expr::If(e) => {
+            let then_diverges = is_diverging_expr_in_block(&e.then_branch);
+            let else_diverges = e
+                .else_branch
+                .as_ref()
+                .is_some_and(|eb| is_diverging_expr(eb));
+            then_diverges && else_diverges
+        }
+        Expr::Match(m) => {
+            // A match diverges if all arms diverge.
+            !m.arms.is_empty() && m.arms.iter().all(|arm| is_diverging_expr(&arm.body))
+        }
+        _ => false,
+    }
+}
+
+fn is_diverging_expr_in_block(block: &Block) -> bool {
+    block.tail.is_none()
+        && block
+            .stmts
+            .last()
+            .is_some_and(|stmt| matches!(stmt, Stmt::ReturnStmt(_)))
 }
