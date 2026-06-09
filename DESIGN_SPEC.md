@@ -32,7 +32,7 @@
 
 ## 0. Preamble & Identity
 
-**Axiom in one paragraph.** Axiom is a statically typed, compiled, general-purpose language that delivers deterministic memory safety **without a garbage collector and without lifetime annotations**. It reads like Swift/Kotlin, types like Rust (algebraic data types + exhaustive `match`), handles errors like Zig (error sets + `try`/`catch`/`errdefer`), and runs concurrency like Go (colorless green threads), but with one rule the others abandon: **there is one obvious way to do each thing, and the compiler enforces it.** Memory is managed by a hybrid of *Mutable Value Semantics* (borrowing as a calling convention, not a type) and *Perceus* compile-time reference counting. The result targets the gap between application languages (productive but GC-bound) and systems languages (fast but ceremony-heavy).
+**Axiom in one paragraph.** Axiom is a statically typed, compiled, general-purpose language that delivers deterministic memory safety **without a garbage collector and without lifetime annotations**. It reads like Swift/Kotlin, types like Rust (algebraic data types + exhaustive `match`), handles errors like Zig (error sets + `?`/`catch`/`errdefer`), and runs concurrency like Go (colorless green threads), but with one rule the others abandon: **there is one obvious way to do each thing, and the compiler enforces it.** Memory is managed by a hybrid of *Mutable Value Semantics* (borrowing as a calling convention, not a type) and *Perceus* compile-time reference counting. The result targets the gap between application languages (productive but GC-bound) and systems languages (fast but ceremony-heavy).
 
 **Audience decision [Decided].** Axiom targets **Path A — systems-capable**: zero-cost abstractions, no GC, predictable latency. This is a deliberate, eyes-open choice. The cost is that the memory model imposes an **exclusivity discipline** (see §4) that is real cognitive load — softer than Rust's borrow checker, but not free. We accept this cost because the whole point of the language is to prove that *no-GC + no-lifetimes + safety* can coexist with good ergonomics. If at any point the spike (§4.10) shows the exclusivity rule is intolerable in practice, the fallback is **Path B** (value semantics + Perceus with simpler borrows and an optional GC escape hatch) — documented in §4.11 but **not** the chosen path.
 
@@ -102,7 +102,7 @@ The language has a finite complexity budget and spends nearly all of it on the *
 val var fn struct enum trait impl
 let inout sink                 // parameter conventions (§4)
 match if else loop break continue return
-try catch errdefer error panic
+catch errdefer error panic
 mod use pub
 scope spawn                    // structured concurrency (§9)
 true false self Self
@@ -451,14 +451,14 @@ error NetError { Timeout, Refused }
 fn load() -> (FsError || NetError)!Config { ... }   // union of both error sets
 ```
 
-### 6.3 `try` propagation [Decided]
-`try expr` evaluates `expr`; on `Ok(v)` it yields `v`, on `Err(e)` it **returns `Err(e)` from the current function immediately**. The function's return type must be an error union/`Result`. This replaces Go's `if err != nil` boilerplate with one keyword.
+### 6.3 `?` propagation [Decided]
+`expr?` evaluates `expr`; on `Ok(v)` or `Some(v)` it yields `v`, on `Err(e)` or `None` it **returns from the current function immediately** (returning `Err(e)` for `Result` types, `None` for `Option` types). The function's return type must match the propagated type. This is the universal propagation operator — one syntax for both `Result` and `Option`.
 
 ### 6.4 `catch` [Decided]
 ```rust
 fn read_config(path: String) -> FsError!Config {
-    val file = try open(path)
-    val text = try file.read_all()
+    val file = open(path)?
+    val text = file.read_all()?
     return parse(text)
 }
 
@@ -480,8 +480,8 @@ val head = xs.first()?         // None → return None (propagate)
 val head = xs.first() else 0   // None → 0 (default)
 val head = xs.first() else compute()  // None → compute() (lazy default)
 ```
-- `?` postfix on `Option` in an `Option`-returning context propagates `None` (parallel to `try` for `Result`).
-- `expr else fallback` — evaluates the fallback expression if the LHS is `None`. `else` is for **Option** types only, just as `catch` is for **Result/error** types only. This mirrors Zig's `try`/`catch` for errors and `orelse` for null, using `else` instead of `orelse` since `else` already exists in the language. *(One mechanism each — `try`/`catch` for `Result`, `?`/`else` for `Option` — no overlap, per the singular-idiom rule. **Open §15:** revisit unifying them.)*
+- `?` postfix on `Option` in an `Option`-returning context propagates `None` (parallel to `?` on `Result` for errors). `?` is the universal propagation operator — works identically on both `Option` and `Result`.
+- `expr else fallback` — evaluates the fallback expression if the LHS is `None`. `else` is for **Option** types only, just as `catch` is for **Result/error** types only. This mirrors Zig's `catch` for errors and `orelse` for null, using `else` instead of `orelse` since `else` already exists in the language.
 - No implicit truthiness; `Option` is consumed by `match` or combinators (`map`, `unwrap_or`, ...).
 
 ---
@@ -562,7 +562,7 @@ xs.map(|x| x + 1)
 ### 9.1 Colorless execution [Decided]
 **No `async`/`await`, no `Future<T>` in signatures.** All functions look and compose identically regardless of whether they block. Concurrency is provided by **green threads** (user-space, M:N scheduled) managed by a runtime scheduler — the Go/Loom/Lua model. A blocking I/O call **parks** the green thread (saving its stack) and yields the OS thread to other runnable green threads; the scheduler resumes it when I/O completes.
 
-**Rationale.** Eliminates function coloring / async-contamination (§ the report's diagnosis is correct). You write linear, synchronous-looking code using ordinary `try`/`catch`/`match` and it runs asynchronously underneath.
+**Rationale.** Eliminates function coloring / async-contamination (§ the report's diagnosis is correct). You write linear, synchronous-looking code using ordinary `?`/`catch`/`match` and it runs asynchronously underneath.
 
 ### 9.2 Structured concurrency [Decided]
 **No `go func()` fire-and-forget.** All concurrency lives in a lexical **scope** (a nursery, à la Trio / Java StructuredTaskScope):
@@ -570,7 +570,7 @@ xs.map(|x| x + 1)
 fn fetch_all(let urls: List<String>) -> List<Response>!NetError {
     scope |s| {
         val handles = urls.map(|u| s.spawn(|| http_get(u)))   // spawn into the scope
-        handles.map(|h| try h.join())                         // collect results
+        handles.map(|h| h.join())                               // collect results
     }   // scope cannot exit until every spawned task has finished or been cancelled
 }
 ```
@@ -583,7 +583,7 @@ Typed **channels** for message passing between tasks (`Channel<T>`), CSP-style:
 ```rust
 val ch = Channel<Int>::new(capacity: 8)
 s.spawn(|| ch.send(compute()))
-val v = try ch.recv()
+val v = ch.recv()?
 ```
 Channels are the sanctioned cross-task communication primitive (singular idiom — not channels *and* shared-mutable-locks as co-equal options; locks exist but are positioned as low-level).
 
@@ -769,7 +769,7 @@ Each stage is independently shippable and testable. Risk is retired front-to-bac
 
 **v0 — End-to-end skeleton, NO memory model.** Lex → parse → typecheck → IR → Cranelift, for a value-semantics subset with naive "copy/refcount everything" (no exclusivity, no Perceus optimization). Goal: a `hello.ax` and basic programs run natively. Proves the pipeline. Includes the dual-backend + parity harness early. **Delivered:** user-defined structs, `HeapBuffer<T>` primitive, `Deinit` auto-impl, subscript declarations, generic struct method resolution, and migration of `List<T>`/`Map<K,V>` from compiler built-ins to library types (✅ **done** — `List`/`Map` are real `std::collections` `.ax` code; see `docs/builtin-to-stdlib-migration.md`). **Pulled forward from v1:** enums with payloads, traits with default methods + supertraits + impl-completeness checking, generics (type parameters + trait bounds), and `match` exhaustiveness checking (✅ **done** — all live in the typechecker).
 
-**v1 — The memory model.** Fold the spiked ownership pass + Perceus + reuse analysis into the real compiler. `val`/`var`, the three calling conventions, error handling (`try`/`catch`/`?`/`else`/error sets). **This is the language's identity landing.** Closures with the spiked capture model. Diagnostics for exclusivity errors held to release-gating quality. *(Enums, traits, generics, and `match` exhaustiveness — originally v1 items — were pulled forward into v0 and are already delivered.)* **`errdefer` is deferred** — MVS + Perceus + `Deinit` (§4.9) provides automatic cleanup; `catch`/`else` handlers cover side-effect logging at the call site. Revisit only if real code shows pervasive explicit-cleanup-on-error patterns.
+**v1 — The memory model.** Fold the spiked ownership pass + Perceus + reuse analysis into the real compiler. `val`/`var`, the three calling conventions, error handling (`?`/`catch`/`else`/error sets). **This is the language's identity landing.** Closures with the spiked capture model. Diagnostics for exclusivity errors held to release-gating quality. *(Enums, traits, generics, and `match` exhaustiveness — originally v1 items — were pulled forward into v0 and are already delivered.)* **`errdefer` is deferred** — MVS + Perceus + `Deinit` (§4.9) provides automatic cleanup; `catch`/`else` handlers cover side-effect logging at the call site. Revisit only if real code shows pervasive explicit-cleanup-on-error patterns.
 
 **v2 — Concurrency + ecosystem.** Green-thread scheduler, `scope`/`spawn`, channels, shared-immutable + move-into-task sharing. `forge` package manager with lockfiles + sandboxed builds + signature verification. LSP feature-complete. `Mutex<T>`/shared-mutable cell. Associated types / richer generics.
 
@@ -792,7 +792,7 @@ Honest list. Each is tagged with whether it may remain open (isolated behind a b
 | 5 | Cycle collection (§4.7) | **May stay open** — `Weak`/arena escape hatch exists; add collector only if leaks prove real |
 | 6 | `Int` overflow: checked / wrapping / `Result` (§2.6) | May stay open — leaning checked-debug + explicit wrapping methods; isolated |
 | 7 | String interpolation vs `format` only (§2.5/§11) | **✅ Resolved — `format` chosen.** `string::format` is implemented as the one variadic intrinsic (§11); interpolation stays rejected (singular idiom forbids both). Width/precision specs and user-type `Display` dispatch remain to be added. |
-| 8 | Unify `try` (Result) and `?` (Option) into one mechanism? (§6.5) | May stay open — cosmetic; decide before 1.0 |
+| 8 | Unify `try` (Result) and `?` (Option) into one mechanism? (§6.5) | **✅ Resolved — `?` chosen.** `try` removed; `?` is the universal propagation operator. Three keywords (`?`/`catch`/`else`) instead of four. See [`docs/error-handling-redesign.md`](docs/error-handling-redesign.md). |
 | 9 | Exact Perceus elision rate on real code (§4.5) | Empirical — measure in v1, don't promise a number |
 | 10 | Algebraic effects ever? (§9.5) | Rejected for v1; post-2.0 research track if user-schedulers needed |
 | 11 | **`errdefer`** (§6.4) — needed despite `Deinit`? | **Deferred from v1** — `Deinit` handles cleanup; `catch`/`else` handle side-effects. Revisit only if evidence of pervasive explicit-cleanup-on-error patterns. |
@@ -829,13 +829,13 @@ error_def   = "error" ident "{" { ident "," } "}" ;
 stmt        = let_stmt | expr_stmt | return_stmt | errdefer_stmt ;
 let_stmt    = ("val" | "var") pattern ( ":" type )? "=" expr ;
 expr        = literal | path | call | method_call | match_expr | if_expr
-            | loop_expr | closure | struct_init | try_expr | catch_expr
+            | loop_expr | closure | struct_init | question_expr | catch_expr
             | else_expr | binary | unary | subscript_access | block ;
 
 match_expr  = "match" expr "{" { arm "," } "}" ;
 arm         = pattern ( "if" expr )? "=>" expr ;
 loop_expr   = "loop" ( "if" expr | ident "in" expr )? block ;
-try_expr    = "try" expr | postfix "?" ;
+question_expr = postfix "?" ;
 catch_expr  = expr "catch" ( "|" ident "|" expr | expr ) ;
 else_expr   = expr "else" expr ;
 closure     = "|" params? "|" ( "->" type )? ( expr | block ) ;
@@ -895,7 +895,7 @@ fn fetch_all(let urls: List<String>) -> List<String>!http::Error {
     scope |s| {
         val handles = urls.map(|u| s.spawn(|| http::get_text(u)))
         var out = []
-        loop h in handles { out.push(try h.join()) }
+        loop h in handles { out.push(h.join()?) }
         out
     }
 }

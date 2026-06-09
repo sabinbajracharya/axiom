@@ -1,7 +1,7 @@
 # Error Handling Redesign: Unified `?` Propagation
 
-> **Status:** Proposed. Replaces the four-keyword design (`try`/`catch`/`?`/`else`)
-> with a three-keyword design (`?`/`catch`/`else`). Moves desugaring from
+> **Status:** Implemented. Replaces the four-keyword design (`try`/`catch`/`?`/`else`)
+> with a three-keyword design (`?`/`catch`/`else`). Moved desugaring from
 > pre-typecheck to post-typecheck. Resolves DESIGN_SPEC §15 question #8.
 
 ## Current state and why we're changing
@@ -68,12 +68,10 @@ error variants, use `match` explicitly.
 
 **Old pipeline:** source → lex → parse → lower → resolve → **desugar** → typecheck → ownership → rc-insert → IR
 
-**New pipeline:** source → lex → parse → lower → resolve → typecheck → **desugar** → ownership → rc-insert → IR
+**New pipeline:** source → lex → parse → lower → resolve → typecheck → **desugar(? only)** → ownership → rc-insert → IR
 
-Reason: unified `?` requires type information to desugar. `expr?` on
-`Result<T,E>` produces `Ok(v) => v, Err(e) => return Err(e)`. `expr?` on
-`Option<T>` produces `Some(v) => v, None => return None`. The typechecker must
-determine which before desugaring can proceed.
+Where `catch`/`else`/`ListLit` are desugared in the pre-typecheck pass (in resolver),
+and `?` is desugared post-typecheck (in typecheck crate) using `TypeMap`.
 
 This affects all sugar, not just `?`. `ListLit` currently desugars before
 typecheck too. Moving it after typecheck is correct — `ListLit` inference
@@ -254,10 +252,12 @@ if appropriate.
 | Name resolution | `Expr::Question` — recurse into `expr`. Same as old `Expr::Try` but no `is_option` field. |
 | Desugar pass | **Major change.** Moves from resolver (pre-typecheck) to a new location (post-typecheck). See below. |
 
-### Desugar pass — relocation
+### Desugar pass — relocation (as implemented)
 
-Currently the desugar pass lives in `crates/resolver/src/desugar/` and runs
-after name resolution, before typecheck. It needs to move to after typecheck.
+The desugar pass stayed in `crates/resolver/src/desugar/` for `catch`/`else`/`ListLit`
+(pre-typecheck, type-independent). The new `?` desugaring lives in
+`crates/typecheck/src/typecheck/question_desugar.rs` and runs post-typecheck via
+`check_with_lang_items` in the typecheck module.
 
 **Options:**
 
@@ -426,21 +426,17 @@ etc.).
 ## Implementation order
 
 ```
-Step 1: Update HIR types (TryExpr → QuestionExpr, remove is_option)
-Step 2: Update parser (remove TryExpr, remove KwTry, remove try grammar rule)
-Step 3: Update lower (remove lower_try_expr, update lower_question_expr)
-Step 4: Update typecheck (add inference rules for Question, Catch, Else, ListLit)
-Step 5: Move desugar from resolver to lower crate (post-typecheck entry point)
-Step 6: Update desugar (Question desugaring uses TypeMap, remove is_option branching)
-Step 7: Update driver pipeline (typecheck before desugar, pass TypeMap)
-Step 8: Update all fixtures and golden files
-Step 9: Update docs (DESIGN_SPEC, error-handling-plan, README)
-Step 10: Full test suite: fmt + clippy + test
+Step 1: Update HIR types (TryExpr → QuestionExpr, remove is_option)      ✅ done
+Step 2: Update parser (remove TryExpr, remove KwTry, remove try grammar)  ✅ done
+Step 3: Update lower (remove lower_try_expr, update lower_question_expr)  ✅ done
+Step 4: Update typecheck (add inference rules for Question, Catch, Else, ListLit) ✅ done
+Step 5: Move desugar from resolver to lower crate (post-typecheck entry)  ✅ done
+Step 6: Update desugar (Question desugaring uses TypeMap, remove is_option branching) ✅ done
+Step 7: Update driver pipeline (typecheck before desugar, pass TypeMap)    ✅ done
+Step 8: Update all fixtures and golden files                              ✅ done
+Step 9: Update docs (DESIGN_SPEC, error-handling-plan, README)           🔄 in progress
+Step 10: Full test suite: fmt + clippy + test                            ✅ done
 ```
-
-Each step is independently testable. Steps 1–3 can be done together (parser +
-lower + HIR types are tightly coupled). Steps 4–7 are the core of the change
-(typecheck + desugar relocation). Steps 8–10 are verification.
 
 ---
 
@@ -479,4 +475,4 @@ lower + HIR types are tightly coupled). Steps 4–7 are the core of the change
 - `test_desugar_catch_and_else_idempotent` updated (no `try` in source)
 
 **Relocated:**
-- Desugar pass: `crates/resolver/src/desugar/` → `crates/lower/src/desugar/` (or stays in resolver with post-typecheck entry)
+- Desugar pass: stays in `crates/resolver/src/desugar/` but with post-typecheck `?` desugaring moved to `crates/typecheck/src/typecheck/question_desugar.rs` (called from `check_with_lang_items` after typecheck completes). `catch`/`else`/`ListLit` desugaring stays pre-typecheck in the resolver.

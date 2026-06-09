@@ -1,12 +1,11 @@
-# Error Handling Implementation Plan — `try`/`catch`/`?`/`else`/error sets
+# Error Handling Implementation Plan — `?`/`catch`/`else`/error sets
 
-> Final design: four constructs, zero overlap, all sugar over `match` on enums.
-> Zig-style separation: `try`/`catch` for Result/error, `?`/`else` for Option/null.
+> **Updated design:** three constructs, zero overlap, all sugar over `match` on enums.
+> `?` is the universal propagation operator (both Result and Option).
+> `catch` for Result/error defaults, `else` for Option defaults.
+> `try` keyword has been **removed** (see [`error-handling-redesign.md`](error-handling-redesign.md)).
 > `errdefer` is **deferred** — MVS + Perceus + `Deinit` handles cleanup; `catch`/`else`
 > handle side-effects. Revisit only with evidence.
->
-> Based on thorough research of Zig's error handling semantics and the Axiom compiler
-> architecture.
 
 ## Language Surface
 
@@ -18,7 +17,7 @@ xs.first() else compute()      // None → compute() (lazy default)
 match xs.first() { ... }       // both branches
 
 // ── Result<T, E> (a.k.a. E!T) ──
-try open(path)                 // Err → return Err (propagate)
+open(path)?                    // Err → return Err (propagate)
 open(path) catch default        // Err → default
 open(path) catch |e| handle(e)  // Err → handler
 match open(path) { ... }       // both branches
@@ -26,13 +25,13 @@ match open(path) { ... }       // both branches
 
 | | Propagate | Default |
 |--|-----------|---------|
-| **Error** `Result<T, E>` | `try` | `catch` |
+| **Error** `Result<T, E>` | `?` | `catch` |
 | **Option** `Option<T>` | `?` | `else` |
 
-Four constructs. `try`/`catch` for errors, `?`/`else` for options. `match` for
-exhaustive handling. Zero overlap. Like Zig's `try`/`catch` for errors and
-`?` (orelse equivalent) for null — but using `else` instead of `orelse` since
-`else` already exists in the parser.
+Three constructs. `?` for propagation (type-determined — Option or Result).
+`catch` for error defaults, `else` for option defaults. `match` for
+exhaustive handling. Zero overlap. `try` has been removed — `?` is the
+universal propagation operator.
 
 ## Architecture Summary
 
@@ -43,12 +42,12 @@ Error handling touches every pipeline stage. Here's what exists and what's neede
              ======          ================     ========       =========         =====
 error set    ✅ CST parsed   ✅ HIR type         ✅ resolved     ✅ collected      N/A
 error union  ✅ CST parsed   ✅ HIR type         ✅ resolved     ✅ resolved       N/A
-try expr     ✅ CST parsed   ✅ HIR TryExpr      ✅ resolved     N/A (desugared)  N/A
-catch expr   ✅ CST parsed   ✅ HIR CatchExpr    ✅ resolved     N/A (desugared)  N/A
-else expr    ✅ CST parsed   ✅ HIR ElseExpr     ✅ resolved     N/A (desugared)  N/A
-? expr       ✅ CST parsed   ✅ HIR TryExpr      ✅ resolved     N/A (desugared)  N/A
+? expr       ✅ CST parsed   ✅ HIR QuestionExpr ✅ resolved     ✅ inferred       N/A
+catch expr   ✅ CST parsed   ✅ HIR CatchExpr    ✅ resolved     ✅ inferred       N/A
+else expr    ✅ CST parsed   ✅ HIR ElseExpr     ✅ resolved     ✅ inferred       N/A
 errdefer     ✅ parsed (scaffolded, not in spec) — deferred from v1
-desugar      N/A             N/A                ✅ try/catch/else/? → match       N/A
+desugar      N/A             N/A                ✅ catch/else/ListLit → match (pre-typecheck)
+             N/A             N/A                N/A             ✅ ? → match (post-typecheck)
 ```
 
 All error-handling expressions are desugared to `match` on enums during name
@@ -81,21 +80,26 @@ error context, `else` implies absence.
 `else` already exists in the parser as part of `if`/`else` — zero ambiguity
 since the parser always knows which context it's in.
 
-### Why `try` and `?` stay separate
+### Why `?` unifies Result and Option propagation
 
-Rust unifies them: `?` works on `Result` and `Option` via the `Try` trait. We
-chose to keep them separate because:
+`try` and `?` were originally separate: `try` for Result, `?` for Option. This was
+revised because:
 
-1. **They mean different things.** `try open(path)` says "this can fail." `xs.first()?`
-   says "this might be absent." Different semantics deserve different syntax.
-   Conflating them behind one operator hides a semantic distinction the compiler
-   should track — error coercion vs null checking.
-2. **`?` earns its brevity.** `?` is a single character after an expression, used on
-   nearly every line in Option-heavy code. Replacing it with `else return None` (18 chars)
-   adds noise. `try` doesn't need the same compression — error propagation is less
-   frequent than Option propagation.
-3. **Axiom's rule: one obvious way.** `try` is for errors. `?` is for absence. No
-   guessing which one to use.
+1. **Propagation is semantically identical.** `?` on both types does the same
+   thing: unwrap the success case, short-circuit the failure case. The only
+   difference is whether `Ok(v) => v` or `Some(v) => v`, and the type system
+   knows which.
+2. **Fewer concepts to learn.** Three operators instead of four. Developers
+   never ask "do I use `try` or `?` here?" — they use `?`, and the compiler
+   figures out the rest.
+3. **The singular-idiom rule is stronger, not weaker.** One way to propagate.
+   Two ways to handle (one per type, because handling *is* genuinely different
+   between "what went wrong" and "nothing was there").
+4. **Rust validated this.** The `Try` trait unifies `?` on `Result` and `Option`
+   (and `ControlFlow`, etc.). Axiom doesn't need a trait — it just types `?`
+   based on the operand, which is simpler and doesn't require HKT.
+
+See [`error-handling-redesign.md`](error-handling-redesign.md) for the full rationale.
 
 ### Why `errdefer` is deferred
 
@@ -149,11 +153,11 @@ small and lets `Result` live in the stdlib where it can be extended with combina
 1. **Error sets are unit-only** (no data payloads). Zig's design is battle-tested and keeps
    the implementation simple.
 
-2. **`try`/`catch`/`?`/`else` desugar to `match` on enums**. `Result<T, E>` and `Option<T>` are
-   user-defined generic enums. `try expr` → `match expr { Ok(v) => v, Err(e) => return Err(e) }`.
+2. **`?`/`catch`/`else` desugar to `match` on enums**. `Result<T, E>` and `Option<T>` are
+   user-defined generic enums. `expr?` → `match expr { Ok(v) => v, Err(e) => return Err(e) }`
+   (or `Some(v) => v, None => return None` for Option — determined by typecheck).
    `expr catch fallback` → `match expr { Ok(v) => v, Err(_) => fallback }`.
    `expr catch |e| handler` → `match expr { Ok(v) => v, Err(e) => handler }`.
-   `expr?` → `match expr { Some(v) => v, None => return None }`.
    `expr else fallback` → `match expr { Some(v) => v, None => fallback }`.
    No new IR ops needed.
 
@@ -161,23 +165,21 @@ small and lets `Result` live in the stdlib where it can be extended with combina
    `catch` says "the operation can fail." `else` says "the value might be absent."
    Using `catch` on an `Option` or `else` on a `Result` is a type error.
 
-4. **`?` is Option-only propagation**. Syntactic sugar for `else return None`. Too concise
-   and frequent to drop — appears on most lines in Option-heavy code.
+4. **`?` is the universal propagation operator.** Works on both `Result` and `Option`.
+   The typechecker determines the match arms (`Ok/Err` vs `Some/None`).
+   `try` has been removed — three keywords instead of four.
 
-5. **`try` is error-only propagation**. Reads as "try this operation" — implies it can fail.
-   Kept separate from `?` because errors and absence are different semantics.
-
-6. **`errdefer` is deferred**. With MVS + Perceus + `Deinit`, resource cleanup is automatic
+5. **`errdefer` is deferred**. With MVS + Perceus + `Deinit`, resource cleanup is automatic
    (like Rust's `Drop`). The remaining use cases (logging, side-effects) are rare enough
    that explicit `catch |e| { log(e); return Err(e) }` at the call site suffices.
 
-7. **Error union sugar `E!T`** ≡ `Result<T, E>`. The `!` in type position desugars to
+6. **Error union sugar `E!T`** ≡ `Result<T, E>`. The `!` in type position desugars to
    `Ty::Instance("Result", [T, Ty::ErrorSet(...)])` — no dedicated `Ty` variant needed.
 
-8. **Error set union `E1 || E2`** creates a new anonymous error set. Coercion is structural:
+7. **Error set union `E1 || E2`** creates a new anonymous error set. Coercion is structural:
    `error{A} → error{A,B}` is implicit; `error{A,B} → error{A}` is a compile error.
 
-9. **Error return traces** — deferred to v2 (optional, debug-mode only).
+8. **Error return traces** — deferred to v2 (optional, debug-mode only).
 
 ---
 
@@ -216,7 +218,7 @@ pub struct ErrorVariantDef {
 }
 ```
 
-### 1b. HIR Expression: `Try`, `Else`
+### 1b. HIR Expression: `Question`, `Catch`, `Else`
 
 **File: `crates/lower/src/hir_types/mod.rs`**
 
@@ -224,12 +226,20 @@ Add to the `Expr` enum:
 ```rust
 pub enum Expr {
     // ... existing variants ...
-    Try(TryExpr),     // NEW
-    Else(ElseExpr),   // NEW
+    Question(QuestionExpr),  // ? propagation (both Option and Result)
+    Catch(CatchExpr),        // error default
+    Else(ElseExpr),          // option default
 }
 
-pub struct TryExpr {
+pub struct QuestionExpr {
+    pub id: HirId,
+    pub expr: Box<Expr>,     // no is_option field — type determined by typecheck
+}
+
+pub struct CatchExpr {
     pub expr: Box<Expr>,
+    pub fallback: Box<Expr>,
+    pub error_binding: Option<Name>,
 }
 
 pub struct ElseExpr {
@@ -326,25 +336,23 @@ New function `lower_error_set_def()`:
   - Create `ErrorVariantDef { id, name }`
 - Return `ErrorSetDef { id, name, visibility, variants }`
 
-### 2b. Lower `TryExpr` (try + ?)
+### 2b. Lower `QuestionExpr` (? postfix)
 
 **File: `crates/lower/src/lowering/expr.rs`**
 
-The `TryExpr` CST node represents both `try expr` (error propagation, `is_option = false`)
-and `expr?` (Option propagation, `is_option = true`). Disambiguation checks for the `KwTry`
-keyword token.
+The `?` postfix produces a `QuestionExpr`. No `is_option` field — the typechecker
+determines whether it's Option or Result during type inference.
 
 ```rust
-fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx, node: &SyntaxNode) -> Expr {
-    let is_option = !node.children().iter().any(|c| c.kind() == SyntaxKind::KwTry);
-    let operand = lower_expr(/* ... */);
-    Expr::Try(TryExpr { id, expr: Box::new(operand), is_option })
+fn lower_question_expr(e: &ast::QuestionExpr, ctx: &mut LowerCtx) -> Expr {
+    let operand = lower_expr(ctx, &e.expr().unwrap())?;
+    Expr::Question(QuestionExpr { id: ctx.next_id(), expr: Box::new(operand) })
 }
 ```
 
-The desugar pass branches on `is_option`:
-- `false` (try) → `match { Ok(v) => v, Err(e) => return Err(e) }`
-- `true` (?) → `match { Some(v) => v, None => return None }`
+The post-typecheck desugar pass uses `TypeMap` to determine match arms:
+- `Option<T>` → `Some(v) => v, None => return None`
+- `Result<T,E>` → `Ok(v) => v, Err(e) => return Err(e)`
 
 ### 2c. Lower `ElseExpr`
 
@@ -436,12 +444,30 @@ Add `DefKind::ErrorSet` and `DefKind::ErrorVariant` to the filters in:
 
 ## Phase 4: Typechecking
 
-All error-handling expressions (`try`/`catch`/`else`/`?`) are desugared to `match`
-on enums during name resolution (Phase 5), before typechecking. Typecheck never sees
-these sugar variants — its `infer_expr` arms for `Try`/`Catch`/`Else` are `unreachable!`
-safety nets. The remaining typecheck work for error handling is:
+`catch` and `else` are desugared to `match` on enums during the pre-typecheck
+desugar pass (Phase 5). `?` passes through as `QuestionExpr` and is desugared
+post-typecheck using `TypeMap` to determine the correct match arms.
 
-### 4a. Collect error set definitions (Pass 1)
+### 4a. Type inference for `?`, `catch`, `else`, `ListLit`
+
+**File: `crates/typecheck/src/typeck/infer.rs`**
+
+These sugar variants now have real inference rules (not `unreachable!()`):
+
+- `QuestionExpr`: infer operand type; if `Option<T>`, result is `T`; if `Result<T,E>`, result is `T`. Error if neither.
+- `CatchExpr`: operand must be `Result<T,E>`; fallback must be `T`; result is `T`.
+- `ElseExpr`: operand must be `Option<T>`; fallback must be `T`; result is `T`.
+- `ListLitExpr`: all elements must be same type `T`; result is `List<T>`.
+
+### 4b. Post-typecheck `?` desugaring
+
+**File: `crates/typecheck/src/typeck/question_desugar.rs`** (new file)
+
+After typecheck completes, `check_with_lang_items` calls `question_desugar::desugar_question`
+which walks the HIR and replaces `QuestionExpr` nodes with `Match` nodes using the `TypeMap`
+to determine `Some/None` vs `Ok/Err` arms.
+
+### 4c. Error set coercion (Pass 2)
 
 **File: `crates/typecheck/src/typeck/collect.rs`**
 
@@ -545,34 +571,29 @@ Corpus additions under `corpus/errors/`:
 
 ## Phase 5: Desugaring (HIR → HIR)
 
-The desugar pass runs after name resolution, before typechecking. Each sugar
-expression is rewritten to core `match` expressions.
+The desugar pass has two phases:
+1. **Pre-typecheck** (in resolver): `catch`, `else`, `ListLit` → `match` (type-independent)
+2. **Post-typecheck** (in typecheck): `?` → `match` (type-dependent, uses `TypeMap`)
 
-### 5a. `try` desugaring
+### 5a. `?` desugaring (post-typecheck)
+
+**File: `crates/typecheck/src/typecheck/question_desugar.rs`**
+
+`expr?` → `match expr { Ok(v) => v, Err(e) => return Err(e) }` (for Result)
+or `match expr { Some(v) => v, None => return None }` (for Option).
+The type is determined from the `TypeMap` produced by typecheck.
+
+### 5b. `catch` desugaring (pre-typecheck)
 
 **File: `crates/resolver/src/desugar/mod.rs`**
-
-`try expr` → `match expr { Ok(v) => v, Err(e) => return Err(e) }`
-
-### 5b. `catch` desugaring
 
 `expr catch fallback` → `match expr { Ok(v) => v, Err(_) => fallback }`
 
 `expr catch |e| handler` → `match expr { Ok(v) => v, Err(e) => handler }`
 
-The `|e|` capture is extracted from a single-param closure in the lowerer
-and stored as `error_binding` on the `CatchExpr` HIR node.
-
-### 5c. `else` desugaring
+### 5c. `else` desugaring (pre-typecheck)
 
 `expr else fallback` → `match expr { Some(v) => v, None => fallback }`
-
-Option has no error value to capture — the None arm always uses a wildcard.
-
-### 5d. `?` desugaring
-
-`expr?` → `match expr { Some(v) => v, None => return None }`. No new HIR needed —
-lowered directly from the parser's `TryExpr` (postfix form) in Phase 2.
 
 ### Phase 5 Tests
 
@@ -588,19 +609,19 @@ lowered directly from the parser's `TryExpr` (postfix form) in Phase 2.
 
 ## Phase 6: IR Lowering + VM Execution
 
-Since `try`/`else`/`?` desugar to `match` on `Result<T, E>` or `Option<T>` (user-defined
+Since `?`/`catch`/`else` desugar to `match` on `Result<T, E>` or `Option<T>` (user-defined
 generic enums), the IR and VM need **zero new ops** for error handling. The existing
 `Match` terminator and `EnumNew`/`VariantPayload` instructions handle everything:
 
 ```
-try parse_int("42")
-// desugars to:
-match parse_int("42") {
+open(path)?
+// desugars to (after typecheck):
+match open(path) {
     Ok(v) => v,
     Err(e) => return Err(e),
 }
 // lowers to (simplified):
-//   %0 = Call parse_int("42")
+//   %0 = Call open(path)
 //   Match %0 [
 //     arm Ok(0) => { %1 = VariantPayload(%0, 0); jump merge }
 //     arm Err(0) => { %2 = VariantPayload(%0, 0); Return(EnumNew("Result", "Err", [%2])) }
@@ -644,12 +665,11 @@ Create:
 
 Add `"error"` to the `FRAGMENTS` array for fuzz coverage.
 
-### 7c. Disambiguate `TryExpr` overloading (deferred)
+### 7c. `?` is the sole propagation node
 
-The `TryExpr` CST node conflates `try expr` and `expr?`. This is acceptable for now
-(the lowerer disambiguates by checking child tokens), but should eventually be split
-into `TryExpr` (for error propagation) and `QuestionExpr` (for Option `?`).
-**Defer to post-v1 cleanup.**
+The parser produces `QuestionExpr` for `?` postfix. The old `TryExpr` CST node
+(which conflated `try expr` and `expr?`) has been removed. `try` is no longer
+a keyword — it's a valid identifier.
 
 ### Phase 7 Tests
 
@@ -706,6 +726,6 @@ single piece of work — the typechecking logic.
 |----------|-------------|
 | Error return traces | v2 — optional, debug-mode only; not blocking |
 | Add `errdefer` back | Dropped for now — `Deinit` covers cleanup, `else` covers side-effects |
-| Unify `try` (Result) and `?` (Option) | DESIGN_SPEC.md §15, question 8 |
+| Unify `try` (Result) and `?` (Option) | **✅ Resolved** — `?` is now universal; see `error-handling-redesign.md` |
 | `Result` as builtin vs stdlib type | Currently stdlib — revisit if perf requires builtin |
 | Error set with data payloads | Zig chose unit-only; Axiom follows. Revisit if evidence shows need |
