@@ -11,7 +11,6 @@ fn test_lang_items() -> LangItems {
         list_new: Some(HirId(101)),
         list_with_capacity: Some(HirId(102)),
         list_push: Some(HirId(103)),
-        into_iter: None,
     }
 }
 
@@ -381,7 +380,6 @@ fn test_desugar_fallback_when_lang_items_missing() {
         list_new: None,
         list_with_capacity: None,
         list_push: None,
-        into_iter: None,
     };
     let mut hir = Hir {
         items,

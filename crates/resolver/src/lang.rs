@@ -72,14 +72,6 @@ pub const LANG_LIST_NEW: &str = "list_new";
 pub const LANG_LIST_WITH_CAPACITY: &str = "list_with_capacity";
 /// The `@lang("…")` key for `List::push`.
 pub const LANG_LIST_PUSH: &str = "list_push";
-/// The `@lang("…")` key for `into_iter` (the method that converts a collection
-/// into an iterator, e.g. `List::into_iter`).
-///
-/// Note: `Iterator` trait and `Iterator::next` are NOT registered as lang
-/// items because `TraitDef`/`TraitMethod` don't support `@lang` attributes yet.
-/// The desugar pass emits `into_iter()`/`next()` as regular method calls
-/// resolved by typeck, so no lang items are required for them.
-pub const LANG_INTO_ITER: &str = "into_iter";
 
 /// Every lang-item key the compiler requires the stdlib to bind exactly once.
 /// Adding a key here without a stdlib `@lang` binding fails the build (the
@@ -90,7 +82,6 @@ pub const REQUIRED_LANG_ITEMS: &[&str] = &[
     LANG_LIST_NEW,
     LANG_LIST_WITH_CAPACITY,
     LANG_LIST_PUSH,
-    LANG_INTO_ITER,
 ];
 
 /// The compiler-required lang items, resolved to their real stdlib `DefId`s.
@@ -103,7 +94,6 @@ pub struct LangItems {
     pub list_new: Option<HirId>,
     pub list_with_capacity: Option<HirId>,
     pub list_push: Option<HirId>,
-    pub into_iter: Option<HirId>,
 }
 
 impl LangItems {
@@ -114,7 +104,6 @@ impl LangItems {
             LANG_LIST_NEW => self.list_new,
             LANG_LIST_WITH_CAPACITY => self.list_with_capacity,
             LANG_LIST_PUSH => self.list_push,
-            LANG_INTO_ITER => self.into_iter,
             _ => None,
         }
     }
@@ -127,7 +116,6 @@ impl LangItems {
             LANG_LIST_NEW => &mut self.list_new,
             LANG_LIST_WITH_CAPACITY => &mut self.list_with_capacity,
             LANG_LIST_PUSH => &mut self.list_push,
-            LANG_INTO_ITER => &mut self.into_iter,
             _ => return SetOutcome::Orphan,
         };
         if slot.is_some() {
@@ -247,7 +235,6 @@ mod tests {
             binding(LANG_LIST_NEW, 2),
             binding(LANG_LIST_WITH_CAPACITY, 3),
             binding(LANG_LIST_PUSH, 4),
-            binding(LANG_INTO_ITER, 5),
         ]
     }
 
@@ -259,14 +246,13 @@ mod tests {
         assert_eq!(items.list_new, Some(HirId(2)));
         assert_eq!(items.list_with_capacity, Some(HirId(3)));
         assert_eq!(items.list_push, Some(HirId(4)));
-        assert_eq!(items.into_iter, Some(HirId(5)));
     }
 
     #[test]
     fn test_resolve_lang_items_missing_required_emits_diagnostic() {
         // Drop `list_push`; the requirement check should flag exactly it.
         let mut bindings = full_bindings();
-        bindings.retain(|b| b.key != LANG_LIST_PUSH);
+        bindings.pop();
         let (_items, diags) = resolve_lang_items(&bindings, true);
         assert_eq!(diags.len(), 1, "diags: {diags:?}");
         assert!(matches!(

@@ -5,9 +5,6 @@
 // `push` doubles the buffer when full. No compiler intrinsics remain for
 // `List` — every method below has a real body (migration M6; see
 // docs/builtin-to-stdlib-migration.md).
-//
-// `List` is iterable via `into_iter()` (consuming) and `iter()` (shared
-// buffer). Both return a `ListIter<T>` which implements `Iterator<T>`.
 
 use std::mem::{alloc_buffer, free_buffer}
 
@@ -81,43 +78,5 @@ impl<T: Deinit> List<T> {
 
     subscript(inout self, index: Int, value: T) {
         self.buf[index] = value
-    }
-
-    // Consume the list and return an iterator over its elements.
-    @lang("into_iter")
-    fn into_iter(let self) -> ListIter<T> {
-        ListIter { list: self, index: 0 }
-    }
-
-    // Return an iterator without consuming the list. The backing buffer is
-    // refcounted by Perceus; the iterator shares the buffer so both the
-    // original list and the iterator remain valid (as long as no mutation
-    // occurs during iteration — enforced by exclusivity).
-    fn iter(let self) -> ListIter<T> {
-        ListIter { list: self, index: 0 }
-    }
-}
-
-/// An iterator over a `List<T>`. Created by `into_iter()` or `iter()`.
-/// Yields elements in insertion order. The backing buffer is shared via
-/// Perceus refcounting (no copy on `iter()`).
-pub struct ListIter<T: Deinit> {
-    list: List<T>,
-    index: Int,
-}
-
-// Note: `next` is an inherent method, not a trait impl. The type checker
-// does not yet unify generic types across match/if branches (the `T` in
-// `Option<T>` from `Some(v)` vs `None` differ structurally). Inherent
-// methods are resolved by name, so the loop desugar works without a trait
-// bound. When the type checker is fixed, add `impl Iterator<T> for ListIter<T>`.
-impl<T: Deinit> ListIter<T> {
-    fn next(inout self) -> Option<T> {
-        if self.index < self.list.count() {
-            val result = self.list[self.index]
-            self.index = self.index + 1
-            return Some(result)
-        }
-        None
     }
 }
