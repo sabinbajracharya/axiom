@@ -62,23 +62,29 @@ impl TypeChecker {
         if let Some(v) = &s.value {
             self.infer_expr(v);
         }
-        // Error set coercion: if the function declares an error set, check
-        // that returned error values' variants all belong to it.
         let fn_err = self.current_fn_error_set.clone();
-        if let (Some(ref fn_err), Some(v)) = (fn_err, &s.value) {
+        if let Some(v) = &s.value {
             let val_ty = self.types.get(&v.id()).cloned();
             if let Some(ref val_ty) = val_ty {
-                let returned_err = match val_ty {
-                    Ty::ErrorSet(es) => Some(es.clone()),
-                    Ty::Instance(_) => None, // named error set as value, defer
-                    _ => None,
-                };
-                if let Some(ref returned_err) = returned_err {
-                    for vn in &returned_err.variant_names {
-                        if !fn_err.variant_names.contains(vn) {
-                            self.emit(TypeDiagnostic::ErrorSetSupersetCoercion {
-                                expected: fn_err.variant_names.join(" || "),
-                                found: vn.clone(),
+                match fn_err {
+                    Some(ref fn_err) => {
+                        // Error set coercion: check returned variants ⊆ declared set.
+                        if let Ty::ErrorSet(ref returned_err) = val_ty {
+                            for vn in &returned_err.variant_names {
+                                if !fn_err.variant_names.contains(vn) {
+                                    self.emit(TypeDiagnostic::ErrorSetSupersetCoercion {
+                                        expected: fn_err.variant_names.join(" || "),
+                                        found: vn.clone(),
+                                        span: lexer::Span { lo: 0, hi: 0 },
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    None => {
+                        // No error set declared, but returning an error variant.
+                        if let Ty::ErrorSet(_) = val_ty {
+                            self.emit(TypeDiagnostic::TryInNonErrorFn {
                                 span: lexer::Span { lo: 0, hi: 0 },
                             });
                         }

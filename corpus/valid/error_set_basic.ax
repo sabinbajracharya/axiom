@@ -1,0 +1,6 @@
+error IO {
+    NotFound,
+    WriteError,
+}
+
+fn main() {}

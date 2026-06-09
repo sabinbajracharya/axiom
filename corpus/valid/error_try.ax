@@ -1,0 +1,7 @@
+fn main() {
+    val x: Result<Int, String> = Ok(42)
+    match x {
+        Ok(v) => {}
+        Err(_) => {}
+    }
+}

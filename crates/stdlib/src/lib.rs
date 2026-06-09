@@ -1,6 +1,6 @@
 //! The embedded standard library — the single source of truth for stdlib source.
 //!
-//! `build.rs` walks `stdlib/` at compile time and bakes every `.ax` module into
+//! `build.rs` walks `source/` at compile time and bakes every `.ax` module into
 //! this crate as `(module_path, source)` pairs. The compiler therefore carries
 //! its own stdlib inside the binary: no hardcoded file list to drift, no runtime
 //! disk dependency. All compilation paths load the stdlib from here (see
@@ -44,12 +44,7 @@ mod tests {
     use std::path::Path;
 
     fn stdlib_dir() -> std::path::PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("stdlib")
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("source")
     }
 
     #[test]

@@ -1,0 +1,12 @@
+error IO {
+    NotFound,
+}
+error NetError {
+    Timeout,
+}
+
+fn f() -> Int!IO {
+    return Err(Timeout)
+}
+
+fn main() {}

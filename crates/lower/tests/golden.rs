@@ -36,7 +36,7 @@ fn normalize(s: &str) -> String {
 fn stdlib_exports() -> Option<resolver::GlobalExports> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = manifest.parent()?.parent()?;
-    let stdlib = workspace.join("stdlib");
+    let stdlib = workspace.join("crates/stdlib/source");
     if !stdlib.exists() {
         return None;
     }

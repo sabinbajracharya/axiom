@@ -30,7 +30,7 @@ fn normalize(s: &str) -> String {
 fn load_stdlib_defs() -> Option<Vec<(String, Vec<lower::Def>)>> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = manifest.parent()?.parent()?;
-    let stdlib = workspace.join("stdlib");
+    let stdlib = workspace.join("crates/stdlib/source");
     if !stdlib.exists() {
         return None;
     }
@@ -57,7 +57,7 @@ fn load_stdlib_defs() -> Option<Vec<(String, Vec<lower::Def>)>> {
 fn load_stdlib_modules() -> Option<Vec<ModuleData>> {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = manifest.parent()?.parent()?;
-    let stdlib = workspace.join("stdlib");
+    let stdlib = workspace.join("crates/stdlib/source");
     if !stdlib.exists() {
         return None;
     }

@@ -1,0 +1,12 @@
+error Shape {
+    Circle,
+    Rect,
+}
+
+fn main() {
+    val s: Shape = Circle
+    match s {
+        Circle => 1
+        // Missing: Rect
+    }
+}

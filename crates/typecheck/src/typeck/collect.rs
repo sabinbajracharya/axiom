@@ -294,7 +294,7 @@ impl TypeChecker {
     /// hand-written generic stand-in. Signatures only: the bodies are *not*
     /// added to `hir.items`, so THIR dumps stay focused on user code.
     fn inject_prelude_sigs(&mut self) {
-        const PRELUDE_IO: &str = include_str!("../../../../stdlib/std/io.ax");
+        const PRELUDE_IO: &str = include_str!("../../../../crates/stdlib/source/std/io.ax");
         let result = parser::parse(PRELUDE_IO);
         let Some(root) = parser::ast::SourceFile::cast(result.tree) else {
             return;

@@ -1,0 +1,4 @@
+fn main() {
+    val x: Option<Int> = Some(10)
+    val y: Option<Int> = None
+}

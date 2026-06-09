@@ -164,6 +164,11 @@ fn default_exclusions() -> BTreeSet<(String, String)> {
     only_in("error_set_basic", &["lower"]);
     only_in("error_handling_basic", &["lower"]);
 
+    // ── Corpus-only (end-to-end tests, no per-stage fixtures) ──
+    only_in("error_try", &["corpus"]);
+    only_in("error_else", &["corpus"]);
+    only_in("error_results", &["corpus"]);
+
     // ── IR + VM only (integer literal matching, no per-layer .ax fixtures) ──
     for feature in ["int_match", "multi_fn"] {
         only_in(feature, &["ir", "vm"]);
