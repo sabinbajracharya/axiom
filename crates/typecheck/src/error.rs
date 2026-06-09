@@ -253,6 +253,14 @@ pub enum TypeDiagnostic {
         type_name: String,
         span: Span,
     },
+
+    #[error("`self` convention mismatch in `{method}`: trait declares `{expected}`, impl uses `{found}`")]
+    SelfConventionMismatch {
+        method: String,
+        expected: String,
+        found: String,
+        span: Span,
+    },
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -290,7 +298,8 @@ impl TypeDiagnostic {
             | TypeDiagnostic::UnsatisfiedBound { span, .. }
             | TypeDiagnostic::ErrorSetSupersetCoercion { span, .. }
             | TypeDiagnostic::TryInNonErrorFn { span, .. }
-            | TypeDiagnostic::OrphanImpl { span, .. } => *span,
+            | TypeDiagnostic::OrphanImpl { span, .. }
+            | TypeDiagnostic::SelfConventionMismatch { span, .. } => *span,
         }
     }
 
@@ -339,6 +348,7 @@ impl TypeDiagnostic {
             TypeDiagnostic::ErrorSetSupersetCoercion { .. } => "error_set_superset_coercion",
             TypeDiagnostic::TryInNonErrorFn { .. } => "try_in_non_error_fn",
             TypeDiagnostic::OrphanImpl { .. } => "orphan_impl",
+            TypeDiagnostic::SelfConventionMismatch { .. } => "self_convention_mismatch",
         }
     }
 }

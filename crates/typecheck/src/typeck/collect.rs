@@ -481,15 +481,55 @@ impl TypeChecker {
         let Some(trait_info) = self.trait_registry.get(trait_name).cloned() else {
             return;
         };
+
+        // Build a map of trait method name → self convention for comparison.
+        let trait_conventions: HashMap<String, String> = self
+            .hir
+            .items
+            .iter()
+            .find_map(|item| match item {
+                Item::TraitDef(t) if t.name == trait_name => {
+                    let mut map = HashMap::new();
+                    for m in &t.methods {
+                        if let Some(s) = m.params.iter().find(|p| p.name == "self") {
+                            map.insert(m.name.clone(), s.convention.to_string());
+                        }
+                    }
+                    Some(map)
+                }
+                _ => None,
+            })
+            .unwrap_or_default();
+
         for required in &trait_info.required_methods {
-            let has_method = impl_def.methods.iter().any(|m| m.name == required.name);
-            if !has_method {
+            let impl_method = impl_def.methods.iter().find(|m| m.name == required.name);
+            if impl_method.is_none() {
                 self.emit(TypeDiagnostic::MissingTraitMethod {
                     trait_name: trait_name.to_string(),
                     type_name: type_name.to_string(),
                     method: required.name.clone(),
                     span: self.span_for(impl_def.id),
                 });
+                continue;
+            }
+            // Check self-parameter convention matches the trait declaration.
+            if let Some(expected_conv) = trait_conventions.get(&required.name) {
+                let impl_self = impl_method
+                    .unwrap()
+                    .params
+                    .iter()
+                    .find(|p| p.name == "self");
+                if let Some(s) = impl_self {
+                    let found_conv = s.convention.to_string();
+                    if *expected_conv != found_conv {
+                        self.emit(TypeDiagnostic::SelfConventionMismatch {
+                            method: required.name.clone(),
+                            expected: expected_conv.clone(),
+                            found: found_conv,
+                            span: self.span_for(impl_def.id),
+                        });
+                    }
+                }
             }
         }
     }

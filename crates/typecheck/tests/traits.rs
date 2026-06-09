@@ -260,6 +260,54 @@ fn main() { }",
 }
 
 #[test]
+fn test_self_convention_mismatch_detected() {
+    let thir = check_source(
+        "trait Greet {
+    fn say(inout self);
+}
+struct Person {}
+impl Greet for Person {
+    fn say(let self) { }
+}
+fn main() { }",
+    );
+    let mismatches: Vec<_> = thir
+        .diagnostics
+        .iter()
+        .filter(|d| d.kind() == "self_convention_mismatch")
+        .collect();
+    assert!(
+        !mismatches.is_empty(),
+        "expected self_convention_mismatch (trait: inout, impl: let), got: {:?}",
+        thir.diagnostics
+    );
+}
+
+#[test]
+fn test_self_convention_matching_is_ok() {
+    let thir = check_source(
+        "trait Greet {
+    fn say(let self);
+}
+struct Person {}
+impl Greet for Person {
+    fn say(let self) { }
+}
+fn main() { }",
+    );
+    let mismatches: Vec<_> = thir
+        .diagnostics
+        .iter()
+        .filter(|d| d.kind() == "self_convention_mismatch")
+        .collect();
+    assert!(
+        mismatches.is_empty(),
+        "expected no self_convention_mismatch, got: {:?}",
+        thir.diagnostics
+    );
+}
+
+#[test]
 fn test_trait_method_type_param_in_return_type_resolves() {
     // The return type `S` must resolve as the method's own type param.
     let thir = check_source(
