@@ -320,10 +320,22 @@ fn lower_loop_expr(e: &ast::LoopExpr, ctx: &mut LowerCtx) -> Expr {
         .map(|b| lower_block(&b, ctx))
         .unwrap_or_else(|| unit_block(ctx));
     let kind = if e.is_iterator() {
+        // Extract the binding name from the loop pattern.
+        // The pattern is an IdentPat: `IdentPat → Path → PathSegment → Ident token`.
+        // Use the same approach as `lower_ident_pattern` in `pattern.rs`.
         let binding = e
             .iter_pattern()
             .and_then(ast::IdentPat::cast)
-            .and_then(|ip| ip.name_token())
+            .and_then(|ip| {
+                ip.syntax().child_nodes().into_iter().find_map(|n| {
+                    ast::Path::cast(n).and_then(|path| {
+                        path.segments()
+                            .into_iter()
+                            .last()
+                            .and_then(|seg| seg.name_token())
+                    })
+                })
+            })
             .map(|t| t.text().to_string())
             .unwrap_or_default();
         let binding_id = ctx.alloc_id();

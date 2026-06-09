@@ -118,9 +118,16 @@ pub fn resolve_with_globals(
 
 /// The implicit prelude: modules whose pub items are in scope everywhere
 /// without an explicit `use`. `core::traits` (Deinit/Equatable/Hashable/Ord —
-/// the always-available behavioral vocabulary), `core::option` (`Option`/`Some`/
-/// `None`), `core::result` (`Result`/`Ok`/`Err`), and `std::io` (print/println).
-const PRELUDE_MODULES: &[&str] = &["core::traits", "core::option", "core::result", "std::io"];
+/// the always-available behavioral vocabulary), `core::iter` (Iterator +
+/// default methods), `core::option` (`Option`/`Some`/`None`), `core::result`
+/// (`Result`/`Ok`/`Err`), and `std::io` (print/println).
+const PRELUDE_MODULES: &[&str] = &[
+    "core::traits",
+    "core::iter",
+    "core::option",
+    "core::result",
+    "std::io",
+];
 
 /// Inject the implicit prelude into a module's top-level scope: the pub items of
 /// each `PRELUDE_MODULES` entry, at lowest priority — `or_insert` so a module's

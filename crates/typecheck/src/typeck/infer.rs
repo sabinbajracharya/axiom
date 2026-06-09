@@ -142,6 +142,8 @@ impl TypeChecker {
                     } else {
                         Ty::Error
                     }
+                } else if let Some(info) = self.env.lookup(&u.text) {
+                    info.ty.clone()
                 } else {
                     Ty::Error
                 }

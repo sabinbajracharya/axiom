@@ -1,3 +1,6 @@
+TraitDef(0) name=Iterator<T> vis=pub methods=[
+  Method(2) name=next params=[inout self: _] return=Option→0<T→1>
+]
 EnumDef(0) name=Option<T> vis=pub variants=[
   Variant(2) name=Some(T→1)
   Variant(3) name=None
@@ -149,10 +152,29 @@ ImplDef(6) List→1<T: Deinit→<unresolved>> methods=[
     ExprStmt(123) Path(125) self→75.buf = Path(126) new_buf→92
     tail: Path(129) self→75.cap = Path(130) new_cap→77
   }
-  SubscriptDef(131) (self, index) -> T→7 body
-    tail: Path(138) self→132.Field(137) buf[Path(139) index→133]
-  SubscriptDef(140) set (self, index, value) body
-    tail: Path(148) self→141.Field(147) buf[Path(149) index→142] = Path(150) value→143
+  FnDef(131) name=into_iter vis=private params=[let self: _] return=ListIter→165<T→7> {
+    tail: StructLit(135) ListIter→165 { list: Path(136) self→132, index: Lit(137) Int(0) }
+  }
+  FnDef(138) name=iter vis=private params=[let self: _] return=ListIter→165<T→7> {
+    tail: StructLit(142) ListIter→165 { list: Path(143) self→139, index: Lit(144) Int(0) }
+  }
+  SubscriptDef(145) (self, index) -> T→7 body
+    tail: Path(152) self→146.Field(151) buf[Path(153) index→147]
+  SubscriptDef(154) set (self, index, value) body
+    tail: Path(162) self→155.Field(161) buf[Path(163) index→156] = Path(164) value→157
+]
+StructDef(165) name=ListIter<T: Deinit→<unresolved>> vis=pub fields=[private list: List→1<T→166>, private index: Int→<unresolved>]
+ImplDef(169) ListIter→165<T: Deinit→<unresolved>> methods=[
+  FnDef(171) name=next vis=private params=[inout self: _] return=Option→0<T→170> {
+    ExprStmt(174) If(175) Bin(176) <(Path(178) self→172.Field(177) index, Path(181) self→172.Field(180) list.Method(179) count()) Block(182) {
+      ValStmt(189) Ident(183) result→183: _ = Path(186) self→172.Field(185) list[Path(188) self→172.Field(187) index]
+      ExprStmt(190) Path(192) self→172.index = Bin(193) +(Path(195) self→172.Field(194) index, Lit(196) Int(1))
+      tail: Block(198) {
+        ReturnStmt(201) Call(199) Some→2(Path(200) result→183)
+      }
+    }
+    tail: Path(203) None→3
+  }
 ]
 UseItem(0) std::mem{alloc_buffer, free_buffer}
 StructDef(1) name=Map<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=private fields=[private keys: [K→2], private vals: [V→3], private used: [Bool→<unresolved>], private count: Int→<unresolved>, private cap: Int→<unresolved>]
@@ -291,9 +313,16 @@ ImplDef(9) Map→1<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Dei
     ExprStmt(440) Call(441) free_buffer→4(Path(442) old_vals→376)
     tail: Call(444) free_buffer→4(Path(445) old_used→380)
   }
-  SubscriptDef(446) (self, key) -> V→11 body
-    tail: Path(453) self→447.Field(452) vals[Path(455) self→447.Method(454) find_slot(Path(456) key→448)]
+  FnDef(446) name=into_iter vis=private params=[let self: _] return=MapIter→471<K→10, V→11> {
+    tail: StructLit(450) MapIter→471 { map: Path(451) self→447, index: Lit(452) Int(0) }
+  }
+  FnDef(453) name=iter vis=private params=[let self: _] return=MapIter→471<K→10, V→11> {
+    tail: StructLit(457) MapIter→471 { map: Path(458) self→454, index: Lit(459) Int(0) }
+  }
+  SubscriptDef(460) (self, key) -> V→11 body
+    tail: Path(467) self→461.Field(466) vals[Path(469) self→461.Method(468) find_slot(Path(470) key→462)]
 ]
+StructDef(471) name=MapIter<K: Hashable→<unresolved> + Equatable→<unresolved>, V: Deinit→<unresolved>> vis=pub fields=[private map: Map→1<K→472, V→473>, private index: Int→<unresolved>]
 UseItem(0) core::platform::write
 FnDef(1) name=print vis=pub params=[let s: String→<unresolved>] return=_ {
   ExprStmt(4) Call(5) write→0(Lit(6) Int(1), Path(8) s→2.Method(7) as_bytes())
@@ -310,11 +339,11 @@ FnDef(8) name=get_buffer<T> vis=pub params=[let buf: [T→9], let index: Int→<
 }
 FnDef(13) name=set_buffer<T> vis=pub params=[let buf: [T→14], let index: Int→<unresolved>, let value: T→14] return=_ {
 }
-UseItem(449) utils::greet
-FnDef(450) name=main vis=private params=[] return=_ {
-  tail: Call(453) greet→456(Lit(454) String("world"))
+UseItem(476) utils::greet
+FnDef(477) name=main vis=private params=[] return=_ {
+  tail: Call(480) greet→483(Lit(481) String("world"))
 }
-UseItem(455) std::io::print
-FnDef(456) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
-  tail: Call(460) print→1(Path(461) name→457)
+UseItem(482) std::io::print
+FnDef(483) name=greet vis=pub params=[let name: String→<unresolved>] return=_ {
+  tail: Call(487) print→1(Path(488) name→484)
 }

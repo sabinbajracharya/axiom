@@ -178,4 +178,29 @@ impl<K: Hashable + Equatable, V: Deinit> Map<K, V> {
     subscript(self, key: K) -> V {
         self.vals[self.find_slot(key)]
     }
+
+    // Consume the map and return an iterator over its (key, value) entries.
+    fn into_iter(let self) -> MapIter<K, V> {
+        MapIter { map: self, index: 0 }
+    }
+
+    // Return an iterator without consuming the map. The backing buffers are
+    // refcounted by Perceus; the iterator shares them so both the original
+    // map and the iterator remain valid (as long as no mutation occurs
+    // during iteration — enforced by exclusivity).
+    fn iter(let self) -> MapIter<K, V> {
+        MapIter { map: self, index: 0 }
+    }
 }
+
+/// An iterator over the (key, value) entries of a `Map<K, V>`, in insertion
+/// order. Created by `into_iter()` or `iter()`. The backing arrays are shared
+/// via Perceus refcounting.
+pub struct MapIter<K: Hashable + Equatable, V: Deinit> {
+    map: Map<K, V>,
+    index: Int,
+}
+
+// Note: `next` on MapIter is deferred as a trait impl until typeck handles
+// generic types across branches. Inherent method available when needed.
+
