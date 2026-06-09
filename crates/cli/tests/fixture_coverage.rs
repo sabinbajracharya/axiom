@@ -158,6 +158,12 @@ fn default_exclusions() -> BTreeSet<(String, String)> {
     only_in("struct_literal", &["lower"]);
     only_in("trait_supertrait", &["parser", "lower"]);
 
+    // ── Error handling (parser/lower only, desugared before later stages) ──
+    only_in("else_basic", &["parser"]);
+    only_in("error_set_union", &["parser"]);
+    only_in("error_set_basic", &["lower"]);
+    only_in("error_handling_basic", &["lower"]);
+
     // ── IR + VM only (integer literal matching, no per-layer .ax fixtures) ──
     for feature in ["int_match", "multi_fn"] {
         only_in(feature, &["ir", "vm"]);

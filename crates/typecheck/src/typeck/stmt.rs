@@ -76,7 +76,7 @@ impl TypeChecker {
                 if let Some(ref returned_err) = returned_err {
                     for vn in &returned_err.variant_names {
                         if !fn_err.variant_names.contains(vn) {
-                            self.emit(TypeDiagnostic::TypeMismatch {
+                            self.emit(TypeDiagnostic::ErrorSetSupersetCoercion {
                                 expected: fn_err.variant_names.join(" || "),
                                 found: vn.clone(),
                                 span: lexer::Span { lo: 0, hi: 0 },

@@ -1,0 +1,73 @@
+SourceFile @ 0..68
+  FnDef @ 0..67
+    KwFn @ 0..2 "fn"
+    Name @ 2..7
+      Whitespace @ 2..3 " "
+      Ident @ 3..7 "main"
+    ParamList @ 7..9
+      LParen @ 7..8 "("
+      RParen @ 8..9 ")"
+    BlockExpr @ 9..67
+      Whitespace @ 9..10 " "
+      LBrace @ 10..11 "{"
+      LetStmt @ 11..34
+        Newline @ 11..12 "\n"
+        Whitespace @ 12..16 "    "
+        KwVal @ 16..19 "val"
+        IdentPat @ 19..21
+          Path @ 19..21
+            PathSegment @ 19..21
+              Whitespace @ 19..20 " "
+              Ident @ 20..21 "x"
+        Whitespace @ 21..22 " "
+        Eq @ 22..23 "="
+        ElseExpr @ 23..34
+          CallExpr @ 23..27
+            PathExpr @ 23..25
+              Path @ 23..25
+                PathSegment @ 23..25
+                  Whitespace @ 23..24 " "
+                  Ident @ 24..25 "f"
+            ArgList @ 25..27
+              LParen @ 25..26 "("
+              RParen @ 26..27 ")"
+          Whitespace @ 27..28 " "
+          KwElse @ 28..32 "else"
+          LiteralExpr @ 32..34
+            Whitespace @ 32..33 " "
+            IntLit @ 33..34 "0"
+      LetStmt @ 34..65
+        Newline @ 34..35 "\n"
+        Whitespace @ 35..39 "    "
+        KwVal @ 39..42 "val"
+        IdentPat @ 42..44
+          Path @ 42..44
+            PathSegment @ 42..44
+              Whitespace @ 42..43 " "
+              Ident @ 43..44 "y"
+        Whitespace @ 44..45 " "
+        Eq @ 45..46 "="
+        ElseExpr @ 46..65
+          CallExpr @ 46..50
+            PathExpr @ 46..48
+              Path @ 46..48
+                PathSegment @ 46..48
+                  Whitespace @ 46..47 " "
+                  Ident @ 47..48 "g"
+            ArgList @ 48..50
+              LParen @ 48..49 "("
+              RParen @ 49..50 ")"
+          Whitespace @ 50..51 " "
+          KwElse @ 51..55 "else"
+          CallExpr @ 55..65
+            PathExpr @ 55..63
+              Path @ 55..63
+                PathSegment @ 55..63
+                  Whitespace @ 55..56 " "
+                  Ident @ 56..63 "compute"
+            ArgList @ 63..65
+              LParen @ 63..64 "("
+              RParen @ 64..65 ")"
+      Newline @ 65..66 "\n"
+      RBrace @ 66..67 "}"
+  Newline @ 67..68 "\n"

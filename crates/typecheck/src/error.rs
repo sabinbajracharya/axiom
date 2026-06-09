@@ -236,6 +236,18 @@ pub enum TypeDiagnostic {
         param: String,
         span: Span,
     },
+
+    #[error("error set mismatch: `{found}` is not a member of declared error set `{expected}`")]
+    ErrorSetSupersetCoercion {
+        expected: String,
+        found: String,
+        span: Span,
+    },
+
+    #[error(
+        "`try` is only allowed in functions that return an error union (`E!T` or `Result<T, E>`)"
+    )]
+    TryInNonErrorFn { span: Span },
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -270,7 +282,9 @@ impl TypeDiagnostic {
             | TypeDiagnostic::TypeNotFoundForImpl { span, .. }
             | TypeDiagnostic::NoWritableSubscript { span, .. }
             | TypeDiagnostic::DuplicateSubscript { span, .. }
-            | TypeDiagnostic::UnsatisfiedBound { span, .. } => *span,
+            | TypeDiagnostic::UnsatisfiedBound { span, .. }
+            | TypeDiagnostic::ErrorSetSupersetCoercion { span, .. }
+            | TypeDiagnostic::TryInNonErrorFn { span, .. } => *span,
         }
     }
 
@@ -316,6 +330,8 @@ impl TypeDiagnostic {
             TypeDiagnostic::NoWritableSubscript { .. } => "no_writable_subscript",
             TypeDiagnostic::DuplicateSubscript { .. } => "duplicate_subscript",
             TypeDiagnostic::UnsatisfiedBound { .. } => "unsatisfied_bound",
+            TypeDiagnostic::ErrorSetSupersetCoercion { .. } => "error_set_superset_coercion",
+            TypeDiagnostic::TryInNonErrorFn { .. } => "try_in_non_error_fn",
         }
     }
 }

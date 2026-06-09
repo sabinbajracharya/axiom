@@ -123,3 +123,19 @@ impl TypeChecker {
         })
     }
 }
+
+/// Extract the error set from a function's return type.
+/// Returns `Some(ErrorSetTy)` when the return type is `Instance("Result", [_, E])`
+/// where `E` is an error set or error set union. Returns `None` for all other types.
+pub(super) fn extract_error_set_from_type(ty: &crate::types::Ty) -> Option<ErrorSetTy> {
+    match ty {
+        crate::types::Ty::Instance(inst) if inst.name == "Result" && inst.args.len() == 2 => {
+            match &inst.args[1] {
+                crate::types::Ty::ErrorSet(es) => Some(es.clone()),
+                crate::types::Ty::Instance(_) => None,
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}

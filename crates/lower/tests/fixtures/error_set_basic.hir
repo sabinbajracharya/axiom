@@ -1,0 +1,1 @@
+ErrorSetDef(0) name=IO vis=private vars=[NotFound(1), WriteError(2)]

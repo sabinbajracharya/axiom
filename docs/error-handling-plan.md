@@ -40,13 +40,16 @@ Error handling touches every pipeline stage. Here's what exists and what's neede
              ======          ================     ========       =========         =====
 error set    ✅ CST parsed   ✅ HIR type         ✅ resolved     ✅ collected      N/A
 error union  ✅ CST parsed   ✅ HIR type         ✅ resolved     ✅ resolved       N/A
-try expr     ✅ CST parsed   ✅ HIR TryExpr      ✅ resolved     ❌ NotYetSupported N/A
-catch expr   ✅ CST parsed   ✅ HIR CatchExpr    ✅ resolved     ❌ NotYetSupported N/A
-else expr    ✅ CST parsed   ✅ HIR ElseExpr     ✅ resolved     ❌ NotYetSupported N/A
-desugar      N/A             N/A                ✅ try/catch/else → match            N/A
+try expr     ✅ CST parsed   ✅ HIR TryExpr      ✅ resolved     N/A (desugared)  N/A
+catch expr   ✅ CST parsed   ✅ HIR CatchExpr    ✅ resolved     N/A (desugared)  N/A
+else expr    ✅ CST parsed   ✅ HIR ElseExpr     ✅ resolved     N/A (desugared)  N/A
+? expr       ✅ CST parsed   ✅ HIR TryExpr      ✅ resolved     N/A (desugared)  N/A
+desugar      N/A             N/A                ✅ try/catch/else/? → match       N/A
 ```
 
-The parser and desugar layers are complete. Typechecking for try/catch/else is deferred.
+All error-handling expressions are desugared to `match` on enums during name
+resolution, before typechecking. Typecheck never sees `Try`/`Catch`/`Else` —
+its `infer_expr` arms for those are `unreachable!` safety nets.
 
 Note: `CatchExpr` (error default) and `ElseExpr` (option default) are separate CST + HIR nodes.
 The `catch` keyword is a full first-class keyword (not just reserved).
@@ -117,12 +120,13 @@ context" (the data payload) — cleaner and more composable.
 **Alternatives rejected:**
 - Error variants with payloads (like Rust enums) → complicates error set coercion
 
-### Why `else` vs `catch` takes `|e|` capture
+### Why `catch |e|` takes error capture
 
-`expr else |e| match e { ... }` allows inspecting the error value before deciding the
-fallback. This is needed for error handling (match on specific errors) but rarely for
-Option (where `None` carries no data). The `|e|` capture syntax mirrors closures and
-is opt-in — `expr else fallback` works without it.
+`expr catch |e| handler` allows inspecting the error value before deciding the
+fallback. This is needed for error handling (match on specific errors) but not
+for Option (where `None` carries no data — `else` never takes a capture).
+The `|e|` capture syntax mirrors closures and is opt-in —
+`expr catch fallback` works without it.
 
 ### Why error sets use structural coercion (not nominal)
 
@@ -315,28 +319,25 @@ New function `lower_error_set_def()`:
   - Create `ErrorVariantDef { id, name }`
 - Return `ErrorSetDef { id, name, visibility, variants }`
 
-### 2b. Lower `TryExpr`
+### 2b. Lower `TryExpr` (try + ?)
 
 **File: `crates/lower/src/lowering/expr.rs`**
 
-Replace the catch-all `unsupported_expr` fallthrough for `TryExpr` with explicit lowering.
-The `TryExpr` CST node is overloaded — it represents both `try expr` (error propagation)
-and `expr?` (Option propagation). Disambiguate by checking the first child token:
+The `TryExpr` CST node represents both `try expr` (error propagation, `is_option = false`)
+and `expr?` (Option propagation, `is_option = true`). Disambiguation checks for the `KwTry`
+keyword token.
 
 ```rust
-K::TryExpr => {
-    let first = node.children().next();
-    if first.map_or(false, |c| c.kind() == K::Question) {
-        // Postfix `expr?` — Option propagation
-        // Kept as UnsupportedFeature for now (v1 scope: error handling only)
-        unsupported_expr(ctx, "option propagation (?)", node)
-    } else {
-        // Prefix `try expr` — error propagation
-        let operand = lower_expr(ctx, &???)?;  // the expr child
-        Ok(Expr::Try(TryExpr { expr: Box::new(operand) }))
-    }
+fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx, node: &SyntaxNode) -> Expr {
+    let is_option = !node.children().iter().any(|c| c.kind() == SyntaxKind::KwTry);
+    let operand = lower_expr(/* ... */);
+    Expr::Try(TryExpr { id, expr: Box::new(operand), is_option })
 }
 ```
+
+The desugar pass branches on `is_option`:
+- `false` (try) → `match { Ok(v) => v, Err(e) => return Err(e) }`
+- `true` (?) → `match { Some(v) => v, None => return None }`
 
 ### 2c. Lower `ElseExpr`
 
@@ -428,6 +429,11 @@ Add `DefKind::ErrorSet` and `DefKind::ErrorVariant` to the filters in:
 
 ## Phase 4: Typechecking
 
+All error-handling expressions (`try`/`catch`/`else`/`?`) are desugared to `match`
+on enums during name resolution (Phase 5), before typechecking. Typecheck never sees
+these sugar variants — its `infer_expr` arms for `Try`/`Catch`/`Else` are `unreachable!`
+safety nets. The remaining typecheck work for error handling is:
+
 ### 4a. Collect error set definitions (Pass 1)
 
 **File: `crates/typecheck/src/typeck/collect.rs`**
@@ -478,40 +484,16 @@ fn collect_error_set_defs(&mut self) {
 
 Call `collect_error_set_defs()` in the collect pipeline (after line 26, before `collect_fn_sigs`).
 
-### 4b. Typecheck `try` (Pass 2)
+### 4b. Typechecking desugared match expressions
 
-**File: `crates/typecheck/src/typeck/infer.rs`** or new `error.rs` module
+Since `try`/`catch`/`else`/`?` are desugared to `match` on `Result<T, E>` or `Option<T>`
+before typecheck, no dedicated type rules are needed. The existing `match` typecheck in
+`infer_match` handles them:
 
-`try expr` desugars to a match on Result:
+- `match expr { Ok(v) => v, Err(e) => return Err(e) }` — standard enum match
+- `match expr { Some(v) => v, None => fallback }` — standard enum match
 
-```rust
-// try f()
-// desugars to:
-// match f() {
-//     Ok(v) => v,
-//     Err(e) => return Err(e),
-// }
-```
-
-Implementation:
-1. Infer the type of `expr` → should be `Instance("Result", [T, E])` (the error union)
-2. If it's `Ok(T)` → yield `T`
-3. If it's `Err(E)` → return `Err(E)` from the current function
-4. The current function's return type must be `Instance("Result", [R, E])` or compatible
-   (error set coercion: E can be a superset of the try'd expression's error)
-
-### 4c. Typecheck `else` (Pass 2)
-
-`expr else fallback`:
-1. Infer type of `expr` → `Result<T, E>` or `Option<T>`
-2. If `expr` is `Ok(T)`/`Some(T)` → yield `T`
-3. If `expr` is `Err(E)`/`None` → evaluate fallback, must produce `T`
-4. Result type is `T`
-
-For the `else |e| ...` pattern (error capture), the binding `e` gets type `E` and
-the body must produce `T`.
-
-### 4d. Error set coercion
+### 4c. Error set coercion (Pass 2)
 
 A function `f() -> (E1 || E2)!T` can propagate `E1` errors via `try` — the error set
 coerces structurally: `E1`'s values are a subset of `(E1 || E2)`'s values.
@@ -519,7 +501,7 @@ coerces structurally: `E1`'s values are a subset of `(E1 || E2)`'s values.
 Implementation: when checking `return Err(e)` where the function return error set is `S`
 and `e` is of error set `E`, verify `E ⊆ S` by checking each variant of `E` exists in `S`.
 
-### 4e. Exhaustiveness on error sets
+### 4d. Exhaustiveness on error sets
 
 **File: `crates/typecheck/src/exhaustiveness.rs`**
 
@@ -593,8 +575,7 @@ lowered directly from the parser's `TryExpr` (postfix form) in Phase 2.
 | `catch_desugars_to_match` | After desugaring, HIR contains Match, not Catch |
 | `else_desugars_to_match` | After desugaring, HIR contains Match, not Else |
 | `option_question_desugars` | `expr?` → match with `None => return None` |
-| `else_desugars_to_match` | After desugaring, THIR contains Match, not Else |
-| `option_question_desugars` | `expr?` → match with `None => return None` |
+| `else_desugars_to_match` | After desugaring, HIR contains Match, not Else |
 
 ---
 

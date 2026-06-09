@@ -469,10 +469,6 @@ pub struct ElseExpr {
     pub id: HirId,
     pub expr: Box<Expr>,
     pub fallback: Box<Expr>,
-    /// If `Some(name)`, the error arm captures the error value as `name`
-    /// (i.e. `else |e| handler`). If `None`, the error arm discards the
-    /// error with a wildcard pattern (`else fallback`).
-    pub error_binding: Option<String>,
 }
 
 #[derive(Debug, Clone)]

@@ -443,7 +443,7 @@ impl TypeChecker {
             .map(|t| self.resolve_hir_ty(t))
             .unwrap_or(crate::types::Ty::Unit);
         // Extract the error set from the return type for coercion checks.
-        self.current_fn_error_set = extract_error_set_from_type(&return_type);
+        self.current_fn_error_set = ty_resolve::extract_error_set_from_type(&return_type);
         // Extern fns (`extern "C" fn …;`) and intrinsics (`@intrinsic`) have
         // no body we should check — the platform or compiler supplies it.
         // Record the signature and skip the body/return reconciliation.
@@ -590,26 +590,6 @@ impl TypeChecker {
             });
         }
         self.env.pop_scope();
-    }
-}
-
-/// Extract the error set from a function's return type.
-/// Returns `Some(ErrorSetTy)` when the return type is `Instance("Result", [_, E])`
-/// where `E` is an error set or error set union. Returns `None` for all other types.
-fn extract_error_set_from_type(ty: &crate::types::Ty) -> Option<ErrorSetTy> {
-    match ty {
-        crate::types::Ty::Instance(inst) if inst.name == "Result" && inst.args.len() == 2 => {
-            match &inst.args[1] {
-                crate::types::Ty::ErrorSet(es) => Some(es.clone()),
-                crate::types::Ty::Instance(_) => {
-                    // The error part could be `Instance("IO", [])` — a named error set
-                    // resolved as an instance. For v0, ignore.
-                    None
-                }
-                _ => None,
-            }
-        }
-        _ => None,
     }
 }
 

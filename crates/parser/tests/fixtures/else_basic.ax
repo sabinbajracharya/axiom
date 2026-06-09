@@ -1,0 +1,4 @@
+fn main() {
+    val x = f() else 0
+    val y = g() else compute()
+}

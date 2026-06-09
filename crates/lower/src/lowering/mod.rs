@@ -8,6 +8,7 @@
 //! Name resolution lives in `resolve.rs`.
 
 mod block;
+mod catch_else;
 mod error;
 mod expr;
 mod item;
@@ -18,6 +19,8 @@ use crate::hir_types::*;
 use crate::HirDiagnostic;
 use lexer::Span;
 use parser::ast::{self, AstNode};
+
+pub(super) use catch_else::{lower_catch_expr, lower_else_expr};
 
 /// Structural lowering only — produces HIR items and defs without name resolution.
 /// Takes a `start_id` so DefIds are globally unique across modules.

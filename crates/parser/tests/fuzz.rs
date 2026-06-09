@@ -37,9 +37,9 @@ const POOL: &[char] = &[
 /// Real token fragments, so the grammar's productions actually fire.
 const FRAGMENTS: &[&str] = &[
     "fn", "struct", "enum", "trait", "impl", "val", "var", "let", "inout", "sink", "match", "if",
-    "else", "loop", "return", "try", "catch", "mod", "use", "pub", "scope", "const", "for", "in",
-    "as", "->", "=>", "::", "..", "..=", "||", "&&", "==", "(", ")", "{", "}", "[", "]", "<", ">",
-    "x", "Foo", "42", "1.5", "\"s\"", ".", ",", ":", ";", "=", "+", "self", "Self",
+    "else", "loop", "return", "try", "catch", "error", "mod", "use", "pub", "scope", "const",
+    "for", "in", "as", "->", "=>", "::", "..", "..=", "||", "&&", "==", "(", ")", "{", "}", "[",
+    "]", "<", ">", "x", "Foo", "42", "1.5", "\"s\"", ".", ",", ":", ";", "=", "+", "self", "Self",
 ];
 
 fn random_chars(rng: &mut Rng, max_len: usize) -> String {

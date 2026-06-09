@@ -1,0 +1,10 @@
+error IO {
+    NotFound,
+    WriteError,
+}
+error FsError {
+    DiskFull,
+}
+fn f() -> (IO || FsError)!Int {
+    return Ok(42)
+}
