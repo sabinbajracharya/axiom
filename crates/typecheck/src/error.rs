@@ -244,9 +244,7 @@ pub enum TypeDiagnostic {
         span: Span,
     },
 
-    #[error(
-        "`try` is only allowed in functions that return an error union (`E!T` or `Result<T, E>`)"
-    )]
+    #[error("`?` can only be used in functions that return `Option<T>` or `E!T`")]
     TryInNonErrorFn { span: Span },
 }
 

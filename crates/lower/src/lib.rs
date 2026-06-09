@@ -149,7 +149,7 @@ fn check_expr(expr: &Expr, diagnosed: &[String], errors: &mut Vec<CoverageError>
             }
         }
         Expr::Lit(_) => {}
-        Expr::Try(t) => check_expr(&t.expr, diagnosed, errors),
+        Expr::Question(t) => check_expr(&t.expr, diagnosed, errors),
         Expr::Else(e) => check_else(e, diagnosed, errors),
         Expr::Catch(e) => check_catch(e, diagnosed, errors),
     }

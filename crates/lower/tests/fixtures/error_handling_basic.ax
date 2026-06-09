@@ -1,7 +1,7 @@
 fn f() {}
 
 fn main() {
-    try f()
+    f()?
     val x = f() catch 0
     val y = f() else 1
 }

@@ -157,7 +157,6 @@ pub fn is_expr_kind(kind: SyntaxKind) -> bool {
             | SyntaxKind::StructLitExpr
             | SyntaxKind::CastExpr
             | SyntaxKind::RangeExpr
-            | SyntaxKind::TryExpr
             | SyntaxKind::QuestionExpr
             | SyntaxKind::AssignExpr
             | SyntaxKind::CatchExpr

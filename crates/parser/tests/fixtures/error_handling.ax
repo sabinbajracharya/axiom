@@ -4,6 +4,6 @@ error FsError {
 }
 
 fn read_config(let path: String) -> FsError!String {
-    val text = try open(path)
+    val text = open(path)?
     return text
 }

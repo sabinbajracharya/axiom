@@ -143,7 +143,6 @@ mod tests {
             K::PipePipe => "|| x",
             K::Minus => "-x",
             K::Bang => "!x",
-            K::KwTry => "try x",
             K::KwReturn => "return",
             K::KwBreak => "break",
             K::KwContinue => "continue",

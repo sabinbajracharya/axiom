@@ -99,7 +99,7 @@ impl<'a> Monomorphizer<'a> {
             Expr::Assign(a) => self.collect_from_expr(&a.value),
             Expr::ListLit(l) => l.elements.iter().for_each(|e| self.collect_from_expr(e)),
             Expr::Lit(_) | Expr::Path(_) => {}
-            Expr::Try(t) => self.collect_from_expr(&t.expr),
+            Expr::Question(t) => self.collect_from_expr(&t.expr),
             Expr::Else(e) => {
                 self.collect_from_expr(&e.expr);
                 self.collect_from_expr(&e.fallback);
@@ -201,7 +201,7 @@ impl<'a> Monomorphizer<'a> {
                     .for_each(|elem| self.collect_from_expr_with_subst(elem, subst));
             }
             Expr::Lit(_) | Expr::Path(_) => {}
-            Expr::Try(t) => self.collect_from_expr_with_subst(&t.expr, subst),
+            Expr::Question(t) => self.collect_from_expr_with_subst(&t.expr, subst),
             Expr::Else(e) => {
                 self.collect_from_expr_with_subst(&e.expr, subst);
                 self.collect_from_expr_with_subst(&e.fallback, subst);

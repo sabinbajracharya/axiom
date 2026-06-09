@@ -203,7 +203,7 @@ pub enum Expr {
     StructLit(StructLitExpr),
     ListLit(ListLitExpr),
     Assign(AssignExpr),
-    Try(TryExpr),
+    Question(QuestionExpr),
     Catch(CatchExpr),
     Else(ElseExpr),
 }
@@ -226,7 +226,7 @@ impl Expr {
             Expr::StructLit(e) => e.id,
             Expr::Assign(e) => e.id,
             Expr::ListLit(e) => e.id,
-            Expr::Try(e) => e.id,
+            Expr::Question(e) => e.id,
             Expr::Catch(e) => e.id,
             Expr::Else(e) => e.id,
         }
@@ -445,12 +445,9 @@ pub struct AssignExpr {
 }
 
 #[derive(Debug, Clone)]
-pub struct TryExpr {
+pub struct QuestionExpr {
     pub id: HirId,
     pub expr: Box<Expr>,
-    /// `true` for `?` (Option propagation, Some/None), `false` for `try`
-    /// (error propagation, Ok/Err).
-    pub is_option: bool,
 }
 
 #[derive(Debug, Clone)]

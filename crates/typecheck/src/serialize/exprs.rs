@@ -32,9 +32,8 @@ pub(super) fn serialize_expr(expr: &Expr, depth: usize, thir: &Thir, out: &mut S
         Expr::StructLit(e) => serialize_struct_lit_expr(e, depth, &type_ann, thir, out),
         Expr::Assign(e) => serialize_assign_expr(e, depth, &type_ann, thir, out),
         Expr::ListLit(e) => serialize_list_lit_expr(e, depth, &type_ann, thir, out),
-        Expr::Try(e) => {
-            let label = if e.is_option { "OptionTry" } else { "Try" };
-            out.push_str(&format!("{label}({}) {}", e.id, type_ann));
+        Expr::Question(e) => {
+            out.push_str(&format!("Question({}) {}", e.id, type_ann));
             out.push('(');
             serialize_expr(&e.expr, depth, thir, out);
             out.push(')');

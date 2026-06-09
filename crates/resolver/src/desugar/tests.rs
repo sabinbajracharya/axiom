@@ -1,4 +1,4 @@
-//! Unit tests for the HIR desugar pass. Covers list literals, try/else
+//! Unit tests for the HIR desugar pass. Covers list literals, ?/else
 //! error handling, idempotency, and variant coverage invariants.
 
 use super::*;
@@ -153,7 +153,7 @@ fn count_sub_expr_kind(expr: &Expr, f: fn(&Expr) -> bool, count: &mut usize) {
         Expr::Assign(e) => {
             count_sub_expr_kind(&e.value, f, count);
         }
-        Expr::Try(e) => {
+        Expr::Question(e) => {
             count_sub_expr_kind(&e.expr, f, count);
         }
         Expr::Else(e) => {
@@ -479,7 +479,7 @@ fn test_desugar_else_has_some_and_none() {
 
 #[test]
 fn test_desugar_catch_and_else_idempotent() {
-    let source = "fn main() { try a()\n  b() catch c()\n  d() else e() }";
+    let source = "fn main() { a()?\n  b() catch c()\n  d() else e() }";
     let hir = compile_and_desugar(source);
     let mut hir2 = hir.clone();
     let lang_items = test_lang_items();
@@ -488,21 +488,20 @@ fn test_desugar_catch_and_else_idempotent() {
     let dump2 = crate::serialize::serialize(&hir2);
     assert_eq!(
         dump1, dump2,
-        "re-running desugar on desugared try/else HIR should be idempotent"
+        "re-running desugar on desugared else/catch HIR should be idempotent"
     );
 }
 
 #[test]
-fn test_desugar_nested_try() {
-    let hir = compile_and_desugar("fn main() { try try f() }");
+fn test_desugar_nested_question() {
+    // ? is NOT desugared in the pre-typecheck pass — it needs type info
+    // to determine Some/None vs Ok/Err. It passes through as QuestionExpr
+    // and is desugared post-typecheck by question_desugar.
+    let hir = compile_and_desugar("fn main() { f()?  }");
     let dump = crate::serialize::serialize(&hir);
     assert!(
-        !dump.contains("Try("),
-        "nested try should be desugared: {dump}"
-    );
-    assert!(
-        dump.matches("Match").count() >= 2,
-        "should have at least two match expressions: {dump}"
+        dump.contains("Question("),
+        "? should survive pre-typecheck desugar: {dump}"
     );
 }
 

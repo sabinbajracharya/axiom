@@ -1,4 +1,4 @@
-SourceFile @ 0..152
+SourceFile @ 0..149
   ErrorSetDef @ 0..49
     KwError @ 0..5 "error"
     Name @ 5..13
@@ -19,7 +19,7 @@ SourceFile @ 0..152
       Comma @ 46..47 ","
       Newline @ 47..48 "\n"
       RBrace @ 48..49 "}"
-  FnDef @ 49..151
+  FnDef @ 49..148
     Newline @ 49..50 "\n"
     Newline @ 50..51 "\n"
     KwFn @ 51..53 "fn"
@@ -53,10 +53,10 @@ SourceFile @ 0..152
           Path @ 95..101
             PathSegment @ 95..101
               Ident @ 95..101 "String"
-    BlockExpr @ 101..151
+    BlockExpr @ 101..148
       Whitespace @ 101..102 " "
       LBrace @ 102..103 "{"
-      LetStmt @ 103..133
+      LetStmt @ 103..130
         Newline @ 103..104 "\n"
         Whitespace @ 104..108 "    "
         KwVal @ 108..111 "val"
@@ -67,32 +67,31 @@ SourceFile @ 0..152
               Ident @ 112..116 "text"
         Whitespace @ 116..117 " "
         Eq @ 117..118 "="
-        TryExpr @ 118..133
-          Whitespace @ 118..119 " "
-          KwTry @ 119..122 "try"
-          CallExpr @ 122..133
-            PathExpr @ 122..127
-              Path @ 122..127
-                PathSegment @ 122..127
-                  Whitespace @ 122..123 " "
-                  Ident @ 123..127 "open"
-            ArgList @ 127..133
-              LParen @ 127..128 "("
-              PathExpr @ 128..132
-                Path @ 128..132
-                  PathSegment @ 128..132
-                    Ident @ 128..132 "path"
-              RParen @ 132..133 ")"
-      ExprStmt @ 133..149
-        ReturnStmt @ 133..149
-          Newline @ 133..134 "\n"
-          Whitespace @ 134..138 "    "
-          KwReturn @ 138..144 "return"
-          PathExpr @ 144..149
-            Path @ 144..149
-              PathSegment @ 144..149
-                Whitespace @ 144..145 " "
-                Ident @ 145..149 "text"
-      Newline @ 149..150 "\n"
-      RBrace @ 150..151 "}"
-  Newline @ 151..152 "\n"
+        QuestionExpr @ 118..130
+          CallExpr @ 118..129
+            PathExpr @ 118..123
+              Path @ 118..123
+                PathSegment @ 118..123
+                  Whitespace @ 118..119 " "
+                  Ident @ 119..123 "open"
+            ArgList @ 123..129
+              LParen @ 123..124 "("
+              PathExpr @ 124..128
+                Path @ 124..128
+                  PathSegment @ 124..128
+                    Ident @ 124..128 "path"
+              RParen @ 128..129 ")"
+          Question @ 129..130 "?"
+      ExprStmt @ 130..146
+        ReturnStmt @ 130..146
+          Newline @ 130..131 "\n"
+          Whitespace @ 131..135 "    "
+          KwReturn @ 135..141 "return"
+          PathExpr @ 141..146
+            Path @ 141..146
+              PathSegment @ 141..146
+                Whitespace @ 141..142 " "
+                Ident @ 142..146 "text"
+      Newline @ 146..147 "\n"
+      RBrace @ 147..148 "}"
+  Newline @ 148..149 "\n"

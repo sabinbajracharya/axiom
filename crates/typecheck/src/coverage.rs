@@ -187,7 +187,7 @@ fn expr_kind_name(expr: &resolver::Expr) -> &'static str {
         resolver::Expr::StructLit(_) => "StructLit",
         resolver::Expr::Assign(_) => "Assign",
         resolver::Expr::ListLit(_) => "ListLit",
-        resolver::Expr::Try(_) => "Try",
+        resolver::Expr::Question(_) => "Question",
         resolver::Expr::Else(_) => "Else",
         resolver::Expr::Catch(_) => "Catch",
     }
@@ -241,7 +241,7 @@ fn collect_expr_children(expr: &resolver::Expr, ids: &mut Vec<(HirId, String)>) 
                 .iter()
                 .for_each(|elem| collect_expr_ids(elem, ids));
         }
-        resolver::Expr::Try(t) => collect_expr_ids(&t.expr, ids),
+        resolver::Expr::Question(t) => collect_expr_ids(&t.expr, ids),
         resolver::Expr::Else(e) => {
             collect_expr_ids(&e.expr, ids);
             collect_expr_ids(&e.fallback, ids);

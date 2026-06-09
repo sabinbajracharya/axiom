@@ -42,7 +42,6 @@ pub(super) const EXPR_START: &[K] = &[
     K::PipePipe,
     K::Minus,
     K::Bang,
-    K::KwTry,
     K::KwReturn,
     K::KwBreak,
     K::KwContinue,
@@ -126,7 +125,6 @@ fn lhs(p: &mut Parser) -> Option<CompletedMarker> {
 fn lhs_inner(p: &mut Parser) -> Option<CompletedMarker> {
     match p.current() {
         K::Minus | K::Bang => Some(prefix(p, K::PrefixExpr)),
-        K::KwTry => Some(prefix(p, K::TryExpr)),
         _ => {
             let cm = primary(p)?;
             Some(postfix(p, cm))
@@ -159,8 +157,9 @@ fn postfix(p: &mut Parser, mut lhs: CompletedMarker) -> CompletedMarker {
     lhs
 }
 
-/// `expr?` — postfix `None`-propagation on `Option` (§6.5). Distinct from prefix
-/// `try expr` (which produces `TryExpr`); the node kind differentiates them.
+/// `expr?` — postfix propagation. Works on both `Option<T>` and `Result<T,E>`
+/// (§6.3/§6.5). The typechecker determines which; desugaring produces the
+/// appropriate `Some/None` or `Ok/Err` match arms.
 fn question(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     p.bump(); // ?

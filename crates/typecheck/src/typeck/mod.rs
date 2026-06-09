@@ -21,6 +21,7 @@ mod control;
 mod helpers;
 mod infer;
 mod methods;
+mod question_desugar;
 mod stmt;
 mod ty_resolve;
 mod typeinfo;
@@ -56,7 +57,7 @@ pub fn check_with_lang_items(mut hir: Hir, lang_items: resolver::LangItems) -> T
     let mut checker = TypeChecker::new(hir, lang_items);
     checker.collect_pass();
     checker.check_pass();
-    Thir {
+    let mut thir = Thir {
         hir: checker.hir,
         types: checker.types,
         diagnostics: {
@@ -64,7 +65,12 @@ pub fn check_with_lang_items(mut hir: Hir, lang_items: resolver::LangItems) -> T
             d.append(&mut checker.diagnostics);
             d
         },
-    }
+    };
+    // Post-typecheck desugar: rewrite `?` expressions using inferred types.
+    // Must run after typecheck so we know whether `?` propagates Option or Result.
+    let max_id = crate::hir_max_id(&thir.hir);
+    question_desugar::desugar_question(&mut thir.hir, &thir.types, max_id + 1);
+    thir
 }
 
 // ── The type checker ──────────────────────────────────────────────────────────

@@ -44,7 +44,7 @@ pub(super) fn lower_expr(expr: &Expr, ctx: &mut FnLowerCtx) -> Reg {
         Expr::Match(e) => lower_match(e, ctx),
         Expr::Loop(e) => lower_loop(e, ctx),
         Expr::Assign(e) => super::assign::lower_assign(e, ctx),
-        Expr::Try(e) => lower_expr(&e.expr, ctx),
+        Expr::Question(e) => lower_expr(&e.expr, ctx),
         Expr::Else(e) => {
             // Else desugars to Match in Phase 5. Until then, lower the expr
             // and discard the fallback (error paths not yet wired).

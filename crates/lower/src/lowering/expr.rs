@@ -60,12 +60,10 @@ pub(crate) fn lower_expr(node: &parser::SyntaxNode, ctx: &mut LowerCtx) -> Expr 
     if let Some(e) = ast::ListLitExpr::cast(node.clone()) {
         return lower_list_lit_expr(&e, ctx);
     }
-    if let Some(e) = ast::TryExpr::cast(node.clone()) {
-        return lower_try_expr(&e, ctx);
-    }
     if let Some(e) = ast::QuestionExpr::cast(node.clone()) {
         return lower_question_expr(&e, ctx);
     }
+
     if let Some(e) = ast::CatchExpr::cast(node.clone()) {
         return lower_catch_expr(&e, ctx);
     }
@@ -366,29 +364,15 @@ fn lower_list_lit_expr(e: &ast::ListLitExpr, ctx: &mut LowerCtx) -> Expr {
     Expr::ListLit(ListLitExpr { id, elements })
 }
 
-fn lower_try_expr(e: &ast::TryExpr, ctx: &mut LowerCtx) -> Expr {
-    let id = ctx.alloc_id();
-    let operand = e
-        .expr()
-        .map(|node| lower_expr(&node, ctx))
-        .unwrap_or_else(|| unit_expr(ctx));
-    Expr::Try(TryExpr {
-        id,
-        expr: Box::new(operand),
-        is_option: false,
-    })
-}
-
 fn lower_question_expr(e: &ast::QuestionExpr, ctx: &mut LowerCtx) -> Expr {
     let id = ctx.alloc_id();
     let operand = e
         .expr()
         .map(|node| lower_expr(&node, ctx))
         .unwrap_or_else(|| unit_expr(ctx));
-    Expr::Try(TryExpr {
+    Expr::Question(QuestionExpr {
         id,
         expr: Box::new(operand),
-        is_option: true,
     })
 }
 

@@ -1,4 +1,4 @@
-SourceFile @ 0..343
+SourceFile @ 0..340
   ErrorSetDef @ 0..44
     KwError @ 0..5 "error"
     Name @ 5..14
@@ -19,7 +19,7 @@ SourceFile @ 0..343
       Comma @ 41..42 ","
       Newline @ 42..43 "\n"
       RBrace @ 43..44 "}"
-  FnDef @ 44..343
+  FnDef @ 44..340
     Newline @ 44..45 "\n"
     Newline @ 45..46 "\n"
     KwFn @ 46..48 "fn"
@@ -53,10 +53,10 @@ SourceFile @ 0..343
           Path @ 84..90
             PathSegment @ 84..90
               Ident @ 84..90 "String"
-    BlockExpr @ 90..343
+    BlockExpr @ 90..340
       Whitespace @ 90..91 " "
       LBrace @ 91..92 "{"
-      LetStmt @ 92..129
+      LetStmt @ 92..126
         Newline @ 92..93 "\n"
         Whitespace @ 93..97 "    "
         KwVal @ 97..100 "val"
@@ -67,139 +67,138 @@ SourceFile @ 0..343
               Ident @ 101..109 "response"
         Whitespace @ 109..110 " "
         Eq @ 110..111 "="
-        TryExpr @ 111..129
-          Whitespace @ 111..112 " "
-          KwTry @ 112..115 "try"
-          CallExpr @ 115..129
-            PathExpr @ 115..124
-              Path @ 115..124
-                PathSegment @ 115..124
-                  Whitespace @ 115..116 " "
-                  Ident @ 116..124 "http_get"
-            ArgList @ 124..129
-              LParen @ 124..125 "("
-              PathExpr @ 125..128
-                Path @ 125..128
-                  PathSegment @ 125..128
-                    Ident @ 125..128 "url"
-              RParen @ 128..129 ")"
-      LetStmt @ 129..270
-        Newline @ 129..130 "\n"
-        Whitespace @ 130..134 "    "
-        KwVal @ 134..137 "val"
-        IdentPat @ 137..142
-          Path @ 137..142
-            PathSegment @ 137..142
-              Whitespace @ 137..138 " "
-              Ident @ 138..142 "text"
-        Whitespace @ 142..143 " "
-        Eq @ 143..144 "="
-        CatchExpr @ 144..270
-          MethodCallExpr @ 144..164
-            PathExpr @ 144..153
-              Path @ 144..153
-                PathSegment @ 144..153
-                  Whitespace @ 144..145 " "
-                  Ident @ 145..153 "response"
-            Dot @ 153..154 "."
-            NameRef @ 154..162
-              Ident @ 154..162 "read_all"
-            ArgList @ 162..164
-              LParen @ 162..163 "("
-              RParen @ 163..164 ")"
-          Whitespace @ 164..165 " "
-          KwCatch @ 165..170 "catch"
-          ClosureExpr @ 170..270
-            ClosureParamList @ 170..174
-              Whitespace @ 170..171 " "
-              Pipe @ 171..172 "|"
-              ClosureParam @ 172..173
-                Ident @ 172..173 "e"
-              Pipe @ 173..174 "|"
-            MatchExpr @ 174..270
-              Whitespace @ 174..175 " "
-              KwMatch @ 175..180 "match"
-              PathExpr @ 180..182
-                Path @ 180..182
-                  PathSegment @ 180..182
-                    Whitespace @ 180..181 " "
-                    Ident @ 181..182 "e"
-              MatchArmList @ 182..270
-                Whitespace @ 182..183 " "
-                LBrace @ 183..184 "{"
-                MatchArm @ 184..224
-                  PathPat @ 184..209
-                    Path @ 184..209
-                      PathSegment @ 184..201
-                        Newline @ 184..185 "\n"
-                        Whitespace @ 185..193 "        "
-                        Ident @ 193..201 "NetError"
-                      Dot @ 201..202 "."
-                      PathSegment @ 202..209
-                        Ident @ 202..209 "Timeout"
-                  Whitespace @ 209..211 "  "
-                  FatArrow @ 211..213 "=>"
-                  LiteralExpr @ 213..223
-                    Whitespace @ 213..214 " "
-                    StrLit @ 214..223 "\"timeout\""
-                  Comma @ 223..224 ","
-                MatchArm @ 224..264
-                  PathPat @ 224..249
-                    Path @ 224..249
-                      PathSegment @ 224..241
-                        Newline @ 224..225 "\n"
-                        Whitespace @ 225..233 "        "
-                        Ident @ 233..241 "NetError"
-                      Dot @ 241..242 "."
-                      PathSegment @ 242..249
-                        Ident @ 242..249 "Refused"
-                  Whitespace @ 249..251 "  "
-                  FatArrow @ 251..253 "=>"
-                  LiteralExpr @ 253..263
-                    Whitespace @ 253..254 " "
-                    StrLit @ 254..263 "\"refused\""
-                  Comma @ 263..264 ","
-                Newline @ 264..265 "\n"
-                Whitespace @ 265..269 "    "
-                RBrace @ 269..270 "}"
-      LetStmt @ 270..325
-        Newline @ 270..271 "\n"
-        Whitespace @ 271..275 "    "
-        KwVal @ 275..278 "val"
-        IdentPat @ 278..287
-          Path @ 278..287
-            PathSegment @ 278..287
-              Whitespace @ 278..279 " "
-              Ident @ 279..287 "fallback"
-        Whitespace @ 287..288 " "
-        Eq @ 288..289 "="
-        CatchExpr @ 289..325
-          MethodCallExpr @ 289..309
-            PathExpr @ 289..298
-              Path @ 289..298
-                PathSegment @ 289..298
-                  Whitespace @ 289..290 " "
-                  Ident @ 290..298 "response"
-            Dot @ 298..299 "."
-            NameRef @ 299..307
-              Ident @ 299..307 "read_all"
-            ArgList @ 307..309
-              LParen @ 307..308 "("
-              RParen @ 308..309 ")"
-          Whitespace @ 309..310 " "
-          KwCatch @ 310..315 "catch"
-          LiteralExpr @ 315..325
-            Whitespace @ 315..316 " "
-            StrLit @ 316..325 "\"default\""
-      ExprStmt @ 325..341
-        ReturnStmt @ 325..341
-          Newline @ 325..326 "\n"
-          Whitespace @ 326..330 "    "
-          KwReturn @ 330..336 "return"
-          PathExpr @ 336..341
-            Path @ 336..341
-              PathSegment @ 336..341
-                Whitespace @ 336..337 " "
-                Ident @ 337..341 "text"
-      Newline @ 341..342 "\n"
-      RBrace @ 342..343 "}"
+        QuestionExpr @ 111..126
+          CallExpr @ 111..125
+            PathExpr @ 111..120
+              Path @ 111..120
+                PathSegment @ 111..120
+                  Whitespace @ 111..112 " "
+                  Ident @ 112..120 "http_get"
+            ArgList @ 120..125
+              LParen @ 120..121 "("
+              PathExpr @ 121..124
+                Path @ 121..124
+                  PathSegment @ 121..124
+                    Ident @ 121..124 "url"
+              RParen @ 124..125 ")"
+          Question @ 125..126 "?"
+      LetStmt @ 126..267
+        Newline @ 126..127 "\n"
+        Whitespace @ 127..131 "    "
+        KwVal @ 131..134 "val"
+        IdentPat @ 134..139
+          Path @ 134..139
+            PathSegment @ 134..139
+              Whitespace @ 134..135 " "
+              Ident @ 135..139 "text"
+        Whitespace @ 139..140 " "
+        Eq @ 140..141 "="
+        CatchExpr @ 141..267
+          MethodCallExpr @ 141..161
+            PathExpr @ 141..150
+              Path @ 141..150
+                PathSegment @ 141..150
+                  Whitespace @ 141..142 " "
+                  Ident @ 142..150 "response"
+            Dot @ 150..151 "."
+            NameRef @ 151..159
+              Ident @ 151..159 "read_all"
+            ArgList @ 159..161
+              LParen @ 159..160 "("
+              RParen @ 160..161 ")"
+          Whitespace @ 161..162 " "
+          KwCatch @ 162..167 "catch"
+          ClosureExpr @ 167..267
+            ClosureParamList @ 167..171
+              Whitespace @ 167..168 " "
+              Pipe @ 168..169 "|"
+              ClosureParam @ 169..170
+                Ident @ 169..170 "e"
+              Pipe @ 170..171 "|"
+            MatchExpr @ 171..267
+              Whitespace @ 171..172 " "
+              KwMatch @ 172..177 "match"
+              PathExpr @ 177..179
+                Path @ 177..179
+                  PathSegment @ 177..179
+                    Whitespace @ 177..178 " "
+                    Ident @ 178..179 "e"
+              MatchArmList @ 179..267
+                Whitespace @ 179..180 " "
+                LBrace @ 180..181 "{"
+                MatchArm @ 181..221
+                  PathPat @ 181..206
+                    Path @ 181..206
+                      PathSegment @ 181..198
+                        Newline @ 181..182 "\n"
+                        Whitespace @ 182..190 "        "
+                        Ident @ 190..198 "NetError"
+                      Dot @ 198..199 "."
+                      PathSegment @ 199..206
+                        Ident @ 199..206 "Timeout"
+                  Whitespace @ 206..208 "  "
+                  FatArrow @ 208..210 "=>"
+                  LiteralExpr @ 210..220
+                    Whitespace @ 210..211 " "
+                    StrLit @ 211..220 "\"timeout\""
+                  Comma @ 220..221 ","
+                MatchArm @ 221..261
+                  PathPat @ 221..246
+                    Path @ 221..246
+                      PathSegment @ 221..238
+                        Newline @ 221..222 "\n"
+                        Whitespace @ 222..230 "        "
+                        Ident @ 230..238 "NetError"
+                      Dot @ 238..239 "."
+                      PathSegment @ 239..246
+                        Ident @ 239..246 "Refused"
+                  Whitespace @ 246..248 "  "
+                  FatArrow @ 248..250 "=>"
+                  LiteralExpr @ 250..260
+                    Whitespace @ 250..251 " "
+                    StrLit @ 251..260 "\"refused\""
+                  Comma @ 260..261 ","
+                Newline @ 261..262 "\n"
+                Whitespace @ 262..266 "    "
+                RBrace @ 266..267 "}"
+      LetStmt @ 267..322
+        Newline @ 267..268 "\n"
+        Whitespace @ 268..272 "    "
+        KwVal @ 272..275 "val"
+        IdentPat @ 275..284
+          Path @ 275..284
+            PathSegment @ 275..284
+              Whitespace @ 275..276 " "
+              Ident @ 276..284 "fallback"
+        Whitespace @ 284..285 " "
+        Eq @ 285..286 "="
+        CatchExpr @ 286..322
+          MethodCallExpr @ 286..306
+            PathExpr @ 286..295
+              Path @ 286..295
+                PathSegment @ 286..295
+                  Whitespace @ 286..287 " "
+                  Ident @ 287..295 "response"
+            Dot @ 295..296 "."
+            NameRef @ 296..304
+              Ident @ 296..304 "read_all"
+            ArgList @ 304..306
+              LParen @ 304..305 "("
+              RParen @ 305..306 ")"
+          Whitespace @ 306..307 " "
+          KwCatch @ 307..312 "catch"
+          LiteralExpr @ 312..322
+            Whitespace @ 312..313 " "
+            StrLit @ 313..322 "\"default\""
+      ExprStmt @ 322..338
+        ReturnStmt @ 322..338
+          Newline @ 322..323 "\n"
+          Whitespace @ 323..327 "    "
+          KwReturn @ 327..333 "return"
+          PathExpr @ 333..338
+            Path @ 333..338
+              PathSegment @ 333..338
+                Whitespace @ 333..334 " "
+                Ident @ 334..338 "text"
+      Newline @ 338..339 "\n"
+      RBrace @ 339..340 "}"

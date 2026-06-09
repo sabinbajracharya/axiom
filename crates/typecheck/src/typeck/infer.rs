@@ -39,14 +39,46 @@ impl TypeChecker {
                 });
                 Ty::Error
             }
-            Expr::Try(_) => {
-                unreachable!("Try is desugared to Match before typecheck")
+            Expr::Question(e) => {
+                let operand_ty = self.infer_expr(&e.expr);
+                let result_ty = match &operand_ty {
+                    Ty::Instance(inst) if inst.name == "Option" && inst.args.len() == 1 => {
+                        inst.args[0].clone()
+                    }
+                    Ty::Instance(inst) if inst.name == "Result" && inst.args.len() == 2 => {
+                        inst.args[0].clone()
+                    }
+                    Ty::ErrorSet(_) => {
+                        // Error set union: E!T — the success type is T.
+                        // For now, return Error since we don't track the inner type yet.
+                        Ty::Error
+                    }
+                    _ => {
+                        self.emit(TypeDiagnostic::NotYetSupported {
+                            feature: format!("`?` on non-propagable type `{}`", operand_ty),
+                            span: self.span_for(e.id),
+                        });
+                        Ty::Error
+                    }
+                };
+                self.types.insert(e.id, result_ty.clone());
+                result_ty
             }
-            Expr::Else(_) => {
-                unreachable!("Else is desugared to Match before typecheck")
+            Expr::Else(e) => {
+                let _inner_ty = self.infer_expr(&e.expr);
+                let fallback_ty = self.infer_expr(&e.fallback);
+                // else provides a default for Option: Option<T> else T -> T
+                // Stub: return the fallback type.
+                self.types.insert(e.id, fallback_ty.clone());
+                fallback_ty
             }
-            Expr::Catch(_) => {
-                unreachable!("Catch is desugared to Match before typecheck")
+            Expr::Catch(e) => {
+                let _inner_ty = self.infer_expr(&e.expr);
+                let fallback_ty = self.infer_expr(&e.fallback);
+                // catch provides a default for Result: Result<T,E> catch T -> T
+                // Stub: return the fallback type.
+                self.types.insert(e.id, fallback_ty.clone());
+                fallback_ty
             }
         }
     }

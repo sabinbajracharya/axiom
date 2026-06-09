@@ -8,7 +8,7 @@ use crate::DefKind;
 /// test fails the build.
 #[test]
 fn test_every_expr_variant_handled_by_desugar() {
-    let sugar: &[&str] = &["ListLit", "Try", "Catch", "Else"];
+    let sugar: &[&str] = &["ListLit", "Question", "Catch", "Else"];
     let non_sugar: &[&str] = &[
         "Lit",
         "Path",
@@ -43,7 +43,7 @@ fn test_every_expr_variant_handled_by_desugar() {
         "StructLit",
         "ListLit",
         "Assign",
-        "Try",
+        "Question",
         "Catch",
         "Else",
     ];

@@ -194,7 +194,7 @@ fn expr_max_id(expr: &resolver::Expr) -> usize {
         resolver::Expr::Assign(e) => {
             max = max.max(expr_max_id(&e.value));
         }
-        resolver::Expr::Try(e) => max = max.max(expr_max_id(&e.expr)),
+        resolver::Expr::Question(e) => max = max.max(expr_max_id(&e.expr)),
         resolver::Expr::Else(e) => max = max.max(else_max_id(e, max)),
         resolver::Expr::Catch(e) => max = max.max(catch_max_id(e, max)),
     }

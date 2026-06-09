@@ -348,9 +348,8 @@ fn serialize_expr(expr: &Expr, depth: usize, out: &mut String) {
         Expr::StructLit(e) => serialize_struct_lit_expr(e, depth, out),
         Expr::Assign(e) => serialize_assign_expr(e, depth, out),
         Expr::ListLit(e) => serialize_list_lit_expr(e, depth, out),
-        Expr::Try(e) => {
-            let label = if e.is_option { "OptionTry" } else { "Try" };
-            out.push_str(&format!("{label}({})(", e.id));
+        Expr::Question(e) => {
+            out.push_str(&format!("Question({})(", e.id));
             serialize_expr(&e.expr, depth, out);
             out.push(')');
         }

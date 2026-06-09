@@ -92,7 +92,6 @@ fn handles_expr(kind: SyntaxKind) -> bool {
             | SyntaxKind::ClosureExpr
             | SyntaxKind::CastExpr
             | SyntaxKind::RangeExpr
-            | SyntaxKind::TryExpr
             | SyntaxKind::QuestionExpr
             | SyntaxKind::CatchExpr
             | SyntaxKind::ElseExpr

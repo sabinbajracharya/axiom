@@ -4,7 +4,7 @@ error NetError {
 }
 
 fn fetch(let url: String) -> NetError!String {
-    val response = try http_get(url)
+    val response = http_get(url)?
     val text = response.read_all() catch |e| match e {
         NetError.Timeout  => "timeout",
         NetError.Refused  => "refused",

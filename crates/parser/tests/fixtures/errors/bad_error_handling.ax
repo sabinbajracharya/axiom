@@ -1,5 +1,4 @@
 fn f() -> FsError!Int {
-    try
     val x = open() catch
     val y = open() catch |e|
 }

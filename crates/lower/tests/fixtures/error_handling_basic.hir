@@ -1,7 +1,7 @@
 FnDef(0) name=f vis=private params=[] return=_ {
 }
 FnDef(2) name=main vis=private params=[] return=_ {
-  ExprStmt(4) Try(5)(Call(6) f→0())
+  ExprStmt(4) Question(5)(Call(6) f→0())
   ValStmt(11) Ident(7) x→7: _ = Catch(8)(Call(9) f→0(), Lit(10) Int(0))
   ValStmt(16) Ident(12) y→12: _ = Else(13)(Call(14) f→0(), Lit(15) Int(1))
 }

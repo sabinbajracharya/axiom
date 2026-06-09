@@ -307,7 +307,7 @@ fn check_expr_ids(expr: &lower::Expr, seen: &mut HashSet<lower::HirId>) -> bool 
         }
         lower::Expr::Assign(a) => check_expr_ids(&a.value, seen),
         lower::Expr::ListLit(l) => check_expr_slice(&l.elements, seen),
-        lower::Expr::Try(t) => check_expr_ids(&t.expr, seen),
+        lower::Expr::Question(t) => check_expr_ids(&t.expr, seen),
         lower::Expr::Else(e) => check_expr_ids(&e.expr, seen) && check_expr_ids(&e.fallback, seen),
         lower::Expr::Catch(e) => check_expr_ids(&e.expr, seen) && check_expr_ids(&e.fallback, seen),
     }

@@ -126,8 +126,8 @@ fn resolve_expr_names(expr: &mut Expr, scope: &mut Scope, diagnostics: &mut Vec<
                 resolve_expr_names(elem, scope, diagnostics);
             }
         }
-        Expr::Try(t) => {
-            resolve_expr_names(&mut t.expr, scope, diagnostics);
+        Expr::Question(e) => {
+            resolve_expr_names(&mut e.expr, scope, diagnostics);
         }
         Expr::Else(e) => {
             resolve_expr_names(&mut e.expr, scope, diagnostics);

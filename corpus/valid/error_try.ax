@@ -1,18 +1,6 @@
-fn succeed() -> Result<Int, String> {
-    Ok(42)
-}
-fn fail() -> Result<Int, String> {
-    Err("failed")
-}
-
-fn try_wrapper_ok() -> Result<Int, String> {
-    val x = try succeed()
-    Ok(x)
-}
-
-fn try_wrapper_err() -> Result<Int, String> {
-    val x = try fail()
-    Ok(x)
+fn wrap() -> Option<Int> {
+    val x = Some(42)?
+    Some(x)
 }
 
 fn main() {}
