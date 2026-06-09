@@ -153,6 +153,49 @@ fn nongeneric_type_mismatch_still_reported() {
     );
 }
 
+// ── Impl method with own type params ────────────────────────────────────────
+
+#[test]
+fn test_impl_method_with_own_type_param_no_error() {
+    // An impl method declaring its own type param should not produce
+    // undefined_type errors — the type param should resolve in scope.
+    let thir = check_source(
+        "struct Wrapper<T> { val: T }
+impl<T> Wrapper<T> {
+    fn map<S>(self) -> S { todo() }
+}
+fn main() { }",
+    );
+    let errors: Vec<_> = thir
+        .diagnostics
+        .iter()
+        .filter(|d| d.kind() == "undefined_type")
+        .collect();
+    assert!(
+        errors.is_empty(),
+        "S should resolve as method type param, got: {:?}",
+        thir.diagnostics
+    );
+}
+
+#[test]
+fn test_impl_method_return_type_param_uses_correct_scope() {
+    // The return type S in fn convert<S> should be in scope.
+    // When resolved, it should be Ty::TypeParam, not Ty::Error.
+    let thir = check_source(
+        "struct Wrapper<T> { val: T }
+impl<T> Wrapper<T> {
+    fn convert<S>(self) -> S { todo() }
+}
+fn main() { }",
+    );
+    assert!(
+        thir.diagnostics.is_empty(),
+        "expected clean typecheck, got: {:?}",
+        thir.diagnostics
+    );
+}
+
 // ── THIR dump ───────────────────────────────────────────────────────────────
 
 #[test]

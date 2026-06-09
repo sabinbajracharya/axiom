@@ -519,9 +519,10 @@ impl TypeChecker {
     }
 
     /// Extend `current_type_params` with new type params, skipping duplicates.
+    /// Also registers bounds in `type_param_bounds` for use at call sites.
     fn extend_type_params(&mut self, type_params: &[resolver::HirTypeParam]) {
         for tp in type_params {
-            let bounds = tp
+            let bounds: Vec<String> = tp
                 .bounds
                 .iter()
                 .map(|b| collect::name_text(&b.name))
@@ -532,7 +533,10 @@ impl TypeChecker {
                 .any(|(name, _, _)| *name == tp.name)
             {
                 self.current_type_params
-                    .push((tp.name.clone(), tp.id, bounds));
+                    .push((tp.name.clone(), tp.id, bounds.clone()));
+            }
+            if !bounds.is_empty() {
+                self.type_param_bounds.insert(tp.id, bounds);
             }
         }
     }
