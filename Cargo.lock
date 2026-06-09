@@ -38,9 +38,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "desugar"
+version = "0.0.0"
+dependencies = [
+ "lexer",
+ "lower",
+ "parser",
+ "resolver",
+ "typecheck",
+]
+
+[[package]]
 name = "driver"
 version = "0.0.0"
 dependencies = [
+ "desugar",
  "lexer",
  "lower",
  "parser",

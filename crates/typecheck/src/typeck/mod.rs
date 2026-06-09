@@ -21,7 +21,6 @@ mod control;
 mod helpers;
 mod infer;
 mod methods;
-mod question_desugar;
 mod stmt;
 mod ty_resolve;
 mod typeinfo;
@@ -42,23 +41,23 @@ pub(super) type TypeParamScope = Vec<(String, HirId, Vec<String>)>;
 
 /// Type-check an HIR, producing a THIR (HIR + type map + diagnostics).
 /// The HIR is consumed (moved) — the THIR owns it.
+/// The caller must have already run pre-typecheck desugaring.
 /// Never panics on user-reachable input. Returns a Thir even if
 /// type errors exist; diagnostics are in `thir.diagnostics`.
-pub fn check(mut hir: Hir) -> Thir {
-    let max_id = crate::hir_max_id(&hir);
-    resolver::desugar::desugar(&mut hir, &resolver::LangItems::default(), max_id + 1);
+pub fn check(hir: Hir) -> Thir {
     check_with_lang_items(hir, resolver::LangItems::default())
 }
 
 /// Type-check with a resolved lang-item registry. The caller (driver or bare
 /// `check`) is responsible for desugaring catch/else/ListLit before calling this
-/// function. The `?` desugaring runs after typecheck (needs inferred types).
+/// function. The `?` desugaring must be done by the caller after typecheck
+/// (needs inferred types).
 pub fn check_with_lang_items(mut hir: Hir, lang_items: resolver::LangItems) -> Thir {
     let hir_diagnostics: Vec<Diagnostic> = hir.diagnostics.drain(..).map(Diagnostic::Hir).collect();
     let mut checker = TypeChecker::new(hir, lang_items);
     checker.collect_pass();
     checker.check_pass();
-    let mut thir = Thir {
+    Thir {
         hir: checker.hir,
         types: checker.types,
         diagnostics: {
@@ -66,12 +65,7 @@ pub fn check_with_lang_items(mut hir: Hir, lang_items: resolver::LangItems) -> T
             d.append(&mut checker.diagnostics);
             d
         },
-    };
-    // Post-typecheck desugar: rewrite `?` expressions using inferred types.
-    // Must run after typecheck so we know whether `?` propagates Option or Result.
-    let max_id = crate::hir_max_id(&thir.hir);
-    question_desugar::desugar_question(&mut thir.hir, &thir.types, max_id + 1);
-    thir
+    }
 }
 
 // ── The type checker ──────────────────────────────────────────────────────────

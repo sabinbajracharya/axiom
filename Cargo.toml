@@ -6,6 +6,7 @@ members = [
     "crates/lower",
     "crates/resolver",
     "crates/typecheck",
+    "crates/desugar",
     "crates/stdlib",
     "crates/ir",
     "crates/cli",

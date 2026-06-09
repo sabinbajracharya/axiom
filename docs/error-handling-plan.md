@@ -461,10 +461,10 @@ These sugar variants now have real inference rules (not `unreachable!()`):
 
 ### 4b. Post-typecheck `?` desugaring
 
-**File: `crates/typecheck/src/typeck/question_desugar.rs`** (new file)
+**File: `crates/desugar/src/post_typecheck.rs`**
 
-After typecheck completes, `check_with_lang_items` calls `question_desugar::desugar_question`
-which walks the HIR and replaces `QuestionExpr` nodes with `Match` nodes using the `TypeMap`
+After typecheck completes, the driver calls `desugar::post_typecheck` which walks
+the HIR and replaces `QuestionExpr` nodes with `Match` nodes using the `TypeMap`
 to determine `Some/None` vs `Ok/Err` arms.
 
 ### 4c. Error set coercion (Pass 2)

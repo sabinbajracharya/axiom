@@ -70,8 +70,11 @@ pub fn check_modules(modules: &[(&str, &str)]) -> typecheck::Thir {
         diagnostics: all_diags,
     };
     let max_id = typecheck::hir_max_id(&hir);
-    resolver::desugar::desugar(&mut hir, &lang_items, max_id + 1);
-    typecheck::check_with_lang_items(hir, lang_items)
+    let _next_id = desugar::pre_typecheck(&mut hir, &lang_items, max_id + 1);
+    let mut thir = typecheck::check_with_lang_items(hir, lang_items);
+    let max_id = typecheck::hir_max_id(&thir.hir);
+    desugar::post_typecheck(&mut thir.hir, &thir.types, max_id + 1);
+    thir
 }
 
 /// Bare type-check — the deliberate, **labeled** no-stdlib mode: the user source

@@ -1,7 +1,8 @@
 //! Unit tests for the HIR desugar pass. Covers list literals, ?/else
 //! error handling, idempotency, and variant coverage invariants.
 
-use super::*;
+use resolver::hir_types::*;
+use resolver::lang::LangItems;
 
 fn test_lang_items() -> LangItems {
     LangItems {
@@ -16,13 +17,13 @@ fn compile_and_desugar(source: &str) -> Hir {
     use parser::ast::AstNode;
     let result = parser::parse(source);
     let root = parser::ast::SourceFile::cast(result.tree).unwrap();
-    let (items, _, _, next_id) = crate::lower_structural(&root, source, 0);
+    let (items, _, _, next_id) = resolver::lower_structural(&root, source, 0);
     let lang_items = test_lang_items();
     let mut hir = Hir {
         items,
         diagnostics: Vec::new(),
     };
-    desugar(&mut hir, &lang_items, next_id);
+    super::pre_typecheck(&mut hir, &lang_items, next_id);
     hir
 }
 
@@ -245,7 +246,7 @@ fn test_desugar_nested_list() {
 fn test_desugar_does_not_touch_non_sugar() {
     let source = "fn main() { val x = 1 + 2\n  loop { break }\n  if x > 0 { val y = 3 }\n}";
     let hir = compile_and_desugar(source);
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(dump.contains("Bin"));
     assert!(dump.contains("Loop"));
     assert!(dump.contains("If"));
@@ -261,7 +262,7 @@ fn test_desugar_result_has_no_list_lit() {
 #[test]
 fn test_desugar_produces_varstmt_and_no_listlit() {
     let hir = compile_and_desugar("fn main() { val xs = [1, 2, 3, 4, 5] }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(
         dump.contains("VarStmt"),
         "desugared list should have VarStmt"
@@ -272,9 +273,7 @@ fn test_desugar_produces_varstmt_and_no_listlit() {
 #[test]
 fn test_desugar_generates_unique_ids() {
     let hir = compile_and_desugar("fn main() { val xs = [1, 2, 3] }");
-    // Verify no desugar-generated ID collides within the desugared block.
-    // The desugared block is the outermost Block in main's body.
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(
         dump.contains("VarStmt"),
         "desugared list should have VarStmt"
@@ -300,7 +299,7 @@ fn test_desugar_singleton_list() {
 fn test_desugar_list_in_call_arg() {
     let hir = compile_and_desugar("fn take(list: List<Int>) {}\nfn main() { take([1, 2]) }");
     assert_eq!(count_expr_kind(&hir, is_list_lit), 0);
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(
         dump.contains("VarStmt"),
         "desugared list should produce VarStmt before call"
@@ -315,7 +314,7 @@ fn test_desugar_list_in_call_arg() {
 fn test_desugar_list_in_return() {
     let hir = compile_and_desugar("fn main() { return [1, 2] }");
     assert_eq!(count_expr_kind(&hir, is_list_lit), 0);
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(dump.contains("ReturnStmt"), "return stmt still present");
     assert!(
         dump.contains("VarStmt"),
@@ -342,7 +341,7 @@ fn test_desugar_list_as_match_arm_body() {
 #[test]
 fn test_desugar_list_with_temp_name_unique() {
     let hir = compile_and_desugar("fn main() { val a = [1, 2]\n  val b = [3, 4] }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(dump.contains("__list_0"), "first temp var");
     assert!(
         dump.contains("__list_1"),
@@ -353,16 +352,14 @@ fn test_desugar_list_with_temp_name_unique() {
 #[test]
 fn test_desugar_empty_list_after_nonempty_uses_different_temp_counter() {
     let hir = compile_and_desugar("fn main() { val a = [1, 2]\n  val b: List<Int> = [] }");
-    let dump = crate::serialize::serialize(&hir);
-    // Empty list desugars to List::new() call, no temp var.
-    // Non-empty produces __list_0.
+    let dump = resolver::serialize::serialize(&hir);
     assert!(dump.contains("__list_0"));
 }
 
 #[test]
 fn test_desugar_uses_lang_item_def_ids() {
     let hir = compile_and_desugar("fn main() { val xs: List<Int> = [] }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(
         dump.contains("→101"),
         "callee def_id should match list_new lang item"
@@ -376,7 +373,7 @@ fn test_desugar_fallback_when_lang_items_missing() {
     use parser::ast::AstNode;
     let result = parser::parse("fn main() { val xs = [1, 2, 3] }");
     let root = parser::ast::SourceFile::cast(result.tree).unwrap();
-    let (items, _, _, next_id) = crate::lower_structural(&root, "test", 0);
+    let (items, _, _, next_id) = resolver::lower_structural(&root, "test", 0);
     let lang_items = LangItems {
         list: None,
         list_new: None,
@@ -387,7 +384,7 @@ fn test_desugar_fallback_when_lang_items_missing() {
         items,
         diagnostics: Vec::new(),
     };
-    desugar(&mut hir, &lang_items, next_id);
+    super::pre_typecheck(&mut hir, &lang_items, next_id);
     assert!(
         count_expr_kind(&hir, is_list_lit) > 0,
         "ListLit should survive desugar when lang items are missing"
@@ -399,10 +396,9 @@ fn test_desugar_is_idempotent() {
     let hir = compile_and_desugar("fn main() { val a = [1, 2, 3]\n  val b = [4, 5] }");
     let mut hir2 = hir.clone();
     let lang_items = test_lang_items();
-    // Use a large next_id to avoid collision with existing IDs
-    desugar(&mut hir2, &lang_items, 10_000);
-    let dump1 = crate::serialize::serialize(&hir);
-    let dump2 = crate::serialize::serialize(&hir2);
+    super::pre_typecheck(&mut hir2, &lang_items, 10_000);
+    let dump1 = resolver::serialize::serialize(&hir);
+    let dump2 = resolver::serialize::serialize(&hir2);
     assert_eq!(
         dump1, dump2,
         "re-running desugar on desugared HIR should be idempotent"
@@ -412,7 +408,7 @@ fn test_desugar_is_idempotent() {
 #[test]
 fn test_desugar_catch_produces_match() {
     let hir = compile_and_desugar("fn main() { f() catch 0 }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(
         dump.contains("Match"),
         "catch should desugar to a match expression: {dump}"
@@ -426,7 +422,7 @@ fn test_desugar_catch_produces_match() {
 #[test]
 fn test_desugar_catch_has_ok_and_wildcard() {
     let hir = compile_and_desugar("fn main() { f() catch 0 }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(dump.contains("Ok"), "catch should have Ok arm: {dump}");
     assert!(
         dump.contains("Wild"),
@@ -436,10 +432,8 @@ fn test_desugar_catch_has_ok_and_wildcard() {
 
 #[test]
 fn test_desugar_catch_with_error_capture() {
-    // `f() catch |e| handle(e)` — the lowerer detects the closure and
-    // destructures it into error_binding + fallback body.
     let hir = compile_and_desugar("fn main() { f() catch |e| e }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(
         !dump.contains("Catch("),
         "Catch should not survive desugar: {dump}"
@@ -448,14 +442,13 @@ fn test_desugar_catch_with_error_capture() {
         dump.contains("Match"),
         "catch |e| should desugar to match: {dump}"
     );
-    // With |e| capture, the error arm should use Err(e), not a wildcard.
     assert!(dump.contains("Err"), "should have Err arm for |e|: {dump}");
 }
 
 #[test]
 fn test_desugar_else_produces_match() {
     let hir = compile_and_desugar("fn main() { f() else 0 }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(
         dump.contains("Match"),
         "else should desugar to a match expression: {dump}"
@@ -469,7 +462,7 @@ fn test_desugar_else_produces_match() {
 #[test]
 fn test_desugar_else_has_some_and_none() {
     let hir = compile_and_desugar("fn main() { f() else 0 }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(dump.contains("Some"), "else should have Some arm: {dump}");
     assert!(
         dump.contains("Wild"),
@@ -483,9 +476,9 @@ fn test_desugar_catch_and_else_idempotent() {
     let hir = compile_and_desugar(source);
     let mut hir2 = hir.clone();
     let lang_items = test_lang_items();
-    desugar(&mut hir2, &lang_items, 10_000);
-    let dump1 = crate::serialize::serialize(&hir);
-    let dump2 = crate::serialize::serialize(&hir2);
+    super::pre_typecheck(&mut hir2, &lang_items, 10_000);
+    let dump1 = resolver::serialize::serialize(&hir);
+    let dump2 = resolver::serialize::serialize(&hir2);
     assert_eq!(
         dump1, dump2,
         "re-running desugar on desugared else/catch HIR should be idempotent"
@@ -494,11 +487,8 @@ fn test_desugar_catch_and_else_idempotent() {
 
 #[test]
 fn test_desugar_nested_question() {
-    // ? is NOT desugared in the pre-typecheck pass — it needs type info
-    // to determine Some/None vs Ok/Err. It passes through as QuestionExpr
-    // and is desugared post-typecheck by question_desugar.
     let hir = compile_and_desugar("fn main() { f()?  }");
-    let dump = crate::serialize::serialize(&hir);
+    let dump = resolver::serialize::serialize(&hir);
     assert!(
         dump.contains("Question("),
         "? should survive pre-typecheck desugar: {dump}"

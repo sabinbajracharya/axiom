@@ -254,10 +254,10 @@ if appropriate.
 
 ### Desugar pass — relocation (as implemented)
 
-The desugar pass stayed in `crates/resolver/src/desugar/` for `catch`/`else`/`ListLit`
-(pre-typecheck, type-independent). The new `?` desugaring lives in
-`crates/typecheck/src/typecheck/question_desugar.rs` and runs post-typecheck via
-`check_with_lang_items` in the typecheck module.
+The desugar pass now lives in its own crate: `crates/desugar/`. Pre-typecheck
+desugaring (`catch`/`else`/`ListLit`) and post-typecheck desugaring (`?`) are
+separate modules with different dependencies. The driver explicitly calls both
+passes — no desugaring is hidden inside the typecheck crate.
 
 **Options:**
 

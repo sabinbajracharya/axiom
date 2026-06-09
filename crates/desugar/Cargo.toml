@@ -1,5 +1,5 @@
 [package]
-name = "driver"
+name = "desugar"
 version = "0.0.0"
 edition = "2021"
 license = "MIT"
@@ -11,9 +11,8 @@ workspace = true
 [dependencies]
 lower = { path = "../lower" }
 resolver = { path = "../resolver" }
-lexer = { path = "../lexer" }
-parser = { path = "../parser" }
-stdlib = { path = "../stdlib" }
 typecheck = { path = "../typecheck" }
-desugar = { path = "../desugar" }
-thiserror = { workspace = true }
+lexer = { path = "../lexer" }
+
+[dev-dependencies]
+parser = { path = "../parser" }

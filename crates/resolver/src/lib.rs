@@ -24,7 +24,6 @@ pub mod intrinsic;
 pub mod lang;
 pub mod resolve;
 
-pub use desugar::desugar;
 pub use intrinsic::{
     collect_intrinsic_bindings, validate_intrinsic_bindings, IntrinsicBinding, HEAP_ALLOC,
     HEAP_FREE, HEAP_GET, HEAP_SET, KNOWN_INTRINSICS,

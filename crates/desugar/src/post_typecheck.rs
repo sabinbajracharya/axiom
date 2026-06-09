@@ -1,27 +1,10 @@
-//! Post-typecheck desugar: rewrites `?` expressions into match expressions
-//! using type information from the typechecker.
+//! Post-typecheck desugaring: `?` expressions.
 //!
-//! Pre-typecheck desugar handles `catch`, `else`, and `ListLit` (these don't
-//! need type info). `?` is deferred because it can propagate either `Option`
-//! (Some/None) or `Result` (Ok/Err), and the choice depends on the operand type.
+//! Requires `TypeMap` to determine whether `?` propagates `Option` (Some/None)
+//! or `Result` (Ok/Err). Assumes catch/else/ListLit are already desugared.
 
-use crate::thir::TypeMap;
-use crate::types::Ty;
-use resolver::*;
-
-/// Desugar all remaining `QuestionExpr` nodes in the HIR.
-/// Must run after typecheck so `types` contains the inferred type for each
-/// `?` operand. Returns the next fresh ID to allocate (for generated match nodes).
-pub fn desugar_question(hir: &mut Hir, types: &TypeMap, start_id: usize) -> usize {
-    let mut ctx = QuestionDesugarCtx {
-        next_id: start_id,
-        temp_counter: 0,
-    };
-    for item in &mut hir.items {
-        desugar_item(item, types, &mut ctx);
-    }
-    ctx.next_id
-}
+use resolver::hir_types::*;
+use typecheck::{Ty, TypeMap};
 
 struct QuestionDesugarCtx {
     next_id: usize,
@@ -34,6 +17,20 @@ impl QuestionDesugarCtx {
         self.next_id += 1;
         id
     }
+}
+
+/// Run post-typecheck desugaring on a type-checked HIR.
+/// `?` expressions are rewritten in-place using inferred types.
+/// Returns the next fresh ID to allocate.
+pub fn post_typecheck(hir: &mut Hir, types: &TypeMap, next_id: usize) -> usize {
+    let mut ctx = QuestionDesugarCtx {
+        next_id,
+        temp_counter: 0,
+    };
+    for item in &mut hir.items {
+        desugar_item(item, types, &mut ctx);
+    }
+    ctx.next_id
 }
 
 fn desugar_item(item: &mut Item, types: &TypeMap, ctx: &mut QuestionDesugarCtx) {
@@ -289,3 +286,7 @@ fn build_failure_arm(is_option: bool, ctx: &mut QuestionDesugarCtx) -> MatchArm 
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests;

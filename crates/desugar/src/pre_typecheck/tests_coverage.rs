@@ -1,7 +1,6 @@
-//! Coverage invariants for the desugar pass. Extracted from `tests.rs` to stay
-//! under the 600-line cap (RUST_CONVENTIONS.md §10).
+//! Coverage invariants for the desugar pass.
 
-use crate::DefKind;
+use resolver::DefKind;
 
 /// Expr-variant coverage invariant: every variant in the Expr enum must be
 /// explicitly classified. Adding a new Expr variant without updating this

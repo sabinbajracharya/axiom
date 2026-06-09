@@ -291,7 +291,7 @@ let max_id = all_items.iter()
     .unwrap_or(HirId(0))
     .0;
 let mut next_id = max_id + 1;
-axiom_hir::desugar::desugar(&mut hir, &lang_items, &mut next_id);
+desugar::pre_typecheck(&mut hir, &lang_items, max_id + 1);
 ```
 
 `collect_hir_ids` is a new helper that walks items and returns all `HirId`s.
