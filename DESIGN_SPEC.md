@@ -454,28 +454,34 @@ fn load() -> (FsError || NetError)!Config { ... }   // union of both error sets
 ### 6.3 `try` propagation [Decided]
 `try expr` evaluates `expr`; on `Ok(v)` it yields `v`, on `Err(e)` it **returns `Err(e)` from the current function immediately**. The function's return type must be an error union/`Result`. This replaces Go's `if err != nil` boilerplate with one keyword.
 
-### 6.4 `catch` and `errdefer` [Decided]
+### 6.4 `catch` [Decided]
 ```rust
 fn read_config(path: String) -> FsError!Config {
-    val file = try open(path)        // propagate on error
-    errdefer log_failure(path)       // runs ONLY if this fn returns Err after this point
+    val file = try open(path)
     val text = try file.read_all()
-    return parse(text)               // success auto-wrapped in Ok
+    return parse(text)
 }
 
 fn boot() {
     val cfg = read_config("/etc/app") catch |e| match e {
-        FsError.NotFound    => default_config(),
+        FsError.NotFound     => default_config(),
         FsError.AccessDenied => panic("permission denied"),
     }
     // ...
 }
 ```
 - `catch |e| <expr>` — evaluates the fallback expression if the LHS is `Err`, binding the payload as `e`. The fallback must produce a value of the success type (or diverge via `return`/`panic`).
-- `errdefer <stmt>` — like a deferred cleanup, but runs **only on the error-return path** from its declaration point onward. Composes with `Drop` ordering (§4.9).
+- `catch <expr>` — bare fallback without capture: `open(path) catch default`.
+- `catch` is for **Result/error** types only. `else` is for **Option** types only (§6.5). The singular-idiom rule: one mechanism per type, no overlap.
 
 ### 6.5 Option ergonomics [Decided]
-- `?` postfix on `Option` in an `Option`-returning context propagates `None` (parallel to `try` for `Result`). *(One mechanism each — `try` for `Result`, `?` for `Option` — chosen over having both work on both, to keep the rule crisp. **Open §15:** revisit unifying them.)*
+```rust
+val head = xs.first()?         // None → return None (propagate)
+val head = xs.first() else 0   // None → 0 (default)
+val head = xs.first() else compute()  // None → compute() (lazy default)
+```
+- `?` postfix on `Option` in an `Option`-returning context propagates `None` (parallel to `try` for `Result`).
+- `expr else fallback` — evaluates the fallback expression if the LHS is `None`. `else` is for **Option** types only, just as `catch` is for **Result/error** types only. This mirrors Zig's `try`/`catch` for errors and `orelse` for null, using `else` instead of `orelse` since `else` already exists in the language. *(One mechanism each — `try`/`catch` for `Result`, `?`/`else` for `Option` — no overlap, per the singular-idiom rule. **Open §15:** revisit unifying them.)*
 - No implicit truthiness; `Option` is consumed by `match` or combinators (`map`, `unwrap_or`, ...).
 
 ---
@@ -763,7 +769,7 @@ Each stage is independently shippable and testable. Risk is retired front-to-bac
 
 **v0 — End-to-end skeleton, NO memory model.** Lex → parse → typecheck → IR → Cranelift, for a value-semantics subset with naive "copy/refcount everything" (no exclusivity, no Perceus optimization). Goal: a `hello.ax` and basic programs run natively. Proves the pipeline. Includes the dual-backend + parity harness early. **Delivered:** user-defined structs, `HeapBuffer<T>` primitive, `Deinit` auto-impl, subscript declarations, generic struct method resolution, and migration of `List<T>`/`Map<K,V>` from compiler built-ins to library types (✅ **done** — `List`/`Map` are real `std::collections` `.ax` code; see `docs/builtin-to-stdlib-migration.md`). **Pulled forward from v1:** enums with payloads, traits with default methods + supertraits + impl-completeness checking, generics (type parameters + trait bounds), and `match` exhaustiveness checking (✅ **done** — all live in the typechecker).
 
-**v1 — The memory model.** Fold the spiked ownership pass + Perceus + reuse analysis into the real compiler. `val`/`var`, the three calling conventions, error handling (`try`/`catch`/`errdefer`/error sets). **This is the language's identity landing.** Closures with the spiked capture model. Diagnostics for exclusivity errors held to release-gating quality. *(Enums, traits, generics, and `match` exhaustiveness — originally v1 items — were pulled forward into v0 and are already delivered.)*
+**v1 — The memory model.** Fold the spiked ownership pass + Perceus + reuse analysis into the real compiler. `val`/`var`, the three calling conventions, error handling (`try`/`catch`/`?`/`else`/error sets). **This is the language's identity landing.** Closures with the spiked capture model. Diagnostics for exclusivity errors held to release-gating quality. *(Enums, traits, generics, and `match` exhaustiveness — originally v1 items — were pulled forward into v0 and are already delivered.)* **`errdefer` is deferred** — MVS + Perceus + `Deinit` (§4.9) provides automatic cleanup; `catch`/`else` handlers cover side-effect logging at the call site. Revisit only if real code shows pervasive explicit-cleanup-on-error patterns.
 
 **v2 — Concurrency + ecosystem.** Green-thread scheduler, `scope`/`spawn`, channels, shared-immutable + move-into-task sharing. `forge` package manager with lockfiles + sandboxed builds + signature verification. LSP feature-complete. `Mutex<T>`/shared-mutable cell. Associated types / richer generics.
 
@@ -789,6 +795,7 @@ Honest list. Each is tagged with whether it may remain open (isolated behind a b
 | 8 | Unify `try` (Result) and `?` (Option) into one mechanism? (§6.5) | May stay open — cosmetic; decide before 1.0 |
 | 9 | Exact Perceus elision rate on real code (§4.5) | Empirical — measure in v1, don't promise a number |
 | 10 | Algebraic effects ever? (§9.5) | Rejected for v1; post-2.0 research track if user-schedulers needed |
+| 11 | **`errdefer`** (§6.4) — needed despite `Deinit`? | **Deferred from v1** — `Deinit` handles cleanup; `catch`/`else` handle side-effects. Revisit only if evidence of pervasive explicit-cleanup-on-error patterns. |
 
 **The discipline (restated):** an item may stay open **only** if it's provably isolated behind a version boundary and nothing earlier builds on it. Items 1–3 are on the critical path, so they are **not** documented-and-deferred — they are **spiked to resolution before the foundation is poured.**
 
@@ -821,17 +828,16 @@ error_def   = "error" ident "{" { ident "," } "}" ;
 
 stmt        = let_stmt | expr_stmt | return_stmt | errdefer_stmt ;
 let_stmt    = ("val" | "var") pattern ( ":" type )? "=" expr ;
-errdefer_stmt = "errdefer" stmt ;
-
 expr        = literal | path | call | method_call | match_expr | if_expr
             | loop_expr | closure | struct_init | try_expr | catch_expr
-            | binary | unary | subscript_access | block ;
+            | else_expr | binary | unary | subscript_access | block ;
 
 match_expr  = "match" expr "{" { arm "," } "}" ;
 arm         = pattern ( "if" expr )? "=>" expr ;
 loop_expr   = "loop" ( "if" expr | ident "in" expr )? block ;
-try_expr    = "try" expr ;
-catch_expr  = expr "catch" "|" ident "|" expr ;
+try_expr    = "try" expr | postfix "?" ;
+catch_expr  = expr "catch" ( "|" ident "|" expr | expr ) ;
+else_expr   = expr "else" expr ;
 closure     = "|" params? "|" ( "->" type )? ( expr | block ) ;
 
 type        = path generics_args? | "(" ")" | error_union ;
@@ -874,9 +880,8 @@ fn main() {
         stats.add(inout stats, n)   // (illustrative: method form is stats.add(n))
     }
 
-    match stats.mean() {
-        Some(m) => println(string::format("mean = {}", m)),
-        None    => println("no data"),
+    val m = stats.mean() else 0.0
+    println(string::format("mean = {}", m))
     }
 }
 ```

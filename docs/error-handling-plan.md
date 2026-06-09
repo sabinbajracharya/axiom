@@ -1,7 +1,10 @@
 # Error Handling Implementation Plan — `try`/`catch`/`?`/`else`/error sets
 
-> Final design: four keywords, zero overlap, all sugar over `match` on enums.
+> Final design: four constructs, zero overlap, all sugar over `match` on enums.
 > Zig-style separation: `try`/`catch` for Result/error, `?`/`else` for Option/null.
+> `errdefer` is **deferred** — MVS + Perceus + `Deinit` handles cleanup; `catch`/`else`
+> handle side-effects. Revisit only with evidence.
+>
 > Based on thorough research of Zig's error handling semantics and the Axiom compiler
 > architecture.
 
@@ -26,7 +29,7 @@ match open(path) { ... }       // both branches
 | **Error** `Result<T, E>` | `try` | `catch` |
 | **Option** `Option<T>` | `?` | `else` |
 
-Four keywords. `try`/`catch` for errors, `?`/`else` for options. `match` for
+Four constructs. `try`/`catch` for errors, `?`/`else` for options. `match` for
 exhaustive handling. Zero overlap. Like Zig's `try`/`catch` for errors and
 `?` (orelse equivalent) for null — but using `else` instead of `orelse` since
 `else` already exists in the parser.
@@ -44,6 +47,7 @@ try expr     ✅ CST parsed   ✅ HIR TryExpr      ✅ resolved     N/A (desugar
 catch expr   ✅ CST parsed   ✅ HIR CatchExpr    ✅ resolved     N/A (desugared)  N/A
 else expr    ✅ CST parsed   ✅ HIR ElseExpr     ✅ resolved     N/A (desugared)  N/A
 ? expr       ✅ CST parsed   ✅ HIR TryExpr      ✅ resolved     N/A (desugared)  N/A
+errdefer     ✅ parsed (scaffolded, not in spec) — deferred from v1
 desugar      N/A             N/A                ✅ try/catch/else/? → match       N/A
 ```
 
@@ -84,8 +88,8 @@ chose to keep them separate because:
 
 1. **They mean different things.** `try open(path)` says "this can fail." `xs.first()?`
    says "this might be absent." Different semantics deserve different syntax.
-   says "this might be absent." Conflating them behind one operator hides a semantic
-   distinction the compiler should track — error coercion vs null checking.
+   Conflating them behind one operator hides a semantic distinction the compiler
+   should track — error coercion vs null checking.
 2. **`?` earns its brevity.** `?` is a single character after an expression, used on
    nearly every line in Option-heavy code. Replacing it with `else return None` (18 chars)
    adds noise. `try` doesn't need the same compression — error propagation is less
@@ -93,7 +97,7 @@ chose to keep them separate because:
 3. **Axiom's rule: one obvious way.** `try` is for errors. `?` is for absence. No
    guessing which one to use.
 
-### Why `errdefer` was dropped
+### Why `errdefer` is deferred
 
 Zig needs `errdefer` because memory is fully manual — every allocation needs a paired
 `defer` or `errdefer` written by hand. Axiom has `Deinit` (equivalent to Rust's `Drop`),
@@ -101,10 +105,10 @@ which runs automatically on scope exit — resources free themselves.
 
 The remaining use cases for `errdefer` are side-effects (logging, notifications) that
 shouldn't live in `Deinit`. These can be handled explicitly at the call site with
-`else`: `f() else |e| log(e); return Err(e)`. Since this pattern is rare, adding a
+`catch`: `f() catch |e| { log(e); return Err(e) }`. Since this pattern is rare, adding a
 dedicated keyword doesn't earn its keep.
 
-**Revisited if:** evidence shows pervasive `else |e| log(e); return Err(e)` patterns
+**Revisited if:** evidence shows pervasive `catch |e| { log(e); return Err(e) }` patterns
 in real Axiom code.
 
 ### Why error sets are unit-only (no data payloads)
@@ -145,14 +149,17 @@ small and lets `Result` live in the stdlib where it can be extended with combina
 1. **Error sets are unit-only** (no data payloads). Zig's design is battle-tested and keeps
    the implementation simple.
 
-2. **`try`/`else` desugar to `match` on enums**. `Result<T, E>` and `Option<T>` are
+2. **`try`/`catch`/`?`/`else` desugar to `match` on enums**. `Result<T, E>` and `Option<T>` are
    user-defined generic enums. `try expr` → `match expr { Ok(v) => v, Err(e) => return Err(e) }`.
-   `expr else default` → `match expr { Ok/Some(v) => v, Err/None(_) => default }`.
+   `expr catch fallback` → `match expr { Ok(v) => v, Err(_) => fallback }`.
+   `expr catch |e| handler` → `match expr { Ok(v) => v, Err(e) => handler }`.
+   `expr?` → `match expr { Some(v) => v, None => return None }`.
+   `expr else fallback` → `match expr { Some(v) => v, None => fallback }`.
    No new IR ops needed.
 
-3. **`else` is the unified default operator** for both `Option` and `Result`. It replaces
-   `catch` for error defaults and works identically on `Option`. Reads naturally:
-   "the value, else the fallback."
+3. **`catch` is error-only; `else` is Option-only.** No overlap — the singular-idiom rule.
+   `catch` says "the operation can fail." `else` says "the value might be absent."
+   Using `catch` on an `Option` or `else` on a `Result` is a type error.
 
 4. **`?` is Option-only propagation**. Syntactic sugar for `else return None`. Too concise
    and frequent to drop — appears on most lines in Option-heavy code.
@@ -160,9 +167,9 @@ small and lets `Result` live in the stdlib where it can be extended with combina
 5. **`try` is error-only propagation**. Reads as "try this operation" — implies it can fail.
    Kept separate from `?` because errors and absence are different semantics.
 
-6. **`errdefer` is dropped**. With MVS + Perceus + `Deinit`, resource cleanup is automatic
+6. **`errdefer` is deferred**. With MVS + Perceus + `Deinit`, resource cleanup is automatic
    (like Rust's `Drop`). The remaining use cases (logging, side-effects) are rare enough
-   that explicit `else |e| log(e); return Err(e)` at the call site suffices.
+   that explicit `catch |e| { log(e); return Err(e) }` at the call site suffices.
 
 7. **Error union sugar `E!T`** ≡ `Result<T, E>`. The `!` in type position desugars to
    `Ty::Instance("Result", [T, Ty::ErrorSet(...)])` — no dedicated `Ty` variant needed.
