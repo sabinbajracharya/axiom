@@ -214,6 +214,7 @@ fn lower_method_call_expr(e: &ast::MethodCallExpr, ctx: &mut LowerCtx) -> Expr {
         receiver,
         method,
         args,
+        callee_def: None,
     })
 }
 

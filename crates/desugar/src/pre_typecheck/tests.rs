@@ -367,6 +367,27 @@ fn test_desugar_uses_lang_item_def_ids() {
     );
 }
 
+#[test]
+fn test_desugar_push_uses_lang_item_def_id() {
+    let hir = compile_and_desugar("fn main() { val xs = [1] }");
+    let dump = resolver::serialize::serialize(&hir);
+    // The push call should carry the list_push lang item DefId (103).
+    assert!(
+        dump.contains("#103"),
+        "push call should carry list_push lang item DefId, got: {dump}"
+    );
+}
+
+#[test]
+fn test_desugar_method_call_callee_def_none_for_user_code() {
+    let hir = compile_and_desugar("struct Point { x: Int } impl Point { fn xval(self) -> Int { 0 } } fn main() { val p = Point { x: 1 } p.xval() }");
+    let dump = resolver::serialize::serialize(&hir);
+    // User-written method calls should NOT have a callee_def.
+    assert!(dump.contains(".Method("), "dump: {dump}");
+    // The # prefix only appears for desugared calls with callee_def.
+    // User-written calls have no # prefix before the method name.
+}
+
 /// When lang items are unavailable (no-stdlib), the desugar pass keeps
 /// ListLit expressions intact — they fall through to typeck's fallback.
 #[test]

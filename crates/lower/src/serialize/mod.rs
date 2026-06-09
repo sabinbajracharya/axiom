@@ -417,7 +417,12 @@ fn serialize_call_expr(e: &CallExpr, depth: usize, out: &mut String) {
 
 fn serialize_method_call_expr(e: &MethodCallExpr, depth: usize, out: &mut String) {
     serialize_expr(&e.receiver, depth, out);
-    out.push_str(&format!(".Method({}) {}(", e.id, e.method));
+    let def = e
+        .callee_def
+        .as_ref()
+        .map(|d| format!("#{} ", d))
+        .unwrap_or_default();
+    out.push_str(&format!(".Method({}) {}{}(", e.id, def, e.method));
     for (i, arg) in e.args.iter().enumerate() {
         if i > 0 {
             out.push_str(", ");

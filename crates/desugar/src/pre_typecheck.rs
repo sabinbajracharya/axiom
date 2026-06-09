@@ -385,6 +385,7 @@ fn desugar_push_call(
             })),
             method: "push".to_string(),
             args: vec![element],
+            callee_def: ctx.lang_items.list_push,
         }),
     })
 }

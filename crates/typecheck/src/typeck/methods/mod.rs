@@ -63,6 +63,20 @@ impl TypeChecker {
                 let method_info = self.find_impl_method(&name, &mc.method, receiver_ty);
                 match method_info {
                     Some((fn_def, impl_subst, scope)) => {
+                        // Verify the callee's DefId when desugar has supplied one
+                        // (e.g. `push` via lang item). If the resolved method's
+                        // DefId doesn't match, the stdlib has drifted.
+                        if let Some(expected) = mc.callee_def {
+                            if fn_def.id != expected {
+                                self.emit(TypeDiagnostic::TypeMismatch {
+                                    expected: format!("method with DefId {expected}"),
+                                    found: format!("resolved to {}", fn_def.name),
+                                    span: self.span_for(mc.id),
+                                });
+                                self.types.insert(mc.id, Ty::Error);
+                                return Ty::Error;
+                            }
+                        }
                         let mut subst = impl_subst;
                         self.bind_instance_type_params(&fn_def, receiver_ty, &mut subst);
                         let resolved = ResolvedMethod {

@@ -351,6 +351,11 @@ pub struct MethodCallExpr {
     pub receiver: Box<Expr>,
     pub method: String,
     pub args: Vec<Expr>,
+    /// When set, the compiler-generated DefId of the method being called.
+    /// Desugared calls (`push`, `into_iter`, `next`) set this to route through
+    /// the lang-item DefId rather than a raw name string. User-written method
+    /// calls leave this `None` and rely on name-based resolution.
+    pub callee_def: Option<DefId>,
 }
 
 #[derive(Debug, Clone)]

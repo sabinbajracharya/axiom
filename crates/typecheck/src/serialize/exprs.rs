@@ -98,9 +98,14 @@ fn serialize_method_call_expr(
     thir: &Thir,
     out: &mut String,
 ) {
+    let def = e
+        .callee_def
+        .as_ref()
+        .map(|d| format!("#{} ", d))
+        .unwrap_or_default();
     out.push_str(&format!(
-        "MethodCall({}) method={}{}",
-        e.id, e.method, type_ann
+        "MethodCall({}) {}method={}{}",
+        e.id, def, e.method, type_ann
     ));
     out.push('\n');
     serialize_expr(&e.receiver, depth + 1, thir, out);
