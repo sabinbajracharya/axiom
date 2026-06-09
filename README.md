@@ -152,7 +152,7 @@ memory model — the language's load-bearing bet — has passed its de-risking s
 | Pipeline orchestration | [`crates/driver`](crates/driver) — single multi-module pipeline (parse→lower→resolve→validate→typecheck) | ✅ Done |
 | IR generation | [`crates/ir`](crates/ir) — THIR → register IR (basic blocks, SSA-lite registers) | ✅ Done (M3); golden traces + invariants |
 | Register-IR interpreter | [`crates/vm`](crates/vm) — executes IR: structs, enums, match, control flow, calls, generics, traits, collections | ✅ Done; snapshot + e2e + invariant tested |
-| Standard library | [`stdlib/`](stdlib) embedded via [`crates/stdlib`](crates/stdlib); multi-file loading in [`crates/modules`](crates/modules) — core traits, `Option<T>`, `List<T>`, `Map<K,V>`, `print`/`format`, all in `.ax` | ✅ Running on the VM |
+| Standard library | `crates/stdlib/source/` embedded via [`crates/stdlib`](crates/stdlib); multi-file loading in [`crates/modules`](crates/modules) — core traits, `Option<T>`, `List<T>`, `Map<K,V>`, `print`/`format`, all in `.ax` | ✅ Running on the VM |
 | Cranelift codegen | — | ⬜ Not started |
 | Ownership pass + Perceus | — | ⬜ Not started (the v1 identity) |
 | `forge`, LSP | — | ⬜ Not started |
@@ -195,7 +195,7 @@ the language identity arrives.
 │   ├── ir/               # Stage 5: THIR → register IR (basic blocks, SSA-lite regs)
 │   ├── vm/               # Stage 6: register-IR interpreter
 │   ├── modules/          # Multi-file module discovery + graph construction
-│   ├── stdlib/           # Embeds stdlib/*.ax into the compiler (build.rs)
+│   ├── stdlib/           # Embeds source/*.ax into the compiler (build.rs)
 │   ├── driver/           # Pipeline orchestrator (parse→lower→resolve→validate→typecheck)
 │   └── cli/              # Compiler driver (`axiom check` / `run` / `build`)
 ├── docs/
@@ -211,8 +211,6 @@ the language identity arrives.
 │   ├── modules-design.md   # Multi-file modules + the embedded stdlib
 │   ├── spike-0-findings.md # Memory-model spike result + Path A/B decision
 │   └── v0-roadmap.md       # v0 milestone plan (M1–M5) — plus more design notes
-├── stdlib/              # The standard library, in Axiom (.ax): core traits,
-│                        #   Option, List, Map, io (print/format)
 ├── showcase/            # Feature-tour demo programs
 ├── corpus/              # End-to-end .ax programs run as integration tests
 └── scripts/             # check.sh and friends (the PostToolUse enforcement hook)
