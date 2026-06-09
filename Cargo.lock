@@ -42,7 +42,6 @@ name = "desugar"
 version = "0.0.0"
 dependencies = [
  "lexer",
- "lower",
  "parser",
  "resolver",
  "typecheck",

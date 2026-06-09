@@ -19,7 +19,6 @@ pub use lower::serialize;
 // from `lower::hir_types`) for module-path access.
 pub use lower::*;
 
-pub mod desugar;
 pub mod intrinsic;
 pub mod lang;
 pub mod resolve;
