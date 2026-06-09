@@ -85,7 +85,14 @@ fn resolve_trait_def(
         // Build a method-local scope: parent scope + method's own type params.
         let mut method_scope = Scope::new_child(&scope.bindings);
         for mtp in &method.type_params {
-            method_scope.define(mtp.name.clone(), mtp.id, DefKind::TypeParam);
+            if method_scope.bindings.contains_key(&mtp.name) {
+                diagnostics.push(HirDiagnostic::DuplicateDefinition {
+                    name: mtp.name.clone(),
+                    span: lexer::Span { lo: 0, hi: 0 },
+                });
+            } else {
+                method_scope.define(mtp.name.clone(), mtp.id, DefKind::TypeParam);
+            }
         }
         resolve_method_sig(
             &mut method.params,

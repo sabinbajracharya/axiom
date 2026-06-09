@@ -196,6 +196,28 @@ fn main() { }",
     );
 }
 
+#[test]
+fn test_impl_method_type_param_shadows_impl_param() {
+    // An impl method that declares the same type param name as the impl
+    // should produce a duplicate_type_param diagnostic.
+    let thir = check_source(
+        "struct Wrapper<T> { val: T }
+impl<T> Wrapper<T> {
+    fn map<T>(self) -> T { todo() }
+}
+fn main() { }",
+    );
+    let has_duplicate = thir
+        .diagnostics
+        .iter()
+        .any(|d| d.kind() == "duplicate_type_param");
+    assert!(
+        has_duplicate,
+        "expected duplicate_type_param for T shadowing impl param, got: {:?}",
+        thir.diagnostics
+    );
+}
+
 // ── THIR dump ───────────────────────────────────────────────────────────────
 
 #[test]

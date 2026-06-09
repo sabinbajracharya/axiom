@@ -518,7 +518,8 @@ impl TypeChecker {
         self.current_type_params.truncate(impl_param_count);
     }
 
-    /// Extend `current_type_params` with new type params, skipping duplicates.
+    /// Extend `current_type_params` with new type params. Emits an error if
+    /// a type param shadows an existing one in the outer scope.
     /// Also registers bounds in `type_param_bounds` for use at call sites.
     fn extend_type_params(&mut self, type_params: &[resolver::HirTypeParam]) {
         for tp in type_params {
@@ -527,11 +528,16 @@ impl TypeChecker {
                 .iter()
                 .map(|b| collect::name_text(&b.name))
                 .collect();
-            if !self
+            if self
                 .current_type_params
                 .iter()
                 .any(|(name, _, _)| *name == tp.name)
             {
+                self.emit(TypeDiagnostic::DuplicateTypeParam {
+                    name: tp.name.clone(),
+                    span: self.span_for(tp.id),
+                });
+            } else {
                 self.current_type_params
                     .push((tp.name.clone(), tp.id, bounds.clone()));
             }

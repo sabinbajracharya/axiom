@@ -261,6 +261,9 @@ pub enum TypeDiagnostic {
         found: String,
         span: Span,
     },
+
+    #[error("type parameter `{name}` shadows an existing type parameter in the outer scope")]
+    DuplicateTypeParam { name: String, span: Span },
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -299,7 +302,8 @@ impl TypeDiagnostic {
             | TypeDiagnostic::ErrorSetSupersetCoercion { span, .. }
             | TypeDiagnostic::TryInNonErrorFn { span, .. }
             | TypeDiagnostic::OrphanImpl { span, .. }
-            | TypeDiagnostic::SelfConventionMismatch { span, .. } => *span,
+            | TypeDiagnostic::SelfConventionMismatch { span, .. }
+            | TypeDiagnostic::DuplicateTypeParam { span, .. } => *span,
         }
     }
 
@@ -349,6 +353,7 @@ impl TypeDiagnostic {
             TypeDiagnostic::TryInNonErrorFn { .. } => "try_in_non_error_fn",
             TypeDiagnostic::OrphanImpl { .. } => "orphan_impl",
             TypeDiagnostic::SelfConventionMismatch { .. } => "self_convention_mismatch",
+            TypeDiagnostic::DuplicateTypeParam { .. } => "duplicate_type_param",
         }
     }
 }

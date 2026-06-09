@@ -99,10 +99,11 @@ fn test_every_error_type_has_diagnostic_kind() {
         "unsatisfied_bound",
         "orphan_impl",
         "self_convention_mismatch",
+        "duplicate_type_param",
     ];
     assert_eq!(
         diagnostic_kinds.len(),
-        28,
+        29,
         "diagnostic kinds count changed — update this test"
     );
 }

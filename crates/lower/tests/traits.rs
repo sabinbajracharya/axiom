@@ -265,3 +265,27 @@ fn test_trait_method_type_param_in_serializer() {
     let dump = serialize(&hir);
     assert!(dump.contains("<S>"), "expected <S> in dump: {dump}");
 }
+
+#[test]
+fn test_trait_method_type_param_shadows_trait_param() {
+    let hir = lower_source("trait Foo<T> { fn bar<T>(self) -> T; }");
+    let has_duplicate = hir
+        .diagnostics
+        .iter()
+        .any(|d| matches!(d, lower::HirDiagnostic::DuplicateDefinition { name, .. } if name == "T"));
+    assert!(
+        has_duplicate,
+        "expected DuplicateDefinition for T shadowing, got: {:?}",
+        hir.diagnostics
+    );
+}
+
+#[test]
+fn test_trait_method_type_param_no_shadow_is_ok() {
+    let hir = lower_source("trait Foo<T> { fn bar<S>(self) -> S; }");
+    assert!(
+        hir.diagnostics.is_empty(),
+        "expected no diagnostics, got: {:?}",
+        hir.diagnostics
+    );
+}
