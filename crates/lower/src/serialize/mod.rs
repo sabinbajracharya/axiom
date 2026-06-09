@@ -132,6 +132,7 @@ fn serialize_trait_def(t: &TraitDef, depth: usize, out: &mut String) {
         t.id, t.name, type_params, supertraits, t.visibility, lang,
     ));
     for method in &t.methods {
+        let method_tps = fmt_type_params(&method.type_params);
         let params = method
             .params
             .iter()
@@ -147,16 +148,16 @@ fn serialize_trait_def(t: &TraitDef, depth: usize, out: &mut String) {
         indent(out, depth + 1);
         if let Some(body) = &method.body {
             out.push_str(&format!(
-                "Method({}) name={} params=[{}] return={}{} {{\n",
-                method.id, method.name, params, ret, method_lang,
+                "Method({}){} name={} params=[{}] return={}{} {{\n",
+                method.id, method_tps, method.name, params, ret, method_lang,
             ));
             serialize_block(body, depth + 2, out);
             indent(out, depth + 1);
             out.push_str("}\n");
         } else {
             out.push_str(&format!(
-                "Method({}) name={} params=[{}] return={}{}\n",
-                method.id, method.name, params, ret, method_lang,
+                "Method({}){} name={} params=[{}] return={}{}\n",
+                method.id, method_tps, method.name, params, ret, method_lang,
             ));
         }
     }

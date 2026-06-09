@@ -315,7 +315,8 @@ impl TypeChecker {
                 let mut default = Vec::new();
 
                 for method in &trait_def.methods {
-                    // Set type param scope for resolving method signatures.
+                    // Set type param scope: trait-level params first.
+                    let saved_len = self.current_type_params.len();
                     self.current_type_params = trait_def
                         .type_params
                         .iter()
@@ -324,6 +325,13 @@ impl TypeChecker {
                             (tp.name.clone(), tp.id, bounds)
                         })
                         .collect();
+                    // Extend with method-level type params.
+                    for mtp in &method.type_params {
+                        let bounds: Vec<String> =
+                            mtp.bounds.iter().map(|b| name_text(&b.name)).collect();
+                        self.current_type_params
+                            .push((mtp.name.clone(), mtp.id, bounds));
+                    }
 
                     let params: Vec<Ty> = method
                         .params
@@ -340,7 +348,8 @@ impl TypeChecker {
                         .map(|t| self.resolve_hir_ty(t))
                         .unwrap_or(Ty::Unit);
 
-                    self.current_type_params.clear();
+                    // Restore to trait-level params only (next method starts fresh).
+                    self.current_type_params.truncate(saved_len);
 
                     let info = TraitMethodInfo {
                         name: method.name.clone(),

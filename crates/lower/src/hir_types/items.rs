@@ -124,6 +124,8 @@ pub struct TraitDef {
 pub struct TraitMethod {
     pub id: HirId,
     pub name: String,
+    /// Type parameters declared on this method (e.g. `<S>` in `fn convert<S>(self) -> S`).
+    pub type_params: Vec<HirTypeParam>,
     pub params: Vec<Param>,
     pub return_type: Option<HirTy>,
     pub body: Option<Block>,

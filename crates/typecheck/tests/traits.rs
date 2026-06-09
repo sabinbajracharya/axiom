@@ -237,3 +237,41 @@ fn main() { }",
         thir.diagnostics
     );
 }
+
+// ── Trait method own type params ──────────────────────────────────────────────
+
+#[test]
+fn test_trait_method_with_own_type_param_typechecks() {
+    let thir = check_source(
+        "trait Convert {
+    fn to<S>(let self) -> S;
+}
+struct Wrapper { x: Int }
+impl Convert for Wrapper {
+    fn to<S>(let self) -> S { todo() }
+}
+fn main() { }",
+    );
+    assert!(
+        thir.diagnostics.is_empty(),
+        "expected clean typecheck for trait method with own type param, got: {:?}",
+        thir.diagnostics
+    );
+}
+
+#[test]
+fn test_trait_method_type_param_in_return_type_resolves() {
+    // The return type `S` must resolve as the method's own type param.
+    let thir = check_source(
+        "trait Convert {
+    fn to<S>(let self) -> S;
+}
+fn main() { }",
+    );
+    let has_error = thir.diagnostics.iter().any(|d| d.kind() == "undefined_type");
+    assert!(
+        !has_error,
+        "`S` should resolve as method's own type param, got: {:?}",
+        thir.diagnostics
+    );
+}

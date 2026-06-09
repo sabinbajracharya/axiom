@@ -238,3 +238,30 @@ fn test_trait_with_lang_serializes() {
     assert!(dump.contains("@lang=\"my_trait\""), "dump: {dump}");
     assert!(dump.contains("@lang=\"m\""), "dump: {dump}");
 }
+
+// ── Trait method own type params ──────────────────────────────────────────────
+
+#[test]
+fn test_trait_method_with_own_type_param() {
+    let hir = lower_source("trait Convert { fn to<S>(self) -> S; }");
+    assert!(
+        hir.diagnostics.is_empty(),
+        "unexpected: {:?}",
+        hir.diagnostics
+    );
+    match &hir.items[0] {
+        Item::TraitDef(t) => {
+            assert_eq!(t.methods.len(), 1);
+            assert_eq!(t.methods[0].type_params.len(), 1);
+            assert_eq!(t.methods[0].type_params[0].name, "S");
+        }
+        _ => panic!("expected TraitDef"),
+    }
+}
+
+#[test]
+fn test_trait_method_type_param_in_serializer() {
+    let hir = lower_source("trait Convert { fn to<S>(self) -> S; }");
+    let dump = serialize(&hir);
+    assert!(dump.contains("<S>"), "expected <S> in dump: {dump}");
+}

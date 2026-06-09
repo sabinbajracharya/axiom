@@ -227,9 +227,14 @@ fn serialize_trait_def(t: &TraitDef, depth: usize, thir: &Thir, out: &mut String
             .as_ref()
             .map(|k| format!(" @lang=\"{k}\""))
             .unwrap_or_default();
+        let method_tps = if method.type_params.is_empty() {
+            String::new()
+        } else {
+            format!(" <{}>", fmt_type_params(&method.type_params))
+        };
         out.push_str(&format!(
-            "Method({}) name={}{}{}\n",
-            method.id, method.name, default_tag, method_lang
+            "Method({}) name={}{}{}{}\n",
+            method.id, method.name, default_tag, method_lang, method_tps
         ));
         for param in &method.params {
             let param_ty = thir

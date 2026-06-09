@@ -82,13 +82,24 @@ fn resolve_trait_def(
         scope.define(tp.name.clone(), tp.id, DefKind::TypeParam);
     }
     for method in &mut t.methods {
+        // Build a method-local scope: parent scope + method's own type params.
+        let mut method_scope = Scope::new_child(&scope.bindings);
+        for mtp in &method.type_params {
+            method_scope.define(mtp.name.clone(), mtp.id, DefKind::TypeParam);
+        }
         resolve_method_sig(
             &mut method.params,
             &mut method.return_type,
-            &scope,
+            &method_scope,
             method.body.as_mut(),
             diagnostics,
         );
+        // Resolve trait bounds on the method's own type params.
+        for mtp in &mut method.type_params {
+            for bound in &mut mtp.bounds {
+                resolve_name_ref(&mut bound.name, top_level, diagnostics);
+            }
+        }
     }
 }
 

@@ -397,6 +397,7 @@ fn lower_trait_def(t: &ast::TraitDef, ctx: &mut LowerCtx) -> TraitDef {
 fn lower_trait_method(m: &ast::FnDef, ctx: &mut LowerCtx) -> TraitMethod {
     let id = ctx.alloc_id();
     let mname = m.name().map(|n| name_text(&n)).unwrap_or_default();
+    let type_params = lower_generic_params(m.generic_param_list(), ctx);
     let params = lower_params(m.param_list(), ctx);
     let return_type = m
         .ret_type()
@@ -407,6 +408,7 @@ fn lower_trait_method(m: &ast::FnDef, ctx: &mut LowerCtx) -> TraitMethod {
     TraitMethod {
         id,
         name: mname,
+        type_params,
         params,
         return_type,
         body,

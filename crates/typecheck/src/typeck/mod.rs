@@ -362,9 +362,19 @@ impl TypeChecker {
                 continue;
             };
             self.register_trait_self(&t);
+            let saved_len = self.current_type_params.len();
             for m in &t.methods {
                 if let Some(body) = &m.body {
+                    // Extend with method-level type params so they're in scope
+                    // inside the default body.
+                    for mtp in &m.type_params {
+                        let bounds: Vec<String> =
+                            mtp.bounds.iter().map(|b| collect::name_text(&b.name)).collect();
+                        self.current_type_params
+                            .push((mtp.name.clone(), mtp.id, bounds));
+                    }
                     self.check_trait_default_body(m, body);
+                    self.current_type_params.truncate(saved_len);
                 }
             }
             self.current_self_type = None;
