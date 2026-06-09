@@ -140,15 +140,21 @@ pub struct LangBinding {
     pub def_id: HirId,
 }
 
-/// Collect every `@lang("…")` binding in a module's items — top-level structs
-/// and functions, plus impl-associated methods (where `List::new`/`push`/… live,
-/// so a `Def`-only scan would miss them).
+/// Collect every `@lang("…")` binding in a module's items — top-level structs,
+/// functions, trait definitions with their methods, and impl-associated methods
+/// (where `List::new`/`push`/… live, so a `Def`-only scan would miss them).
 pub fn collect_lang_bindings(items: &[Item]) -> Vec<LangBinding> {
     let mut out = Vec::new();
     for item in items {
         match item {
             Item::StructDef(s) => push_tag(&mut out, &s.lang_tag, s.id),
             Item::FnDef(f) => push_tag(&mut out, &f.lang_tag, f.id),
+            Item::TraitDef(t) => {
+                push_tag(&mut out, &t.lang_tag, t.id);
+                for m in &t.methods {
+                    push_tag(&mut out, &m.lang_tag, m.id);
+                }
+            }
             Item::ImplDef(i) => {
                 for m in &i.methods {
                     push_tag(&mut out, &m.lang_tag, m.id);
@@ -316,6 +322,30 @@ impl<T> List<T> {
         let keys: Vec<&str> = bindings.iter().map(|b| b.key.as_str()).collect();
         assert!(keys.contains(&LANG_LIST), "keys: {keys:?}");
         assert!(keys.contains(&LANG_LIST_NEW), "keys: {keys:?}");
+        assert_eq!(
+            bindings.len(),
+            2,
+            "untagged methods must not appear: {keys:?}"
+        );
+    }
+
+    #[test]
+    fn test_collect_lang_bindings_from_trait_and_methods() {
+        let source = "\
+@lang(\"my_trait\")
+trait MyTrait {
+    @lang(\"my_method\")
+    fn required() -> Int;
+    fn untagged() -> Int { 0 }
+}
+";
+        let result = parser::parse(source);
+        let root = <parser::ast::SourceFile as parser::ast::AstNode>::cast(result.tree).unwrap();
+        let (items, _defs, _diags, _nid) = crate::lower_structural(&root, source, 0);
+        let bindings = collect_lang_bindings(&items);
+        let keys: Vec<&str> = bindings.iter().map(|b| b.key.as_str()).collect();
+        assert!(keys.contains(&"my_trait"), "keys: {keys:?}");
+        assert!(keys.contains(&"my_method"), "keys: {keys:?}");
         assert_eq!(
             bindings.len(),
             2,

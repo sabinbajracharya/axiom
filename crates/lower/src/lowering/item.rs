@@ -390,6 +390,7 @@ fn lower_trait_def(t: &ast::TraitDef, ctx: &mut LowerCtx) -> TraitDef {
         type_params,
         supertraits,
         methods,
+        lang_tag: lang_tag_of(t.attr_list()),
     }
 }
 
@@ -409,6 +410,7 @@ fn lower_trait_method(m: &ast::FnDef, ctx: &mut LowerCtx) -> TraitMethod {
         params,
         return_type,
         body,
+        lang_tag: lang_tag_of(m.attr_list()),
     }
 }
 

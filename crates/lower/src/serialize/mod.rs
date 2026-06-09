@@ -121,10 +121,15 @@ fn serialize_struct_def(s: &StructDef, depth: usize, out: &mut String) {
 fn serialize_trait_def(t: &TraitDef, depth: usize, out: &mut String) {
     let type_params = fmt_type_params(&t.type_params);
     let supertraits = fmt_supertraits(&t.supertraits);
+    let lang = t
+        .lang_tag
+        .as_ref()
+        .map(|k| format!(" @lang=\"{k}\""))
+        .unwrap_or_default();
     indent(out, depth);
     out.push_str(&format!(
-        "TraitDef({}) name={}{}{} vis={} methods=[\n",
-        t.id, t.name, type_params, supertraits, t.visibility,
+        "TraitDef({}) name={}{}{} vis={}{} methods=[\n",
+        t.id, t.name, type_params, supertraits, t.visibility, lang,
     ));
     for method in &t.methods {
         let params = method
@@ -134,19 +139,24 @@ fn serialize_trait_def(t: &TraitDef, depth: usize, out: &mut String) {
             .collect::<Vec<_>>()
             .join(", ");
         let ret = fmt_ty_maybe(&method.return_type);
+        let method_lang = method
+            .lang_tag
+            .as_ref()
+            .map(|k| format!(" @lang=\"{k}\""))
+            .unwrap_or_default();
         indent(out, depth + 1);
         if let Some(body) = &method.body {
             out.push_str(&format!(
-                "Method({}) name={} params=[{}] return={} {{\n",
-                method.id, method.name, params, ret,
+                "Method({}) name={} params=[{}] return={}{} {{\n",
+                method.id, method.name, params, ret, method_lang,
             ));
             serialize_block(body, depth + 2, out);
             indent(out, depth + 1);
             out.push_str("}\n");
         } else {
             out.push_str(&format!(
-                "Method({}) name={} params=[{}] return={}\n",
-                method.id, method.name, params, ret,
+                "Method({}) name={} params=[{}] return={}{}\n",
+                method.id, method.name, params, ret, method_lang,
             ));
         }
     }

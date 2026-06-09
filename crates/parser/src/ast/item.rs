@@ -189,6 +189,9 @@ impl TraitDef {
     pub fn visibility(&self) -> Option<Visibility> {
         child_node(&self.0)
     }
+    pub fn attr_list(&self) -> Option<AttrList> {
+        child_node(&self.0)
+    }
     pub fn name(&self) -> Option<Name> {
         child_node(&self.0)
     }

@@ -198,10 +198,15 @@ fn serialize_enum_def(e: &EnumDef, depth: usize, _thir: &Thir, out: &mut String)
 }
 
 fn serialize_trait_def(t: &TraitDef, depth: usize, thir: &Thir, out: &mut String) {
+    let lang = t
+        .lang_tag
+        .as_ref()
+        .map(|k| format!(" @lang=\"{k}\""))
+        .unwrap_or_default();
     indent(out, depth);
     out.push_str(&format!(
-        "TraitDef({}) name={} vis={}",
-        t.id, t.name, t.visibility
+        "TraitDef({}) name={} vis={}{}",
+        t.id, t.name, t.visibility, lang
     ));
     if !t.type_params.is_empty() {
         out.push_str(&format!(
@@ -217,9 +222,14 @@ fn serialize_trait_def(t: &TraitDef, depth: usize, thir: &Thir, out: &mut String
         } else {
             ""
         };
+        let method_lang = method
+            .lang_tag
+            .as_ref()
+            .map(|k| format!(" @lang=\"{k}\""))
+            .unwrap_or_default();
         out.push_str(&format!(
-            "Method({}) name={}{}\n",
-            method.id, method.name, default_tag
+            "Method({}) name={}{}{}\n",
+            method.id, method.name, default_tag, method_lang
         ));
         for param in &method.params {
             let param_ty = thir

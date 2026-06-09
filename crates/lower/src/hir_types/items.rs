@@ -113,6 +113,10 @@ pub struct TraitDef {
     /// this trait must also implement each supertrait.
     pub supertraits: Vec<HirTraitBound>,
     pub methods: Vec<TraitMethod>,
+    /// The `@lang("…")` binding tag, if this trait is a compiler-recognized
+    /// lang item (e.g. `@lang("iterator")` on `trait Iterator<T>`).
+    /// `None` for ordinary traits.
+    pub lang_tag: Option<String>,
 }
 
 /// A method declared in a trait. If `body` is `Some`, it's a default implementation.
@@ -123,6 +127,10 @@ pub struct TraitMethod {
     pub params: Vec<Param>,
     pub return_type: Option<HirTy>,
     pub body: Option<Block>,
+    /// The `@lang("…")` binding tag, if this trait method is a
+    /// compiler-recognized lang item (e.g. `@lang("iterator_next")` on
+    /// `fn next`). `None` for ordinary trait methods.
+    pub lang_tag: Option<String>,
 }
 
 /// An impl block: `impl Shape for Circle { ... }` or `impl Circle { ... }`.

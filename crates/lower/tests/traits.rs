@@ -193,3 +193,48 @@ fn test_no_traits_backward_compatible() {
         _ => panic!("expected FnDef"),
     }
 }
+
+// ── @lang on traits ───────────────────────────────────────────────────────────
+
+#[test]
+fn test_trait_with_lang_tag() {
+    let hir = lower_source("@lang(\"my_trait\") trait MyTrait { fn m() -> Int; }");
+    assert!(
+        hir.diagnostics.is_empty(),
+        "unexpected: {:?}",
+        hir.diagnostics
+    );
+    match &hir.items[0] {
+        Item::TraitDef(t) => {
+            assert_eq!(t.lang_tag.as_deref(), Some("my_trait"));
+        }
+        _ => panic!("expected TraitDef"),
+    }
+}
+
+#[test]
+fn test_trait_method_with_lang_tag() {
+    let hir =
+        lower_source("trait MyTrait { @lang(\"my_method\") fn m() -> Int; fn n() -> Int { 0 } }");
+    assert!(
+        hir.diagnostics.is_empty(),
+        "unexpected: {:?}",
+        hir.diagnostics
+    );
+    match &hir.items[0] {
+        Item::TraitDef(t) => {
+            assert_eq!(t.methods.len(), 2);
+            assert_eq!(t.methods[0].lang_tag.as_deref(), Some("my_method"));
+            assert_eq!(t.methods[1].lang_tag.as_deref(), None);
+        }
+        _ => panic!("expected TraitDef"),
+    }
+}
+
+#[test]
+fn test_trait_with_lang_serializes() {
+    let hir = lower_source("@lang(\"my_trait\") trait MyTrait { @lang(\"m\") fn m() -> Int; }");
+    let dump = serialize(&hir);
+    assert!(dump.contains("@lang=\"my_trait\""), "dump: {dump}");
+    assert!(dump.contains("@lang=\"m\""), "dump: {dump}");
+}
