@@ -29,58 +29,52 @@ impl TypeChecker {
             Expr::StructLit(sl) => self.infer_struct_lit(sl),
             Expr::Assign(assign) => self.infer_assign(assign),
             Expr::ListLit(_) => {
-                // ListLit should be desugared before typeck, but the bare
-                // `check()` path (no-stdlib) cannot desugar (missing lang
-                // items). Fall back to an error until the old infer_list_lit
-                // special-case is fully replaced.
                 self.emit(TypeDiagnostic::NotYetSupported {
                     feature: "list literals without stdlib".to_string(),
                     span: lexer::Span { lo: 0, hi: 0 },
                 });
                 Ty::Error
             }
-            Expr::Question(e) => {
-                let operand_ty = self.infer_expr(&e.expr);
-                let result_ty = match &operand_ty {
-                    Ty::Instance(inst) if inst.name == "Option" && inst.args.len() == 1 => {
-                        inst.args[0].clone()
-                    }
-                    Ty::Instance(inst) if inst.name == "Result" && inst.args.len() == 2 => {
-                        inst.args[0].clone()
-                    }
-                    Ty::ErrorSet(_) => {
-                        // Error set union: E!T — the success type is T.
-                        // For now, return Error since we don't track the inner type yet.
-                        Ty::Error
-                    }
-                    _ => {
-                        self.emit(TypeDiagnostic::NotYetSupported {
-                            feature: format!("`?` on non-propagable type `{}`", operand_ty),
-                            span: self.span_for(e.id),
-                        });
-                        Ty::Error
-                    }
-                };
-                self.types.insert(e.id, result_ty.clone());
-                result_ty
-            }
-            Expr::Else(e) => {
-                let _inner_ty = self.infer_expr(&e.expr);
-                let fallback_ty = self.infer_expr(&e.fallback);
-                // else provides a default for Option: Option<T> else T -> T
-                // Stub: return the fallback type.
-                self.types.insert(e.id, fallback_ty.clone());
-                fallback_ty
-            }
-            Expr::Catch(e) => {
-                let _inner_ty = self.infer_expr(&e.expr);
-                let fallback_ty = self.infer_expr(&e.fallback);
-                // catch provides a default for Result: Result<T,E> catch T -> T
-                // Stub: return the fallback type.
-                self.types.insert(e.id, fallback_ty.clone());
-                fallback_ty
-            }
+            Expr::Question(e) => self.infer_question(e),
+            Expr::Else(e) => self.infer_else(e),
+            Expr::Catch(e) => self.infer_catch(e),
         }
+    }
+
+    fn infer_question(&mut self, e: &QuestionExpr) -> Ty {
+        let operand_ty = self.infer_expr(&e.expr);
+        let result_ty = match &operand_ty {
+            Ty::Instance(inst) if inst.name == "Option" && inst.args.len() == 1 => {
+                inst.args[0].clone()
+            }
+            Ty::Instance(inst) if inst.name == "Result" && inst.args.len() == 2 => {
+                inst.args[0].clone()
+            }
+            Ty::ErrorSet(_) => Ty::Error,
+            _ => {
+                self.emit(TypeDiagnostic::NotYetSupported {
+                    feature: format!("`?` on non-propagable type `{}`", operand_ty),
+                    span: self.span_for(e.id),
+                });
+                Ty::Error
+            }
+        };
+        self.types.insert(e.id, result_ty.clone());
+        result_ty
+    }
+
+    fn infer_else(&mut self, e: &ElseExpr) -> Ty {
+        let _inner_ty = self.infer_expr(&e.expr);
+        let fallback_ty = self.infer_expr(&e.fallback);
+        self.types.insert(e.id, fallback_ty.clone());
+        fallback_ty
+    }
+
+    fn infer_catch(&mut self, e: &CatchExpr) -> Ty {
+        let _inner_ty = self.infer_expr(&e.expr);
+        let fallback_ty = self.infer_expr(&e.fallback);
+        self.types.insert(e.id, fallback_ty.clone());
+        fallback_ty
     }
 
     pub(super) fn check_expr(&mut self, expr: &Expr, expected: &Ty) -> Ty {

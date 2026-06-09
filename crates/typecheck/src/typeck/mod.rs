@@ -51,7 +51,8 @@ pub fn check(mut hir: Hir) -> Thir {
 }
 
 /// Type-check with a resolved lang-item registry. The caller (driver or bare
-/// `check`) is responsible for desugaring the HIR before calling this function.
+/// `check`) is responsible for desugaring catch/else/ListLit before calling this
+/// function. The `?` desugaring runs after typecheck (needs inferred types).
 pub fn check_with_lang_items(mut hir: Hir, lang_items: resolver::LangItems) -> Thir {
     let hir_diagnostics: Vec<Diagnostic> = hir.diagnostics.drain(..).map(Diagnostic::Hir).collect();
     let mut checker = TypeChecker::new(hir, lang_items);
