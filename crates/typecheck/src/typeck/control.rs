@@ -267,7 +267,19 @@ impl TypeChecker {
                 }
                 self.check_loop_body(body, loop_expr.id);
             }
-            LoopKind::Iterator { body, .. } => {
+            LoopKind::Iterator {
+                binding,
+                binding_id,
+                iterable,
+                body,
+            } => {
+                let iter_ty = self.infer_expr(iterable);
+                self.env.define(
+                    binding.clone(),
+                    iter_ty.clone(),
+                    *binding_id,
+                    Mutability::Immutable,
+                );
                 self.check_loop_body(body, loop_expr.id);
             }
         };
