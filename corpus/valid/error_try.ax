@@ -1,9 +1,17 @@
-fn might_fail() -> Result<Int, String> {
+fn succeed() -> Result<Int, String> {
     Ok(42)
 }
+fn fail() -> Result<Int, String> {
+    Err("failed")
+}
 
-fn wrapper() -> Result<Int, String> {
-    val x = try might_fail()
+fn try_wrapper_ok() -> Result<Int, String> {
+    val x = try succeed()
+    Ok(x)
+}
+
+fn try_wrapper_err() -> Result<Int, String> {
+    val x = try fail()
     Ok(x)
 }
 

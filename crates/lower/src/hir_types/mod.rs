@@ -462,6 +462,9 @@ pub struct CatchExpr {
     /// (i.e. `catch |e| handler`). If `None`, the error arm discards the
     /// error with a wildcard pattern (`catch fallback`).
     pub error_binding: Option<String>,
+    /// The HirId allocated for the captured variable. Used by the desugar
+    /// pass to wire the `Err(e)` pattern binding to the body's references.
+    pub error_binding_id: Option<HirId>,
 }
 
 #[derive(Debug, Clone)]

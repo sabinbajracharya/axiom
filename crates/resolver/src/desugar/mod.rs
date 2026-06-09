@@ -10,11 +10,16 @@
 
 use crate::hir_types::*;
 use crate::lang::LangItems;
+use crate::HirDiagnostic;
 
 struct DesugarCtx<'a> {
     lang_items: &'a LangItems,
     next_id: usize,
     temp_counter: usize,
+    /// Names that were resolved by the desugar pass (e.g. `catch |e|`
+    /// capture variables). Used to clean up stale `UnresolvedName`
+    /// diagnostics after desugaring.
+    fixed_names: Vec<String>,
 }
 
 impl DesugarCtx<'_> {
@@ -38,10 +43,16 @@ pub fn desugar(hir: &mut Hir, lang_items: &LangItems, next_id: usize) {
         lang_items,
         next_id,
         temp_counter: 0,
+        fixed_names: Vec::new(),
     };
     for item in &mut hir.items {
         desugar_item(item, &mut ctx);
     }
+    // Remove stale UnresolvedName diagnostics for variables the desugar
+    // pass resolved (e.g. `catch |e|` capture bindings).
+    hir.diagnostics.retain(|d| {
+        !matches!(d, HirDiagnostic::UnresolvedName { name, .. } if ctx.fixed_names.contains(name))
+    });
 }
 
 fn desugar_item(item: &mut Item, ctx: &mut DesugarCtx) {
@@ -364,14 +375,41 @@ fn build_result_err_return_arm(binding_name: &str, ctx: &mut DesugarCtx) -> Matc
 /// or `expr catch |e| handler` → `match expr { Ok(v) => v, Err(e) => handler }`.
 fn desugar_catch(catch_expr: &CatchExpr, ctx: &mut DesugarCtx) -> Expr {
     let scrutinee = catch_expr.expr.clone();
-    let fallback = catch_expr.fallback.clone();
+    let mut fallback = catch_expr.fallback.clone();
     let match_id = ctx.fresh_id();
 
     let ok_binding_name = format!("__catch_ok_{}", ctx.temp_counter);
     ctx.temp_counter += 1;
     let ok_arm = build_result_ok_arm(&ok_binding_name, ctx);
 
-    let err_arm = if let Some(ref name) = catch_expr.error_binding {
+    let err_arm = if let (Some(ref name), Some(binding_id)) =
+        (&catch_expr.error_binding, catch_expr.error_binding_id)
+    {
+        let err_pat_id = ctx.fresh_id();
+        let err_pat = Pattern::TupleStruct(TupleStructPat {
+            id: err_pat_id,
+            path: NameRef::unresolved("Err"),
+            fields: vec![Pattern::Ident(IdentPat {
+                id: binding_id,
+                name: name.clone(),
+                binding: Some(binding_id),
+                span: lexer::Span { lo: 0, hi: 0 },
+            })],
+        });
+        // Wire up body references: the lowered closure body contains
+        // `NameRef::Unresolved(name)` references that were never resolved
+        // (the closure param was destructured). Point them at the new
+        // match-arm binding.
+        replace_unresolved_name(&mut fallback, name, binding_id);
+        ctx.fixed_names.push(name.clone());
+        MatchArm {
+            pattern: err_pat,
+            guard: None,
+            body: *fallback,
+        }
+    } else if let Some(ref name) = catch_expr.error_binding {
+        // Legacy path: error_binding set but no ID (pre-HirId-tracking).
+        // Use a fresh ID and hope the references get resolved downstream.
         let err_pat_id = ctx.fresh_id();
         let err_binding_id = ctx.fresh_id();
         let err_pat = Pattern::TupleStruct(TupleStructPat {
@@ -384,6 +422,7 @@ fn desugar_catch(catch_expr: &CatchExpr, ctx: &mut DesugarCtx) -> Expr {
                 span: lexer::Span { lo: 0, hi: 0 },
             })],
         });
+        replace_unresolved_name(&mut fallback, name, err_binding_id);
         MatchArm {
             pattern: err_pat,
             guard: None,
@@ -558,6 +597,148 @@ fn desugar_non_empty_list(elements: Vec<Expr>, ctx: &mut DesugarCtx) -> Expr {
         stmts,
         tail: Some(tail),
     })
+}
+
+/// Walk an expression tree and replace every `NameRef::Unresolved(name)`
+/// with `NameRef::Resolved(binding_id, name)`. Used by `catch |e|`
+/// desugaring to wire the new match-arm binding to the body's references.
+///
+/// This function matches every `Expr` variant (enforced by
+/// `test_every_expr_variant_handled_by_desugar`). Each arm recurses into
+/// child expressions; there is no shorter correct implementation.
+#[allow(clippy::too_many_lines)]
+fn replace_unresolved_name(expr: &mut Expr, name: &str, binding_id: HirId) {
+    match expr {
+        Expr::Path(p) => {
+            if let NameRef::Unresolved(ref u) = p.name_ref {
+                if u.text == name {
+                    p.name_ref = NameRef::resolved(binding_id, name);
+                }
+            }
+        }
+        Expr::Bin(e) => {
+            replace_unresolved_name(&mut e.left, name, binding_id);
+            replace_unresolved_name(&mut e.right, name, binding_id);
+        }
+        Expr::Unary(e) => {
+            replace_unresolved_name(&mut e.operand, name, binding_id);
+        }
+        Expr::Call(e) => {
+            for arg in &mut e.args {
+                replace_unresolved_name(arg, name, binding_id);
+            }
+        }
+        Expr::MethodCall(e) => {
+            replace_unresolved_name(&mut e.receiver, name, binding_id);
+            for arg in &mut e.args {
+                replace_unresolved_name(arg, name, binding_id);
+            }
+        }
+        Expr::Field(e) => {
+            replace_unresolved_name(&mut e.receiver, name, binding_id);
+        }
+        Expr::Index(e) => {
+            replace_unresolved_name(&mut e.base, name, binding_id);
+            for idx in &mut e.indices {
+                replace_unresolved_name(idx, name, binding_id);
+            }
+        }
+        Expr::Block(e) => {
+            for stmt in &mut e.stmts {
+                replace_unresolved_name_in_stmt(stmt, name, binding_id);
+            }
+            if let Some(ref mut tail) = e.tail {
+                replace_unresolved_name(tail, name, binding_id);
+            }
+        }
+        Expr::If(e) => {
+            replace_unresolved_name(&mut e.condition, name, binding_id);
+            replace_unresolved_name_in_block(&mut e.then_branch, name, binding_id);
+            if let Some(ref mut els) = e.else_branch {
+                replace_unresolved_name(els, name, binding_id);
+            }
+        }
+        Expr::Match(e) => {
+            replace_unresolved_name(&mut e.scrutinee, name, binding_id);
+            for arm in &mut e.arms {
+                if let Some(ref mut guard) = arm.guard {
+                    replace_unresolved_name(guard, name, binding_id);
+                }
+                replace_unresolved_name(&mut arm.body, name, binding_id);
+            }
+        }
+        Expr::Loop(e) => match &mut e.kind {
+            LoopKind::Infinite(b) => replace_unresolved_name_in_block(b, name, binding_id),
+            LoopKind::Conditional { condition, body } => {
+                replace_unresolved_name(condition, name, binding_id);
+                replace_unresolved_name_in_block(body, name, binding_id);
+            }
+            LoopKind::Iterator { iterable, body, .. } => {
+                replace_unresolved_name(iterable, name, binding_id);
+                replace_unresolved_name_in_block(body, name, binding_id);
+            }
+        },
+        Expr::StructLit(e) => {
+            for field in &mut e.fields {
+                replace_unresolved_name(&mut field.value, name, binding_id);
+            }
+        }
+        Expr::Assign(e) => {
+            replace_unresolved_name_in_assign_target(&mut e.target, name, binding_id);
+            replace_unresolved_name(&mut e.value, name, binding_id);
+        }
+        Expr::Try(_) | Expr::Catch(_) | Expr::Else(_) | Expr::ListLit(_) => {
+            // Sugar variants should already be desugared before reaching here.
+        }
+        Expr::Lit(_) => {}
+    }
+}
+
+fn replace_unresolved_name_in_stmt(stmt: &mut Stmt, name: &str, binding_id: HirId) {
+    match stmt {
+        Stmt::ValStmt(s) => replace_unresolved_name(&mut s.value, name, binding_id),
+        Stmt::VarStmt(s) => replace_unresolved_name(&mut s.value, name, binding_id),
+        Stmt::ExprStmt(s) => replace_unresolved_name(&mut s.expr, name, binding_id),
+        Stmt::ReturnStmt(s) => {
+            if let Some(ref mut v) = s.value {
+                replace_unresolved_name(v, name, binding_id);
+            }
+        }
+        Stmt::BreakStmt(s) => {
+            if let Some(ref mut v) = s.value {
+                replace_unresolved_name(v, name, binding_id);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn replace_unresolved_name_in_block(block: &mut Block, name: &str, binding_id: HirId) {
+    for stmt in &mut block.stmts {
+        replace_unresolved_name_in_stmt(stmt, name, binding_id);
+    }
+    if let Some(ref mut tail) = block.tail {
+        replace_unresolved_name(tail, name, binding_id);
+    }
+}
+
+fn replace_unresolved_name_in_assign_target(
+    target: &mut AssignTarget,
+    name: &str,
+    binding_id: HirId,
+) {
+    match target {
+        AssignTarget::Name(_) => {}
+        AssignTarget::Field { receiver, .. } => {
+            replace_unresolved_name(receiver, name, binding_id);
+        }
+        AssignTarget::Index { base, indices } => {
+            replace_unresolved_name(base, name, binding_id);
+            for idx in indices {
+                replace_unresolved_name(idx, name, binding_id);
+            }
+        }
+    }
 }
 
 #[cfg(test)]

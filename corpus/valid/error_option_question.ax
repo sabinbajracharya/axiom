@@ -1,9 +1,16 @@
-fn might_fail() -> Option<Int> {
+fn succeed() -> Option<Int> {
     Some(42)
 }
+fn fail() -> Option<Int> {
+    None
+}
 
-fn wrapper() -> Option<Int> {
-    val x = might_fail()?
+fn wrap_ok() -> Option<Int> {
+    val x = succeed()?
+    Some(x)
+}
+fn wrap_none() -> Option<Int> {
+    val x = fail()?
     Some(x)
 }
 
