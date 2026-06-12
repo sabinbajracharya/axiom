@@ -2,8 +2,8 @@
 
 mod subscript;
 
-use super::unify::Substitution;
 use super::collect;
+use super::unify::Substitution;
 use super::{helpers, TypeChecker, TypeParamScope};
 use crate::error::TypeDiagnostic;
 use crate::types::{InstanceTy, Ty, TypeParamId};
@@ -406,8 +406,11 @@ impl TypeChecker {
         let mut scope = resolved.scope.clone();
         // Extend scope with the method's own type params (e.g. <S> in fn map<S>).
         for tp in &resolved.fn_def.type_params {
-            let bounds: Vec<String> =
-                tp.bounds.iter().map(|b| collect::name_text(&b.name)).collect();
+            let bounds: Vec<String> = tp
+                .bounds
+                .iter()
+                .map(|b| collect::name_text(&b.name))
+                .collect();
             let already = scope.iter().any(|(name, _, _)| *name == tp.name);
             if !already {
                 scope.push((tp.name.clone(), tp.id, bounds));

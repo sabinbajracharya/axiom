@@ -269,10 +269,9 @@ fn test_trait_method_type_param_in_serializer() {
 #[test]
 fn test_trait_method_type_param_shadows_trait_param() {
     let hir = lower_source("trait Foo<T> { fn bar<T>(self) -> T; }");
-    let has_duplicate = hir
-        .diagnostics
-        .iter()
-        .any(|d| matches!(d, lower::HirDiagnostic::DuplicateDefinition { name, .. } if name == "T"));
+    let has_duplicate = hir.diagnostics.iter().any(
+        |d| matches!(d, lower::HirDiagnostic::DuplicateDefinition { name, .. } if name == "T"),
+    );
     assert!(
         has_duplicate,
         "expected DuplicateDefinition for T shadowing, got: {:?}",

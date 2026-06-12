@@ -316,7 +316,10 @@ fn test_trait_method_type_param_in_return_type_resolves() {
 }
 fn main() { }",
     );
-    let has_error = thir.diagnostics.iter().any(|d| d.kind() == "undefined_type");
+    let has_error = thir
+        .diagnostics
+        .iter()
+        .any(|d| d.kind() == "undefined_type");
     assert!(
         !has_error,
         "`S` should resolve as method's own type param, got: {:?}",
