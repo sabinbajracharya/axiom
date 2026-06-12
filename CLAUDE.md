@@ -9,7 +9,7 @@ Axiom is a statically typed, compiled, general-purpose language that delivers **
 
 The memory model (the heart of the language) is **Mutable Value Semantics** — borrowing as a *calling convention* (`let`/`inout`/`sink`), not a reference type — plus **Perceus** compile-time reference counting. This is *not* "Rust without the borrow checker" (that's incoherent — see the spec); it's the Hylo/Koka resolution: keep determinism, drop the checker, replace references-as-types with conventions + refcounting.
 
-**The compiler is written in Rust.** Native backend: Cranelift. Second backend: a register-IR interpreter for WASM (dual-backend, mirroring Oxy).
+**The compiler is written in Rust.** Native backend: Cranelift (AOT object → native executable; not yet built). Second backend: a register-IR interpreter — the `vm` crate — which is the **portability + parity-oracle** engine (it runs the IR everywhere and keeps the future native backend honest), **not** a `.wasm` producer; a `.wasm` emit backend is a separate v2.x+ concern. Dual-backend, mirroring Oxy.
 
 ## The two authoritative documents — READ THESE
 

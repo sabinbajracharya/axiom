@@ -449,7 +449,7 @@ The entry point takes an `Hir` (owned, since the THIR wraps it), returns a `Thir
 ## 7. Test file layout
 
 ```
-crates/axiom-typeck/
+crates/typecheck/
   tests/
     golden.rs          # .ax → .thir snapshot tests (Layer 2)
     diagnostics.rs     # error .ax → .stderr diagnostic snapshots (Layer 4)
@@ -587,11 +587,11 @@ missing: `Empty`
 ## 10. Commands
 
 ```bash
-cargo test -p axiom-typeck                            # full suite
-cargo test -p axiom-typeck --test fuzz                # fuzz/property tests only
-UPDATE_SNAPSHOTS=1 cargo test -p axiom-typeck          # regenerate .thir / .stderr
-cargo run -p axiom-typeck --example typeck -- file.ax # debug THIR dump
-cargo run -p axiom-cli -- check file.ax                # CST + HIR + THIR dumps + diagnostics
+cargo test -p typecheck                            # full suite
+cargo test -p typecheck --test fuzz                # fuzz/property tests only
+UPDATE_SNAPSHOTS=1 cargo test -p typecheck          # regenerate .thir / .stderr
+cargo run -p typecheck --example typeck -- file.ax # debug THIR dump
+cargo run -p cli -- check file.ax                # CST + HIR + THIR dumps + diagnostics
 ```
 
 ---
@@ -661,7 +661,7 @@ rules as the HIR (inner scopes can shadow, same scope cannot redeclare).
 ## 13. Directory layout
 
 ```
-crates/axiom-typeck/
+crates/typecheck/
 ├── src/
 │   ├── lib.rs            # pub use of the public API (check, serialize, check_all)
 │   ├── types.rs           # Ty, StructTy, EnumTy, FnTy, Mutability — the type universe

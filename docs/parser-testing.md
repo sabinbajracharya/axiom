@@ -149,7 +149,7 @@ Inherited from the workspace lints (`too_many_lines` ≤ 60, `too_many_arguments
 ## 9. Directory layout
 
 ```
-crates/axiom-parser/
+crates/parser/
 ├── src/
 │   ├── lib.rs            # pub use of the public API (parse, ParseResult, SyntaxNode, serialize, ast)
 │   ├── syntax_kind.rs    # SINGLE source of truth: SyntaxKind (token+node), labels, lexer bridge
@@ -179,7 +179,7 @@ crates/axiom-parser/
         └── errors/*.ax   # malformed samples + *.stderr goldens
 ```
 
-Per the per-folder-docs rule, `crates/axiom-parser/README.md` carries the file→responsibility table, updated in the same change as any file move.
+Per the per-folder-docs rule, `crates/parser/README.md` carries the file→responsibility table, updated in the same change as any file move.
 
 ---
 
@@ -218,10 +218,10 @@ Layers 2–4 are green **before** the grammar parses anything real — so the mo
 ## 12. How to run / regenerate
 
 ```bash
-cargo test -p axiom-parser                          # full suite
-cargo test -p axiom-parser golden                   # snapshots only
-UPDATE_SNAPSHOTS=1 cargo test -p axiom-parser        # regenerate *.ast / *.stderr goldens (eyeball the diff!)
-cargo run -p axiom-parser --example parse -- file.ax # the debug tree dump
+cargo test -p parser                          # full suite
+cargo test -p parser golden                   # snapshots only
+UPDATE_SNAPSHOTS=1 cargo test -p parser        # regenerate *.ast / *.stderr goldens (eyeball the diff!)
+cargo run -p parser --example parse -- file.ax # the debug tree dump
 ```
 
 Regeneration discipline is identical to the lexer's: `UPDATE_SNAPSHOTS=1` is a deliberate act, never a reflex to green a red test.

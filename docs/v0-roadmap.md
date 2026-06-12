@@ -3,22 +3,38 @@
 > The detailed execution plan for `DESIGN_SPEC.md` §14's **v0** stage. Sits alongside
 > `DESIGN_SPEC.md` / `RUST_CONVENTIONS.md` / `ENFORCEMENT.md` as the roadmap the work follows.
 
+> **Status note (kept current).** Milestones **M0–M4 are delivered and running** — the
+> pipeline executes real programs end-to-end **on the register-IR interpreter (the `vm`
+> crate)**, not yet natively. The crate names below were updated to match the code
+> (`lexer / parser / lower / resolver / desugar / typecheck / specialize / ir / vm /
+> modules / stdlib / driver / cli`); the `README.md` status table is the authoritative
+> crate map. The remaining v0 work is **M5 (Cranelift native backend) + M6 (hardening)**,
+> but the *true* next priority is closing the foundation gaps catalogued in
+> [`foundation-hardening.md`](foundation-hardening.md) (the test oracle, real diagnostic
+> spans, the shared runtime boundary, and IR invariants) **before** the native backend or
+> the memory model lands. Treat the per-milestone design notes here as the still-valid
+> *design* reference; treat `foundation-hardening.md` as the ordered *work* plan.
+
 ## Context
 
 **Where we are.** Spike 0 is GREEN — Path A (no GC, no lifetimes, exclusivity discipline)
 is confirmed tolerable (`docs/spike-0-findings.md`, 23/23 scenarios matched intent). The
 **lexer** and **parser** are production-complete: lossless, total, fuzzed, snapshot-tested,
-with 94 typed AST views over a lossless CST (`crates/axiom-lexer`, `crates/axiom-parser`).
-**M0 is done** — the `axiom` driver (`crates/axiom-cli`) and the `corpus/` feature-test
-harness are in place, with `axiom check` consuming the parser end-to-end. The remaining
-pipeline stages (HIR → typeck → IR → backends, M1–M6) have no consumer of the AST views yet.
+with the typed AST views over a lossless CST (`crates/lexer`, `crates/parser`). **M0–M4
+are done**: the `axiom` driver (`crates/cli`), the `corpus/` feature-test harness, HIR
+lowering + name resolution (`crates/lower`, `crates/resolver`), desugaring
+(`crates/desugar`), the type checker (`crates/typecheck`), monomorphization
+(`crates/specialize`), the register IR (`crates/ir`), and the register-IR interpreter
+(`crates/vm`) all exist and run. Generics + traits (incl. default methods), generic enums,
+error handling (`?`/`catch`/`else`/error sets), and a small `.ax` stdlib
+(`List`/`Map`/`Option`) execute end-to-end on the VM. `axiom run file.ax` works today.
 
-**What's next, per `DESIGN_SPEC.md` §14.** The next milestone is **v0 — the end-to-end
-skeleton with NO memory model**: `lex → parse → typecheck → IR → backend`, over a
-value-semantics subset with *naive* memory (copy/refcount everything; no exclusivity, no
-Perceus). The point of v0 is to **prove the pipeline runs real programs natively** — the
-language *identity* (ownership + Perceus) is deliberately deferred to v1, which folds the
-spiked passes into the IR layer this plan establishes.
+**What's next, per `DESIGN_SPEC.md` §14.** The end-to-end skeleton has **NO memory model**:
+`lex → parse → typecheck → IR → backend`, over a value-semantics subset with *naive* memory
+(copy/refcount everything; no exclusivity, no Perceus). v0's remaining job is to **prove the
+pipeline runs real programs natively** (M5 Cranelift) — the language *identity* (ownership +
+Perceus) is deliberately deferred to v1, which folds the spiked passes into the IR layer this
+plan established. Before either, the foundation-hardening gaps come first.
 
 **Confirmed decisions for this plan:**
 - **Subset:** Int/Bool/Float/Unit/String, `fn` defs & calls, `val`/`var` + `let` bindings,
@@ -26,24 +42,24 @@ spiked passes into the IR layer this plan establishes.
   `match`**, and a `print` builtin. Generics, traits, closures, concurrency, error sets →
   deferred to v1+. *(Update: enums, generics, and traits were subsequently pulled forward
   into v0 and are delivered in the typechecker; only closures + error handling remain v1.)*
-- **Backend strategy:** **one register IR**, then the **IR interpreter first** (reference
-  oracle + fastest path to a running program), then **Cranelift second**, parity-checked
-  against the interpreter — mirroring Oxy's proven discipline.
+- **Backend strategy:** **one register IR**, then the **IR interpreter first** (the `vm`
+  crate — reference oracle + fastest path to a running program; **delivered**), then
+  **Cranelift second**, parity-checked against the interpreter — mirroring Oxy's proven
+  discipline. **The VM is the portability + parity-oracle engine, not a `.wasm` producer.**
 - **Cranelift mode:** **AOT object → native executable** (`cranelift-object` → `.o` →
-  system-linker → standalone binary). `axiom build hello.ax` → `./hello`.
+  system-linker → standalone binary). `axiom build hello.ax` → `./hello`. *(Not built —
+  `axiom build` is still a stub; this is the remaining v0 backend work.)*
 - **`.wasm` artifact output:** deferred to v2.x+ (a *separate* emit backend —
   `wasm-encoder`/LLVM, never Cranelift). The interpreter covers any playground need.
-  *Side task:* clarify the CLAUDE.md line "register-IR interpreter for WASM" — the
-  interpreter is the **portability + parity-oracle** engine, not a `.wasm` producer.
 
 ### Backend architecture (the shape we're building toward)
 
 ```
-CST (done) ─► HIR (M1) ─► typed HIR / THIR (M2) ─► register IR (M3) ──┬─► IR interpreter (M4)  ◄─ first runnable
-                                                  [v1: ownership +     │      oracle + portable
-                                                   Perceus run HERE]   └─► Cranelift AOT (M5) ─► native executable
-                                                                              parity-checked vs interpreter
-        (.wasm emit = separate later backend, v2.x+ — NOT Cranelift)
+CST (done) ─► HIR (done) ─► typed HIR / THIR (done) ─► register IR (done) ──┬─► IR interpreter / VM (done)  ◄─ runnable
+                                                       [v1: ownership +     │      oracle + portable
+                                                        Perceus run HERE]   └─► Cranelift AOT (M5) ─► native executable
+                                                                                   parity-checked vs the VM
+         (.wasm emit = separate later backend, v2.x+ — NOT Cranelift)
 ```
 
 **Why an IR at all (not "a backend choice"):** the register IR is the single lowering target
@@ -51,9 +67,11 @@ CST (done) ─► HIR (M1) ─► typed HIR / THIR (M2) ─► register IR (M3) 
 will run. Getting it right now is the highest-leverage work in v0.
 
 **Shared runtime:** both backends execute identical IR and call **one** runtime/FFI surface
-(`axiom-runtime`) for builtin semantics (print, value ops, aggregate alloc). The interpreter
-calls these Rust fns directly; Cranelift-generated code calls them as linked symbols. This is
-what makes parity meaningful — neither backend re-implements language semantics.
+for builtin semantics (print, value ops, aggregate alloc). The interpreter calls these Rust
+fns directly; Cranelift-generated code calls them as linked symbols. This is what makes
+parity meaningful — neither backend re-implements language semantics. *(Today those bodies
+live inline in `crates/vm/src/exec/builtins.rs`; extracting them into a shared `runtime`
+crate is foundation item F5.1 in `foundation-hardening.md`.)*
 
 ---
 
@@ -74,7 +92,7 @@ These come from `RUST_CONVENTIONS.md` / `ENFORCEMENT.md` and the existing lexer/
   "tests exist").** Each stage ships the same six-layer kit the lexer/parser already have —
   this is how we test input→output and debug each component by hand:
   1. **Canonical `serialize` dump** — one pure `Stage → String` function (e.g.
-     `axiom_lexer::serialize`, `axiom_parser::serialize`). It is the *single oracle* used by
+     `lexer::serialize`, `parser::serialize`). It is the *single oracle* used by
      **both** golden tests **and** humans. Deterministic, diff-friendly, LF-only.
   2. **`examples/<stage>.rs` debug CLI** — `cargo run -p <crate> --example <stage> -- file.ax`
      dumps that stage's output for any `.ax` (the existing `examples/lex.rs`,
@@ -107,9 +125,9 @@ These come from `RUST_CONVENTIONS.md` / `ENFORCEMENT.md` and the existing lexer/
 
 **Goal:** stand up the plumbing everything else plugs into, before any new pipeline stage.
 
-**Shipped** (`crates/axiom-cli`, the `axiom` binary):
+**Shipped** (`crates/cli`, the `axiom` binary):
 - **`axiom check <file>`** runs lex→parse, prints the CST to stdout and rendered diagnostics
-  to stderr (reuses `axiom_parser::parse` / `serialize` / `ParseError::render` verbatim — no
+  to stderr (reuses `parser::parse` / `serialize` / `ParseError::render` verbatim — no
   new analysis at M0). `run`/`build` are recognized but stubbed to a "not yet (M4/M5)" message,
   so the command surface is stable before the stages behind it land.
 - Exit codes: `0` clean · `1` diagnostics · `2` usage/IO · `3` unimplemented.
@@ -126,7 +144,7 @@ These come from `RUST_CONVENTIONS.md` / `ENFORCEMENT.md` and the existing lexer/
 - Naming settled: `axiom` is the compiler-driver binary; `forge` (package manager) stays a v2
   concern — noted, not built.
 
-**Verify + debug harness:** `cargo run -p axiom-cli -- check corpus/valid/hello.ax` is the
+**Verify + debug harness:** `cargo run -p cli -- check corpus/valid/hello.ax` is the
 debug face (prints the CST). `tests/features.rs` discovers the corpus and asserts each file
 matches the outcome for its directory.
 **Exit / tests met:** `axiom check` prints a parse tree or well-formed diagnostics for every
@@ -140,7 +158,7 @@ crate's lints on (13 unit + 3 integration tests; full `fmt`/`clippy -D warnings`
 **Goal:** turn the lossless CST/AST views into a desugared, ID-keyed **HIR** where every
 identifier resolves to a binding or item def.
 
-- New crate **`crates/axiom-hir`**. Lower `axiom_parser::ast::*` views → HIR nodes
+- New crate **`crates/lower`** (the HIR-lowering crate). Lower `parser::ast::*` views → HIR nodes
   (enum + `match` per AST family: items, stmts, exprs, patterns, types). Strip trivia; assign
   stable `HirId`s.
 - **Two-pass resolution:** (1) collect item defs (fns, structs, enums, variants, fields) into a
@@ -161,21 +179,25 @@ identifier resolves to a binding or item def.
   `tests/fixtures/*.ax` → `.hir`; diagnostic snapshot tests over
   `tests/fixtures/errors/*.ax` → `.stderr`; drift guard test; 9 inline unit tests. All pass
   with `UPDATE_SNAPSHOTS=1` support.
-- **Per-folder README.md** for axiom-hir.
+- **Per-folder README.md** for the HIR crates.
+  *(As built, the M1 scope is split across three crates: `lower` (structural CST→HIR),
+  `resolver` (name resolution + `@lang`/`@intrinsic`), and `desugar` (pre/post-typecheck
+  desugaring) — see the `README.md` table.)*
 
-**Verify + debug harness:** `axiom_hir::serialize` canonical HIR dump (resolved names →
-def IDs); **`examples/hir.rs`** debug CLI (`cargo run -p axiom-hir --example hir -- file.ax`).
+**Verify + debug harness:** `lower::serialize` canonical HIR dump (resolved names →
+def IDs). *(No `examples/hir.rs` is built; inspect the HIR shape via the `typecheck`
+example's THIR dump, which carries the lowered/resolved structure.)*
 **Exit / tests:** `docs/hir-testing.md` written first; HIR snapshot goldens over the corpus;
 resolution-error fixtures (`*.ax` → `*.stderr`); coverage guard green.
 
 ---
 
-## M2 — Type checker (naive, no ownership) *(deliverable: typed HIR / THIR)*
+## M2 — Type checker (naive, no ownership) ✅ *(delivered: typed HIR / THIR; generics + traits landed on top)*
 
 **Goal:** assign a type to every expression and reject ill-typed programs — *without* any
 ownership/exclusivity reasoning (that's v1).
 
-- New crate **`crates/axiom-typeck`**. Type universe: `Int`, `Bool`, `Float`, `Unit`,
+- New crate **`crates/typecheck`**. Type universe: `Int`, `Bool`, `Float`, `Unit`,
   `String`, user `struct`/`enum` (nominal), function types. Bidirectional checking with local
   inference: infer `let`/`val`/`var` from initializer; require explicit fn return/param types
   (matches the spec's v0 posture — annotations over full inference).
@@ -184,22 +206,24 @@ ownership/exclusivity reasoning (that's v1).
   access, and **`match` exhaustiveness + per-arm type agreement** (the headline v0 type-system
   work — drives layout decisions downstream).
 - Output **THIR**: HIR annotated with resolved types per node. One `thiserror` error enum;
-  invest in clear messages (carry spans through from HIR).
+  invest in clear messages (carry spans through from HIR). *(Reality gap: type-error spans
+  are not yet threaded — every type diagnostic currently reports `0:0`; this is
+  foundation item F3.1.)*
 - **Drift guard:** every HIR expression kind has a typing rule (exhaustive `match`).
 
-**Verify + debug harness:** `axiom_typeck::serialize` canonical THIR dump (type per node);
-**`examples/typeck.rs`** debug CLI (`cargo run -p axiom-typeck --example typeck -- file.ax`).
+**Verify + debug harness:** `typecheck::serialize` canonical THIR dump (type per node);
+**`examples/typeck.rs`** debug CLI (`cargo run -p typecheck --example typeck -- file.ax`).
 **Exit / tests:** `docs/typeck-testing.md` first; typed-snapshot goldens; type-error fixtures
 (mismatch, non-exhaustive match, unknown field/variant, arity); exhaustiveness unit tests.
 
 ---
 
-## M3 — Register IR + lowering *(deliverable: well-formed IR for the whole subset)*
+## M3 — Register IR + lowering ✅ *(delivered: register IR + lowering for the subset)*
 
 **Goal:** define the register IR and lower THIR into it. **Highest-leverage milestone** — this
 is the layer v1's ownership + Perceus passes will later run on.
 
-- New crate **`crates/axiom-ir`**. **CFG-based register IR, exactly like Oxide's** (model on
+- New crate **`crates/ir`**. **CFG-based register IR, exactly like Oxide's** (model on
   `Oxide/.../vm/jit/ir.rs` + `IR_DESIGN.md`, re-implemented around Axiom semantics): the IR
   *is* a control-flow graph — `IrFunction { blocks, entry, locals, params, return_type }`,
   `BasicBlock { id, ops: Vec<IrOp>, terminator, predecessors }`, where the `terminator`
@@ -214,49 +238,56 @@ is the layer v1's ownership + Perceus passes will later run on.
   destructure → loads. **Naive memory:** aggregates are values with copy semantics; heap values
   use straightforward refcount/clone — *no* elision, *no* reuse, *no* exclusivity (v1).
 - Define the shared runtime surface here: declare the `axiom_*` builtin/FFI signatures
-  (`print`, value ops, aggregate alloc) that both backends will satisfy — implemented in a new
-  **`crates/axiom-runtime`** crate (plain safe Rust; linked into both backends).
+  (`print`, value ops, aggregate alloc) that both backends will satisfy. *(As built, those
+  bodies live inline in `crates/vm/src/exec/builtins.rs`; extracting them into a dedicated
+  safe-Rust `runtime` crate linked into both backends is foundation item F5.1.)*
 - **IR invariants** (load-bearing, mirror the lexer/parser coverage layers): every block ends
   in a terminator; every vreg defined before use; CFG predecessors consistent; the
-  exhaustive-`IrOp` guard.
+  exhaustive-`IrOp` guard. *(Structural invariants are in `crates/ir/src/invariants.rs`;
+  stronger ownership-preparatory invariants are foundation item F5.2.)*
 
-**Verify + debug harness:** `axiom_ir::serialize` canonical IR dump (CFG-readable: blocks,
-ops, terminators, predecessors); **`examples/ir.rs`** debug CLI (`cargo run -p axiom-ir
+**Verify + debug harness:** `ir::serialize` canonical IR dump (CFG-readable: blocks,
+ops, terminators, predecessors); **`examples/ir.rs`** debug CLI (`cargo run -p ir
 --example ir -- file.ax`) for inspecting lowered CFGs by hand.
 **Exit / tests:** `docs/ir-testing.md` first; IR snapshot goldens over the corpus; IR
 well-formedness invariant checks; lowering unit tests (match decision trees, loop CFGs).
 
 ---
 
-## M4 — IR interpreter backend *(deliverable: `axiom run hello.ax` prints output — FIRST RUNNABLE)*
+## M4 — IR interpreter backend ✅ *(delivered: `axiom run file.ax` executes the pipeline on the VM)*
 
 **Goal:** execute the IR. **This is the headline v0 milestone — the pipeline runs end to end.**
 
-- New crate **`crates/axiom-interp`**. Runtime value rep as a tagged enum
+- New crate **`crates/vm`** (the register-IR interpreter). Runtime value rep as a tagged enum
   (`Int`/`Bool`/`Float`/`Unit`/`Str`/`Struct{fields}`/`Enum{tag,payload}`). Walk each
   `IrFunction`'s blocks, execute `IrOp`s, follow terminators; a register file per frame; a call
-  stack for `fn` calls. Delegate **all** language semantics to `axiom-runtime` (the interpreter
-  re-implements *nothing* — same FFI bodies the native backend will call).
+  stack for `fn` calls. Delegate **all** language semantics to the runtime surface (the
+  interpreter should re-implement *nothing* — same FFI bodies the native backend will call;
+  today those bodies are inline in `vm`, pending the F5.1 `runtime` extraction).
 - **Divergence guard:** the interpreter's dispatch is an **exhaustive `match` over `IrOp`/
   `Terminator`** — adding an IR op makes this crate fail to compile until handled (Oxy's
   type-checked guard; the v1 ownership ops will inherit this protection).
-- Wire into CLI: `axiom run <file>` does lex→parse→hir→typeck→ir→interpret and prints output.
+- Wire into CLI: `axiom run <file>` does lex→parse→lower→resolve→desugar→typecheck→ir→interpret
+  and prints output.
 
-**Verify + debug harness:** `axiom run --trace <file>` (or `examples/interp.rs`) dumps the
-block/op execution trace + final register state for debugging; stdout of `axiom run` is the
-input→output oracle for corpus snapshots.
+**Verify + debug harness:** stdout of `axiom run` is the input→output oracle for corpus
+snapshots. *(Reality gap: the stdout-snapshot harness over the corpus is foundation item
+F2.1 — programs currently run but their output is not yet asserted by golden snapshot.)*
 **Exit / tests:** the `corpus/valid/**` programs run end-to-end with stdout snapshots;
 `hello.ax`, `fib.ax`, `fizzbuzz.ax`, and a struct+enum+`match` program all produce correct
 output; runtime-trap fixtures (e.g. arithmetic panic) behave deterministically.
 
 ---
 
-## M5 — Cranelift AOT native backend + parity *(deliverable: `axiom build hello.ax` → `./hello`)*
+## M5 — Cranelift AOT native backend + parity ⬜ *(remaining v0 work: `axiom build hello.ax` → `./hello`)*
 
 **Goal:** compile the same IR to a standalone native executable, and prove it agrees with the
-interpreter on every program.
+interpreter on every program. **Not started** — `axiom build` is still a stub
+(`crates/cli/src/lib.rs`). The foundation gaps this depends on (a shared `runtime` crate to
+link, validated IR invariants, and the parity-harness skeleton) are F5.1 / F5.2 / F2.3 in
+[`foundation-hardening.md`](foundation-hardening.md) and come first.
 
-- New crate **`crates/axiom-codegen`** — **the single `unsafe`-permitted crate.** Its own
+- New crate **`crates/codegen`** — **the single `unsafe`-permitted crate.** Its own
   `[lints]` block: every clippy deny retained, `unsafe_code = "allow"`. All `unsafe` blocks
   carry `// Safety:` comments and sit behind safe APIs. Deps: `cranelift-codegen`,
   `cranelift-frontend`, `cranelift-module`, `cranelift-object`, `cranelift-native` (added to
@@ -264,10 +295,10 @@ interpreter on every program.
 - IR → CLIF: translate `IrFunction`/`BasicBlock`/`IrOp` to Cranelift IR (vregs → CLIF
   values/variables, blocks → CLIF blocks, terminators → jumps/brif/return). Declare the
   `axiom_*` runtime symbols as imports. Use **`ObjectModule`** → emit `.o` → invoke the system
-  linker (`cc`) to link the object + `axiom-runtime` (as a staticlib) → native executable.
+  linker (`cc`) to link the object + the `runtime` crate (as a staticlib) → native executable.
 - Wire CLI: `axiom build <file>` → `./<name>`; the produced binary runs standalone.
 - **Parity harness** (`docs/backend-parity-testing.md` first): run the whole corpus through the
-  interpreter AND the compiled native binary; assert identical stdout/exit per program. An
+  VM AND the compiled native binary; assert identical stdout/exit per program. An
   `INTERP_UNSUPPORTED` / `NATIVE_UNSUPPORTED` marker mechanism classifies *expected* gaps as
   deferred (not regressions), like Oxy's `jit_interp_parity`.
 
@@ -277,18 +308,21 @@ containing `unsafe`, all blocks justified.
 
 ---
 
-## M6 — v0 hardening & wrap *(deliverable: tagged v0, docs complete)*
+## M6 — v0 hardening & wrap ⬜ *(remaining v0 work: tagged v0, docs complete)*
 
 **Goal:** make v0 a clean, defensible baseline before v1's memory model lands on top of the IR.
+Most of this is now tracked as the foundation-hardening phases (real diagnostic spans = F3,
+broadened/asserted corpus = F2, docs reconciliation = F1, IR readiness = F5).
 
-- Diagnostics quality pass across HIR/typeck (spans, fix-suggesting messages where cheap).
-- Broaden `corpus/**` to a representative corpus (functions, recursion, structs,
-  enums, nested `match`, loops) — these become v1's regression bedrock.
-- Per-folder `README.md` for every new crate, current and accurate.
+- Diagnostics quality pass across lowering/typeck (real spans — F3.1, fix-suggesting messages).
+- Broaden `corpus/**` to a representative corpus with **asserted output** (functions, recursion,
+  structs, enums, nested `match`, loops) — these become v1's regression bedrock (F2.1/F2.2).
+- Per-folder `README.md` for every crate, current and accurate (`crates/ir` is the last one
+  missing — F1.4).
 - Confirm the full pre-commit gate green; tag/document **v0**.
 - Update `DESIGN_SPEC.md` §14 status notes and **clarify the CLAUDE.md backend line** (the
-  interpreter is the portability + parity-oracle engine; `.wasm` emission is a distinct v2.x+
-  backend, not Cranelift; native = Cranelift AOT object).
+  VM is the portability + parity-oracle engine; `.wasm` emission is a distinct v2.x+
+  backend, not Cranelift; native = Cranelift AOT object) — done in F1.3.
 
 ---
 
@@ -297,10 +331,10 @@ containing `unsafe`, all blocks justified.
 - **Per stage:** `cargo test` runs that stage's golden snapshots + coverage invariants + fuzz
   + diagnostics fixtures (the established lexer/parser pattern). Regenerate snapshots with
   `UPDATE_SNAPSHOTS=1 cargo test` and eyeball the diff.
-- **M4 smoke (first runnable):** `cargo run -p axiom-cli -- run corpus/valid/hello.ax`
+- **M4 smoke (runnable):** `cargo run -p cli -- run corpus/valid/hello.ax`
   prints the expected output; same for `fib.ax`, `fizzbuzz.ax`, and a struct+enum+`match`
   program.
-- **M5 native + parity:** `cargo run -p axiom-cli -- build corpus/valid/hello.ax &&
+- **M5 native + parity:** `cargo run -p cli -- build corpus/valid/hello.ax &&
   ./hello`; `cargo test --test parity` (interpreter vs native binary) green over the whole
   corpus.
 - **Always:** `cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test`
@@ -309,5 +343,7 @@ containing `unsafe`, all blocks justified.
 ## Out of scope for v0 (deferred, by design)
 
 Ownership pass / exclusivity checker / Perceus / reuse analysis (**v1** — runs on the M3 IR);
-closures, error handling (`try`/`catch`/`errdefer`/error sets) (**v1**); concurrency `scope`/`spawn`,
+closures (**v1** — parsed only today); concurrency `scope`/`spawn`,
 `forge`, LSP (**v2**); `.wasm` emit backend + LLVM-tier backend + cycle collector (**v2.x+**).
+*(Note: error handling — `?`/`catch`/`else`/error sets — was subsequently pulled forward and
+now type-checks and runs on the VM, ahead of this original v0 scope.)*

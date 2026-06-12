@@ -128,7 +128,7 @@ The serializer, `tiles`, `reconstruct`, the CLI, and the fuzzer need **zero** ch
 ## 6. Directory layout
 
 ```
-crates/axiom-lexer/
+crates/lexer/
 ├── src/
 │   ├── lib.rs            # pub use of the public API (Token, lex(), serialize())
 │   ├── token.rs          # Token, TokenKind, Span — plain data
@@ -147,17 +147,17 @@ crates/axiom-lexer/
         └── errors/*.ax   # malformed samples + *.stderr goldens
 ```
 
-Per the per-folder-docs rule, `crates/axiom-lexer/README.md` carries the file→responsibility table and is updated in the same change as any file move.
+Per the per-folder-docs rule, `crates/lexer/README.md` carries the file→responsibility table and is updated in the same change as any file move.
 
 ---
 
 ## 7. How to run / regenerate
 
 ```bash
-cargo test -p axiom-lexer                      # full suite
-cargo test -p axiom-lexer golden               # snapshots only
-UPDATE_SNAPSHOTS=1 cargo test -p axiom-lexer    # regenerate *.tokens / *.stderr goldens
-cargo run -p axiom-lexer --example lex -- file.ax   # the debug dump (interactive)
+cargo test -p lexer                      # full suite
+cargo test -p lexer golden               # snapshots only
+UPDATE_SNAPSHOTS=1 cargo test -p lexer    # regenerate *.tokens / *.stderr goldens
+cargo run -p lexer --example lex -- file.ax   # the debug dump (interactive)
 ```
 
 (The `lex` example is the CLI face of the serializer until the real `axiom` CLI exists; it then becomes `axiom debug tokens`.)

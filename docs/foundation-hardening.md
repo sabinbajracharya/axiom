@@ -94,29 +94,32 @@ pass, plus a CI job that enforces it).
 
 ---
 
-## Phase 1 — Make the map match the territory (`docs-sync`)
+## Phase 1 — Make the map match the territory (`docs-sync`)  ·  ✅ **DONE**
 
-Future work is guided by docs; right now they mislead. This is cheap and unblocks
-trust + onboarding.
+Future work is guided by docs; they had drifted. The active docs now match the code
+(the `README.md` table remains the authoritative crate map). Historical, point-in-time
+design/plan docs (e.g. `struct-v0-plan.md`, `design-audit-m1m2.md`, the various
+`*-redesign`/`*-migration` notes) were intentionally **left as records** — they describe
+a past crate layout and rewriting them adds risk with no forward value.
 
-- **F1.1 `docs-sync`** — Reconcile crate names. `docs/v0-roadmap.md` and parts of
-  `CLAUDE.md` reference `axiom-lexer / axiom-hir / axiom-typeck / axiom-ir /
-  axiom-interp / axiom-codegen / axiom-runtime`. The real crates are
+- **F1.1 `docs-sync`** ✅ — Reconciled crate names. `docs/v0-roadmap.md` and the active
+  testing-spec docs (`lexer-testing.md`, `parser-testing.md`, `hir-testing.md`,
+  `typeck-testing.md`) referenced `axiom-lexer / axiom-hir / axiom-typeck / axiom-ir /
+  axiom-interp / axiom-codegen / axiom-runtime / axiom-cli`. The real crates are
   `lexer / parser / lower / resolver / desugar / typecheck / specialize / ir / vm /
-  modules / stdlib / driver / cli`. Update the docs (the `README.md` table is the
-  accurate one — align everything to it).
-- **F1.2 `docs-sync`** — Rewrite the milestone map. The M1–M6 plan in
-  `v0-roadmap.md` (HIR=M1, typeck=M2, IR=M3, interp=M4, Cranelift=M5) describes a
-  state already overtaken: HIR/resolve/desugar/typeck/specialize/IR/VM all exist
-  and run generics+traits+stdlib. State plainly what is **done** vs **the true
-  remaining v0 work** (this document's Phases 2–5).
-- **F1.3 `docs-sync`** — Clarify the backend story everywhere (the CLAUDE.md
-  "register-IR interpreter for WASM" line): the VM is the **portability + parity-
-  oracle** engine; Cranelift AOT is the native backend (not built); `.wasm` emit is
-  a separate v2.x+ backend. The README already says this; make CLAUDE.md and the
-  roadmap agree.
-- **F1.4 `docs-sync`** — Add a `crates/ir/README.md` (the only crate missing its
-  per-folder README; `RUST_CONVENTIONS.md` requires one).
+  modules / stdlib / driver / cli`. All active docs now use the real names, aligned to
+  the `README.md` table. (`CLAUDE.md` had no stale crate names — only the backend line, F1.3.)
+- **F1.2 `docs-sync`** ✅ — Rewrote the milestone map in `v0-roadmap.md`. Marked **M0–M4
+  ✅ delivered** (HIR/resolve/desugar/typeck/specialize/IR/VM all exist and run
+  generics+traits+stdlib+error-handling) and **M5 (Cranelift) / M6 (hardening) ⬜
+  remaining**, with explicit reality-gap notes pointing at this document's Phases 2–5
+  (spans = F3.1, output oracle = F2.1, runtime crate = F5.1, IR invariants = F5.2).
+- **F1.3 `docs-sync`** ✅ — Clarified the backend story. Updated the `CLAUDE.md`
+  "register-IR interpreter for WASM" line and the `v0-roadmap.md` backend section: the VM
+  is the **portability + parity-oracle** engine (not a `.wasm` producer); Cranelift AOT is
+  the native backend (not built); `.wasm` emit is a separate v2.x+ backend.
+- **F1.4 `docs-sync`** ✅ — Added `crates/ir/README.md` (the only crate missing its
+  per-folder README), with the file→responsibility table per `RUST_CONVENTIONS.md`.
 
 ---
 

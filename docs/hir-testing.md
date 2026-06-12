@@ -396,7 +396,7 @@ updating the lowerer makes the test fail at compile time or runtime.
 ## 7. Test file layout
 
 ```
-crates/axiom-hir/
+crates/lower/
   tests/
     golden.rs          # .ax → .hir snapshot tests (Layer 2)
     diagnostics.rs     # error .ax → .stderr diagnostic snapshots (Layer 4)
@@ -453,11 +453,11 @@ never a panic), and never fails.
 ## 9. Commands
 
 ```bash
-cargo test -p axiom-hir                            # full suite
-cargo test -p axiom-hir --test fuzz                # fuzz/property tests only
-UPDATE_SNAPSHOTS=1 cargo test -p axiom-hir         # regenerate .hir / .stderr
-cargo run -p axiom-hir --example hir -- file.ax    # debug HIR dump
-cargo run -p axiom-cli -- check file.ax             # CST + HIR dumps + diagnostics
+cargo test -p lower                            # full suite
+cargo test -p lower --test fuzz                # fuzz/property tests only
+UPDATE_SNAPSHOTS=1 cargo test -p lower         # regenerate .hir / .stderr
+cargo run -p lower --example hir -- file.ax    # debug HIR dump
+cargo run -p cli -- check file.ax             # CST + HIR dumps + diagnostics
 ```
 
 ---
@@ -471,5 +471,5 @@ cargo run -p axiom-cli -- check file.ax             # CST + HIR dumps + diagnost
   fixture that exercises it, update `serialize` if the output format changes.
 - Add a new diagnostic kind: add a variant to `HirDiagnostic`, add a fixture
   `errors/*.ax` + checked-in `.stderr`, regenerate with `UPDATE_SNAPSHOTS=1`.
-- Add a new AST node kind upstream (in `axiom-parser`): the drift guard in
-  `axiom-hir` will fail until the lowerer handles it.
+- Add a new AST node kind upstream (in `parser`): the drift guard in
+  `lower` will fail until the lowerer handles it.
